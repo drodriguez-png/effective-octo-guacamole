@@ -1,0 +1,31 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "backend",
+        "type": "shell",
+        "command": "watchexec",
+        "args": ["--watch", "src", "--exts", "rs,toml", "--restart", "--", "cargo", "run", "-q"],
+        "options": {
+            "cwd": "${workspaceFolder}/server"
+        },
+        "runOptions": {
+          "runOn": "folderOpen"
+        }
+      },
+      {
+        "label": "frontend",
+        "type": "shell",
+        "command": "pnpm",
+        "args": ["run", "dev"],
+        "options": {
+            "cwd": "${workspaceFolder}/client"
+        },
+        "runOptions": {
+          "runOn": "folderOpen"
+        }
+      }
+    ]
+  }
