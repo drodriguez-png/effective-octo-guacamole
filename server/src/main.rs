@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Query, State},
+    extract::{Path, State},
     http::StatusCode,
     response::Json,
     routing::get,
@@ -9,13 +9,7 @@ use axum::{
 };
 use serde_json::{json, Value};
 
-use sigmanest_interface::db;
-
-#[derive(Debug, serde::Deserialize)]
-struct QueryParams {
-    program: Option<String>,
-    machine: Option<String>,
-}
+use sigmanest_interface::{db, exports::export_nest};
 
 #[derive(Debug, serde::Deserialize)]
 struct PostParams {
@@ -51,11 +45,13 @@ async fn main() -> Result<(), std::io::Error> {
         .level(log::LevelFilter::Error)
         .level_for("sigmanest_interface", log::LevelFilter::Trace)
         .chain(std::io::stdout())
-        .chain(std::fs::OpenOptions::new()
-            .create(true)
-            .truncate(true)
-            .write(true)
-            .open("server.log")?)
+        .chain(
+            std::fs::OpenOptions::new()
+                .create(true)
+                .truncate(true)
+                .write(true)
+                .open("server.log")?,
+        )
         .apply()
         .expect("failed to init logging");
 
@@ -65,8 +61,12 @@ async fn main() -> Result<(), std::io::Error> {
     let app = Router::new()
         .route("/", get(|| async { "root request not implemented yet" }))
         .route("/machines", get(get_machines))
-        .route("/programs", get(get_programs)) // TODO: combine this with /program
-        .route("/program", get(get_program).post(update_program))
+        .route("/:machine", get(get_programs)) // TODO: combine this with /program
+        .route(
+            "/:machine/program/:program",
+            get(get_program).post(update_program),
+        )
+        .route("/program/:nest", get(get_nest))
         .with_state(state);
 
     // run our app with hyper, listening globally on port 3080
@@ -92,7 +92,7 @@ async fn get_machines(State(state): State<Arc<AppState>>) -> (StatusCode, Json<V
                     .map(|val| String::from(val.unwrap_or("")))
                     .collect();
 
-                (StatusCode::OK, Json(json!({ "machines": machines })))
+                (StatusCode::OK, Json(json!(machines)))
             }
             Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(Value::Null)),
         },
@@ -102,52 +102,77 @@ async fn get_machines(State(state): State<Arc<AppState>>) -> (StatusCode, Json<V
 
 async fn get_programs(
     State(state): State<Arc<AppState>>,
-    params: Query<QueryParams>,
+    Path(machine): Path<String>,
 ) -> (StatusCode, Json<Value>) {
-    log::debug!("Requested programs for machine {:?}", params);
+    log::debug!("Requested programs for machine {}", machine);
 
-    match &params.machine {
-        Some(machine) => {
-            let state = Arc::clone(&state);
+    let state = Arc::clone(&state);
 
-            let mut conn = state.db.get_owned().await.unwrap();
-            let results = conn
-                .query(
-                    "select distinct ProgramName from ProgramMachine where MachineName=@P1",
-                    &[machine],
-                )
-                .await;
-            match results {
-                Ok(stream) => match stream.into_first_result().await {
-                    Ok(rows) => {
-                        let programs: Vec<String> = rows
-                            .iter()
-                            .map(|row| row.get::<&str, _>(0))
-                            .map(|val| String::from(val.unwrap_or("")))
-                            .collect();
+    let mut conn = state.db.get_owned().await.unwrap();
+    let results = conn
+        .query(
+            "select distinct ProgramName from ProgramMachine where MachineName=@P1",
+            &[&machine],
+        )
+        .await;
+    match results {
+        Ok(stream) => match stream.into_first_result().await {
+            Ok(rows) => {
+                let programs: Vec<String> = rows
+                    .iter()
+                    .map(|row| row.get::<&str, _>(0))
+                    .map(|val| String::from(val.unwrap_or("")))
+                    .collect();
 
-                        (StatusCode::OK, Json(json!({ "programs": programs })))
-                    }
-                    Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(Value::Null)),
-                },
-                Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(Value::Null)),
+                (StatusCode::OK, Json(json!(programs)))
             }
-        }
-        None => (StatusCode::BAD_REQUEST, Json(Value::Null)),
+            Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(Value::Null)),
+        },
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(Value::Null)),
     }
 }
 
 async fn get_program(
     State(_state): State<Arc<AppState>>,
-    params: Query<QueryParams>,
+    Path((machine, program)): Path<(String, String)>,
 ) -> (StatusCode, Json<Value>) {
-    log::debug!("Requested batches for {:?}", params);
+    log::debug!("Requested batches for {} (machine: {})", program, machine);
 
-    match &params.program {
-        Some(program) if program.chars().nth(1) == Some('2') => (StatusCode::OK, Json(json!({ "name": program, "batches": vec![9], "remnant": Value::Null }))),
-        Some(program) if program.chars().nth(1) == Some('3') => (StatusCode::OK, Json(json!({ "name": program, "batches": vec![4,5,6], "remnant": Value::Null }))),
-        Some(program) => (StatusCode::OK, Json(json!({ "name": program, "batches": vec![1,2,3], "remnant": Some(json!({ "width": 43.2, "length": 120})) }))),
-        None => (StatusCode::BAD_REQUEST, Json(Value::Null)),
+    // TODO: handle program not an active program for the machine (safety)
+    match program.chars().nth(1) {
+        Some('2') => (
+            StatusCode::OK,
+            Json(json!({ "name": program, "batches": vec![9], "remnant": Value::Null })),
+        ),
+        Some('3') => (
+            StatusCode::OK,
+            Json(json!({ "name": program, "batches": vec![4,5,6], "remnant": Value::Null })),
+        ),
+        _ => (
+            StatusCode::OK,
+            Json(
+                json!({ "name": program, "batches": vec![1,2,3], "remnant": Some(json!({ "width": 43.2, "length": 120})) }),
+            ),
+        ),
+    }
+}
+
+async fn get_nest(
+    State(state): State<Arc<AppState>>,
+    Path(program): Path<String>,
+) -> (StatusCode, Json<Value>) {
+    log::debug!("Requested program {}", program);
+
+    let state = Arc::clone(&state);
+
+    let mut conn = state.db.get_owned().await.unwrap();
+
+    match export_nest(&mut conn, &program).await {
+        Ok(nest) => (StatusCode::OK, Json(serde_json::to_value(nest).unwrap())),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(Value::String(e.to_string())),
+        ),
     }
 }
 
