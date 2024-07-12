@@ -15,3 +15,4 @@ tiberius = { version = "0.12.2", features = ["sql-browser-tokio", "integrated-au
 log = "0.4.21"
 fern = "0.6.2"
 humantime = "2.1.0"
+anyhow = "1.0.86"
