@@ -1,10 +1,12 @@
 import { type Component, createSignal, For } from "solid-js";
 
 import BatchAssign from "./BatchAssign";
+import BatchAssignList from "./BatchAssignList";
 import BatchListing from "./BatchListing";
 import { Dynamic } from "solid-js/web";
 
 const apps = [
+  { name: "Batch Assign List", component: BatchAssignList },
   { name: "Batch Assign", component: BatchAssign },
   { name: "Batch Listing", component: BatchListing },
 ];
@@ -18,8 +20,8 @@ const App: Component = () => {
           <For each={apps}>
             {(app, i) => (
               <button
-                class="bg-gradient-to-r from-cyan-500 to-blue-500 transition ease-in-out duration-300 hover:scale-110 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 text-white font-bold py-2 px-4 rounded-full"
-                classList={{ "text-black": i() === currentApp() }}
+                class="bg-gradient-to-r from-cyan-500 to-blue-500 transition ease-in-out duration-300 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 text-white font-bold py-2 px-4 rounded-full ring-white ring-offset-2"
+                classList={{ ring: i() === currentApp() }}
                 onClick={() => setCurrentApp(i)}
               >
                 {app.name}
