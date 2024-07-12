@@ -1,141 +1,81 @@
-import { Form, Button, FloatingLabel } from "solid-bootstrap";
-import { Component, createEffect, createSignal, mergeProps, onMount } from "solid-js";
+import {
+  Component,
+  Match,
+  Show,
+  Switch,
+  createResource,
+  createSignal,
+  onMount,
+} from "solid-js";
+import DropList from "./components/DropList";
 
-interface Program {
-  name: String;
-  batches: string[];
-  remnant: Remnant | null;
-}
+const getPrograms = async (machine: string) => {
+  if (!machine) return;
 
-interface Remnant {
-  width: number;
-  length: number;
-}
+  localStorage.setItem("machine", machine);
+
+  const response = await fetch(`/api/${machine}`);
+  return response.json();
+};
 
 const BatchAssign: Component = () => {
-  const [program, setProgram] = createSignal<Program | null>(null);
-  const [batch, setBatch] = createSignal<string>("");
+  const [machines, setMachines] = createSignal([]);
+  const [machine, setMachine] = createSignal(
+    localStorage.getItem("machine") || ""
+  );
+  const [programs] = createResource(machine, getPrograms);
 
-  const [selectedMachine, setSelectedMachine] = createSignal<string>("");
-  const [machines, setMachines] = createSignal<string[]>([]);
-  const [programs, setPrograms] = createSignal<string[]>([]);
+  const [program, setProgram] = createSignal("");
 
   onMount(async () => {
-    const res = await (await fetch(`/api/machines`)).json();
-
-    console.log(res);
-    setMachines(res.machines);
+    const response = await fetch(`/api/machines`);
+    setMachines(await response.json());
   });
-
-  createEffect(() => console.log(program()));
-
-  // get list of programs when machine is selected
-  createEffect(async () => {
-    const url =
-      `/api/programs?` + new URLSearchParams({ machine: selectedMachine() });
-    const res = await (await fetch(url)).json();
-
-    console.log(res);
-    setPrograms(res.programs);
-  });
-
-  // get program data when program changes
-  const selectProgram = async (pname: string) => {
-    const url = `/api/program?` + new URLSearchParams({ program: pname });
-    const res = await (await fetch(url)).json();
-
-    setProgram(res);
-  };
-
-  const setWidth = (width: number) => setProgram(mergeProps(program(), { "width": width }));
-  const setLength = (length: number) => setProgram(mergeProps(program(), { "length": length }));
-
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
-    alert(`Selected Program: ${program()}, Selected Batch: ${batch()}`);
-
-    // POST to backend
-    const res = await fetch(`/api/program`, {
-      method: "POST",
-      body: JSON.stringify({
-        program: program(),
-        batch: batch(),
-      }),
-      headers: {
-        "Content-type": "application/json; charset=UTF-8",
-      },
-    });
-
-    console.log(res);
-  };
 
   return (
-    <>
-      <select
-        id="machine"
-        class="border border-gray-300 rounded py-2 px-3 text-gray-700 focus:outline-none focus:ring focus:border-blue-500"
-        value={selectedMachine()}
-        onInput={(e) =>
-          setSelectedMachine((e.target as HTMLSelectElement).value)
-        }
-      >
-        <option value="" disabled>
-          Select a machine
-        </option>
-        {machines().map((machine) => (
-          <option value={machine}>{machine}</option>
-        ))}
-      </select>
-
-      <Form onSubmit={handleSubmit}>
-        <FloatingLabel label="Program">
-          <Form.Select
-            disabled={!selectedMachine()}
-            onInput={(e) =>
-              selectProgram((e.target as HTMLSelectElement).value)
-            }
-          >
-            {programs().map((program) => (
-              <option value={program}>{program}</option>
-            ))}
-          </Form.Select>
-        </FloatingLabel>
-        <FloatingLabel label="Batch">
-          <Form.Select
-            disabled={(program()?.batches.length || 0) <= 1}
-            onInput={(e) => setBatch((e.target as HTMLSelectElement).value)}
-          >
-            {program()?.batches.map((batch) => (
-              <option value={batch}>{batch}</option>
-            ))}
-          </Form.Select>
-        </FloatingLabel>
-        <FloatingLabel label="Remnant Width">
-          <Form.Control
-            type="number"
-            disabled={!program()?.remnant}
-            value={program()?.remnant?.width}
-            onInput={(e) =>
-              setWidth(Number.parseFloat((e.target as HTMLInputElement).value))
-            }
-          />
-        </FloatingLabel>
-        <FloatingLabel label="Remnant Length">
-          <Form.Control
-            type="number"
-            disabled={!program()?.remnant}
-            value={program()?.remnant?.length}
-            onInput={(e) =>
-              setLength(Number.parseFloat((e.target as HTMLInputElement).value))
-            }
-          />
-        </FloatingLabel>
-
-        <Button variant="primary" type="submit">
-          Submit
-        </Button>
-      </Form>
-    </>
+    <div class="flex w-3/5 min-w-96 rounded-2xl overflow-hidden">
+      <aside class="bg-gradient-to-tr from-amber-300 to-orange-400 flex flex-col justify-between p-2 min-w-48 min-h-48">
+        <h1 class="text-2xl grow">Batch Assign</h1>
+        <DropList
+          class="self-end"
+          name="machine"
+          items={machines()}
+          setValue={setMachine}
+          value={machine()}
+        />
+      </aside>
+      <section class="bg-amber-300 grow grid grid-cols-4 gap-2 p-2">
+        <Show when={programs.loading}>
+          <p class="col-span-full row-span-full place-self-center">
+            Fetching...
+          </p>
+        </Show>
+        <Switch>
+          <Match when={!machine()}>
+            <p class="col-span-full place-self-center">No machine selected</p>
+          </Match>
+          <Match when={programs.error}>
+            <p class="col-span-full place-self-center">
+              Error fetching programs
+            </p>
+            <p class="cols-span-full place-self-center font-mono">
+              {programs.error}
+            </p>
+          </Match>
+          <Match when={programs()}>
+            <DropList
+              class="col-start-2 col-span-2 place-self-center"
+              name="program"
+              items={programs()}
+              setValue={setProgram}
+            />
+            <p class="col-start-1">Batch</p>
+            <p class="col-start-1">Remnants</p>
+            <p class="col-start-1">parts</p>
+          </Match>
+        </Switch>
+      </section>
+    </div>
   );
 };
 
