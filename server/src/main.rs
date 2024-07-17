@@ -61,6 +61,7 @@ async fn main() -> Result<(), std::io::Error> {
     let app = Router::new()
         .route("/", get(|| async { "root request not implemented yet" }))
         .route("/machines", get(get_machines))
+        .route("/batches", get(get_batches))
         .route("/:machine", get(get_programs)) // TODO: combine this with /program
         .route(
             "/:machine/program/:program",
@@ -98,6 +99,21 @@ async fn get_machines(State(state): State<Arc<AppState>>) -> (StatusCode, Json<V
         },
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(Value::Null)),
     }
+}
+
+async fn get_batches(State(_state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
+    log::debug!("Requested batches list");
+
+    let data = json!([
+        { "batch": "B000001", "mm": "50/50W-0008", "type": "new" },
+        { "batch": "B005038", "mm": "50/50W-0008", "type": "new" },
+        { "batch": "B000701", "mm": "50/50W-0008", "type": "new" },
+        { "batch": "B010064", "mm": "50/50W-0008", "type": "new" },
+        { "batch": "B008802", "mm": "50/50W-0008", "type": "new" },
+        { "batch": "B000031", "mm": "50/50W-0008", "type": "new" },
+    ]);
+
+    (StatusCode::OK, Json(data))
 }
 
 async fn get_programs(
