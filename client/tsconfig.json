@@ -11,6 +11,6 @@
     "typeRoots": ["./node_modules"],
     "types": ["vite/client"],
     "noEmit": true,
-    "isolatedModules": true,
-  },
+    "isolatedModules": true
+  }
 }

@@ -20,7 +20,9 @@
     "vite-plugin-solid": "^2.8.2"
   },
   "dependencies": {
+    "@solidjs/router": "^0.14.1",
     "solid-bootstrap": "^1.0.20",
+    "solid-icons": "^1.1.0",
     "solid-js": "^1.8.11"
   }
 }
