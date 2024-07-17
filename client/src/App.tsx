@@ -1,12 +1,11 @@
 import { type Component, createSignal, For } from "solid-js";
 
 import BatchAssign from "./BatchAssign";
-import BatchAssignList from "./BatchAssignList";
 import BatchListing from "./BatchListing";
 import { Dynamic } from "solid-js/web";
+import "flowbite";
 
 const apps = [
-  { name: "Batch Assign List", component: BatchAssignList },
   { name: "Batch Assign", component: BatchAssign },
   { name: "Batch Listing", component: BatchListing },
 ];
@@ -30,10 +29,10 @@ const App: Component = () => {
           </For>
         </div>
       </nav>
-      <main class="min-h-full flex flex-col grow justify-around place-items-center">
+      <main class="h-4/5 m-4 flex flex-col grow justify-around place-items-center">
         <Dynamic component={apps[currentApp()].component} />
       </main>
-      <footer class="bg-gray-800 px-2 py-1 flex justify-between font-semibold tracking-wide select-none">
+      <footer class="bg-gray-800 px-2 py-1 flex shrink-0 justify-between font-semibold tracking-wide select-none">
         <p class="text-white">
           &copy; {new Date().getFullYear()} by High Steel Structures LLC
         </p>

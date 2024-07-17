@@ -1,13 +1,17 @@
 import {
   Component,
+  Index,
   Match,
   Show,
   Switch,
+  Suspense,
   createResource,
   createSignal,
   onMount,
 } from "solid-js";
 import DropList from "./components/DropList";
+import { FiInfo, FiX } from "solid-icons/fi";
+import { NestInfo } from "./components/Nest";
 
 const getPrograms = async (machine: string) => {
   if (!machine) return;
@@ -18,6 +22,13 @@ const getPrograms = async (machine: string) => {
   return response.json();
 };
 
+const getProgram = async (nest: string) => {
+  if (nest === null) return;
+
+  const response = await fetch(`/api/program/${nest}`);
+  return response.json();
+};
+
 const BatchAssign: Component = () => {
   const [machines, setMachines] = createSignal([]);
   const [machine, setMachine] = createSignal(
@@ -25,7 +36,8 @@ const BatchAssign: Component = () => {
   );
   const [programs] = createResource(machine, getPrograms);
 
-  const [program, setProgram] = createSignal("");
+  const [info, showInfo] = createSignal(null);
+  const [expandedInfo] = createResource(info, getProgram);
 
   onMount(async () => {
     const response = await fetch(`/api/machines`);
@@ -33,18 +45,14 @@ const BatchAssign: Component = () => {
   });
 
   return (
-    <div class="flex w-3/5 min-w-96 rounded-2xl overflow-hidden">
-      <aside class="bg-gradient-to-tr from-amber-300 to-orange-400 flex flex-col justify-between p-2 min-w-48 min-h-48">
-        <h1 class="text-2xl grow">Batch Assign</h1>
-        <DropList
-          class="self-end"
-          name="machine"
-          items={machines()}
-          setValue={setMachine}
-          value={machine()}
-        />
-      </aside>
-      <section class="bg-amber-300 grow grid grid-cols-4 gap-2 p-2">
+    <div class="flex flex-col w-3/5 min-w-96 rounded-2xl overflow-hidden">
+      <DropList
+        items={machines()}
+        name="Machine"
+        setValue={setMachine}
+        value={machine}
+      />
+      <section>
         <Show when={programs.loading}>
           <p class="col-span-full row-span-full place-self-center">
             Fetching...
@@ -63,15 +71,68 @@ const BatchAssign: Component = () => {
             </p>
           </Match>
           <Match when={programs()}>
-            <DropList
-              class="col-start-2 col-span-2 place-self-center"
-              name="program"
-              items={programs()}
-              setValue={setProgram}
-            />
-            <p class="col-start-1">Batch</p>
-            <p class="col-start-1">Remnants</p>
-            <p class="col-start-1">parts</p>
+            <div
+              class="overflow-auto m-4 shadow-md sm:rounded-lg"
+              // style={{ height: "80vh" }}
+            >
+              <table class="w-full text-sm text-gray-500">
+                <thead class="z-10 top-0 sticky text-xs text-gray-700 uppercase bg-gradient-to-tr from-amber-300 to-orange-400">
+                  <tr>
+                    <th scope="col" class="px-6 py-3"></th>
+                    <th scope="col" class="px-6 py-3">
+                      Program
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                      Runtime
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                      --not needed
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <Index each={programs()}>
+                    {(item) => (
+                      <>
+                        <tr
+                          class="border-t hover:bg-gray-100"
+                          onClick={() => showInfo(item())}
+                        >
+                          <th class="px-6 py-4">
+                            <FiInfo
+                              class="rounded hover:ring-2 ring-offset-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                showInfo(item());
+                              }}
+                            />
+                          </th>
+                          <th
+                            scope="row"
+                            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"
+                          >
+                            {item()}
+                          </th>
+                          <td class="px-6 py-4">data1</td>
+                          <td class="px-6 py-4">data2</td>
+                        </tr>
+                      </>
+                    )}
+                  </Index>
+                </tbody>
+              </table>
+              <Show when={expandedInfo.loading}>
+                <div>Fetching program data...</div>
+              </Show>
+              <Switch>
+                <Match when={expandedInfo.error}>
+                  <span>Error: {expandedInfo.error()}</span>
+                </Match>
+                <Match when={expandedInfo()}>
+                  <NestInfo nest={expandedInfo()} />
+                </Match>
+              </Switch>
+            </div>
           </Match>
         </Switch>
       </section>
