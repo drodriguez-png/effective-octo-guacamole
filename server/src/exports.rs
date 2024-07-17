@@ -6,12 +6,14 @@ use tiberius::error::Error as SqlError;
 type SqlConn<'a> = PooledConnection<'a, ConnectionManager>;
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NestExport {
     archive_packet_id: i32,
     state: TransactionType<Nest>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 enum TransactionType<T> {
     NotFound,
     Created(T),
@@ -20,6 +22,7 @@ enum TransactionType<T> {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Nest {
     archive_packet_id: i32,
     program: Program,
@@ -29,6 +32,7 @@ pub struct Nest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Program {
     program_name: String,
     repeat_id: i32,
@@ -37,6 +41,7 @@ pub struct Program {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Part {
     part_name: String,
     part_qty: i32,
@@ -47,12 +52,14 @@ pub struct Part {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Sheet {
     sheet_name: String,
     material_master: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Remnant {
     remnant_name: String,
     length: f64,
@@ -61,6 +68,7 @@ pub struct Remnant {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct STArcEntry<T> {
     archive_packet_id: i32,
     state: TransactionType<T>,
