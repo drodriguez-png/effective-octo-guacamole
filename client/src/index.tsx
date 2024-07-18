@@ -18,20 +18,12 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
 const Layout = (props: any) => {
   return (
     <>
-      <nav class="bg-gray-800 p-4 flex items-center space-x-2 justify-between items-center">
+      <nav class="bg-gray-800 p-4 flex items-center space-x-2 justify-between">
         <div class="flex items-center space-x-2">
-          <A
-            class="bg-gradient-to-r from-cyan-500 to-blue-500 transition ease-in-out duration-300 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 text-white font-bold py-2 px-4 rounded-full ring-white ring-offset-2"
-            activeClass="ring"
-            href="/assign"
-          >
+          <A class="router-link" activeClass="ring" href="/assign">
             Batch Assign
           </A>
-          <A
-            class="bg-gradient-to-r from-cyan-500 to-blue-500 transition ease-in-out duration-300 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 text-white font-bold py-2 px-4 rounded-full ring-white ring-offset-2"
-            activeClass="ring"
-            href="/batches"
-          >
+          <A class="router-link" activeClass="ring" href="/batches">
             Batch Listing
           </A>
         </div>
