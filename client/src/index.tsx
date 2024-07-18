@@ -2,6 +2,7 @@
 
 import { render } from "solid-js/web";
 import { A, Navigate, Route, Router } from "@solidjs/router";
+import "solid-devtools";
 
 import "./index.css";
 import { BatchAssign } from "./BatchAssign";
@@ -11,14 +12,14 @@ const root = document.getElementById("root");
 
 if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   throw new Error(
-    "Root element not found. Did you forget to add it to your index.html? Or maybe the id attribute got misspelled?"
+    "Root element not found. Did you forget to add it to your index.html? Or maybe the id attribute got misspelled?",
   );
 }
 
 const Layout = (props: any) => {
   return (
     <>
-      <nav class="bg-gray-800 p-4 flex items-center space-x-2 justify-between">
+      <nav class="flex items-center justify-between space-x-2 bg-gray-800 p-4">
         <div class="flex items-center space-x-2">
           <A class="router-link" activeClass="ring" href="/assign">
             Batch Assign
@@ -28,14 +29,14 @@ const Layout = (props: any) => {
           </A>
         </div>
       </nav>
-      <main class="h-4/5 m-4 flex flex-col grow justify-around place-items-center">
+      <main class="m-4 flex h-4/5 grow flex-col place-items-center justify-around">
         {props.children}
       </main>
-      <footer class="bg-gray-800 px-2 py-1 flex shrink-0 justify-between font-semibold tracking-wide select-none">
+      <footer class="flex shrink-0 select-none justify-between bg-gray-800 px-2 py-1 font-semibold tracking-wide">
         <p class="text-white">
           &copy; {new Date().getFullYear()} by High Steel Structures LLC
         </p>
-        <p class="text-white/50 text-xs place-self-center">
+        <p class="place-self-center text-xs text-white/50">
           made with <span class="text-red-500">&hearts;</span> by Patrick Miller
         </p>
       </footer>
@@ -51,5 +52,5 @@ render(
       <Route path="/batches" component={BatchListing} />
     </Router>
   ),
-  root!
+  root!,
 );
