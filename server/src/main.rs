@@ -12,8 +12,7 @@ use serde_json::{json, Value};
 use sigmanest_interface::{db, exports::export_nest};
 
 #[derive(Debug, serde::Deserialize)]
-struct PostParams {
-    program: String,
+struct ProgramUpdateParams {
     batch: String,
 }
 
@@ -62,12 +61,8 @@ async fn main() -> Result<(), std::io::Error> {
         .route("/", get(|| async { "root request not implemented yet" }))
         .route("/machines", get(get_machines))
         .route("/batches", get(get_batches))
-        .route("/:machine", get(get_programs)) // TODO: combine this with /program
-        .route(
-            "/:machine/program/:program",
-            get(get_program).post(update_program),
-        )
-        .route("/program/:nest", get(get_nest))
+        .route("/:machine", get(get_programs))
+        .route("/nest/:nest", get(get_nest).post(update_program))
         .with_state(state);
 
     // run our app with hyper, listening globally on port 3080
@@ -148,31 +143,6 @@ async fn get_programs(
     }
 }
 
-async fn get_program(
-    State(_state): State<Arc<AppState>>,
-    Path((machine, program)): Path<(String, String)>,
-) -> (StatusCode, Json<Value>) {
-    log::debug!("Requested batches for {} (machine: {})", program, machine);
-
-    // TODO: handle program not an active program for the machine (safety)
-    match program.chars().nth(1) {
-        Some('2') => (
-            StatusCode::OK,
-            Json(json!({ "name": program, "batches": vec![9], "remnant": Value::Null })),
-        ),
-        Some('3') => (
-            StatusCode::OK,
-            Json(json!({ "name": program, "batches": vec![4,5,6], "remnant": Value::Null })),
-        ),
-        _ => (
-            StatusCode::OK,
-            Json(
-                json!({ "name": program, "batches": vec![1,2,3], "remnant": Some(json!({ "width": 43.2, "length": 120})) }),
-            ),
-        ),
-    }
-}
-
 async fn get_nest(
     State(state): State<Arc<AppState>>,
     Path(program): Path<String>,
@@ -194,13 +164,10 @@ async fn get_nest(
 
 async fn update_program(
     State(_state): State<Arc<AppState>>,
-    params: Json<PostParams>,
+    Path(program): Path<String>,
+    Json(params): Json<ProgramUpdateParams>,
 ) -> (StatusCode, Json<Value>) {
-    log::debug!(
-        "Requested update for {}<{}>",
-        params.0.program,
-        params.0.batch
-    );
+    log::debug!("Requested update for {}<{}>", program, params.batch);
 
     // TODO: post update to SimTrans
 
