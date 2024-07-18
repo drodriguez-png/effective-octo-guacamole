@@ -5,12 +5,19 @@ import {
   Match,
   Show,
   Switch,
+  createEffect,
   createResource,
   createSignal,
   onCleanup,
 } from "solid-js";
 import { FiInfo } from "solid-icons/fi";
 import { NestInfo } from "./components/Nest";
+import { cuttingTimeStr } from "./utils";
+
+type Program = {
+  program: string;
+  cuttingTime: number;
+};
 
 const getMachines = async () => {
   const response = await fetch(`/api/machines`);
@@ -33,7 +40,11 @@ export const BatchAssign: Component = () => {
   const [info, showInfo] = createSignal<string | null>(null);
 
   const [machines, { refetch }] = createResource(getMachines);
-  const [programs] = createResource(machine, getPrograms);
+  const [programs] = createResource<Program[], any>(machine, getPrograms);
+
+  createEffect(() => {
+    console.log(programs());
+  });
 
   const machinesListTimer = setInterval(() => {
     refetch();
@@ -84,9 +95,6 @@ export const BatchAssign: Component = () => {
                     <th scope="col" class="px-6 py-3">
                       Runtime
                     </th>
-                    <th scope="col" class="px-6 py-3">
-                      --not needed
-                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -95,14 +103,14 @@ export const BatchAssign: Component = () => {
                       <>
                         <tr
                           class="border-t hover:bg-gray-100"
-                          onClick={() => showInfo(item())}
+                          onClick={() => showInfo(item().program)}
                         >
                           <th class="px-6 py-4">
                             <FiInfo
                               class="rounded ring-offset-8 hover:ring-2"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                showInfo(item());
+                                showInfo(item().program);
                               }}
                             />
                           </th>
@@ -110,10 +118,11 @@ export const BatchAssign: Component = () => {
                             scope="row"
                             class="whitespace-nowrap px-6 py-4 font-medium text-gray-900"
                           >
-                            {item()}
+                            {item().program}
                           </th>
-                          <td class="px-6 py-4">data1</td>
-                          <td class="px-6 py-4">data2</td>
+                          <td class="px-6 py-4">
+                            {cuttingTimeStr(item().cuttingTime)}
+                          </td>
                         </tr>
                       </>
                     )}

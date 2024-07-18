@@ -122,17 +122,25 @@ async fn get_programs(
     let mut conn = state.db.get_owned().await.unwrap();
     let results = conn
         .query(
-            "select distinct ProgramName from ProgramMachine where MachineName=@P1",
+            r#"
+SELECT DISTINCT ProgramName, CuttingTime
+FROM ProgramMachine
+WHERE MachineName=@P1
+            "#,
             &[&machine],
         )
         .await;
     match results {
         Ok(stream) => match stream.into_first_result().await {
             Ok(rows) => {
-                let programs: Vec<String> = rows
+                let programs: Vec<Value> = rows
                     .iter()
-                    .map(|row| row.get::<&str, _>(0))
-                    .map(|val| String::from(val.unwrap_or("")))
+                    .map(|row| {
+                        json!({
+                            "program": row.get::<&str, _>("ProgramName").unwrap(),
+                            "cuttingTime": row.get::<f64, _>("CuttingTime").unwrap()
+                        })
+                    })
                     .collect();
 
                 (StatusCode::OK, Json(json!(programs)))
