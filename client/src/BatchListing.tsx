@@ -16,7 +16,7 @@ type Batch = {
   type: string;
 };
 
-const BatchListing: Component = () => {
+export const BatchListing: Component = () => {
   const [batches, setBatches] = createSignal<Batch[]>([]);
   const [batchToShow, setBatchToShow] = createSignal<Batch>();
   const [showInfo, setShowInfo] = createSignal(false);
@@ -114,5 +114,3 @@ const BatchListing: Component = () => {
     </>
   );
 };
-
-export default BatchListing;

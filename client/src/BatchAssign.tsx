@@ -29,7 +29,7 @@ const getProgram = async (nest: string) => {
   return response.json();
 };
 
-const BatchAssign: Component = () => {
+export const BatchAssign: Component = () => {
   const [machines, setMachines] = createSignal([]);
   const [machine, setMachine] = createSignal(
     localStorage.getItem("machine") || ""
@@ -139,5 +139,3 @@ const BatchAssign: Component = () => {
     </div>
   );
 };
-
-export default BatchAssign;
