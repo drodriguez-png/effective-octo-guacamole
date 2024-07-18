@@ -5,8 +5,9 @@ import {
   Show,
   Suspense,
   createEffect,
+  createResource,
   createSignal,
-  onMount,
+  onCleanup,
 } from "solid-js";
 import { FiX } from "solid-icons/fi";
 
@@ -16,10 +17,20 @@ type Batch = {
   type: string;
 };
 
+const getBatches = async () => {
+  const response = await fetch(`/api/batches`);
+  return response.json();
+};
+
 export const BatchListing: Component = () => {
-  const [batches, setBatches] = createSignal<Batch[]>([]);
+  const [batches, { refetch }] = createResource(getBatches);
   const [batchToShow, setBatchToShow] = createSignal<Batch>();
   const [showInfo, setShowInfo] = createSignal(false);
+
+  const machinesListTimer = setInterval(() => {
+    refetch();
+  }, 60 * 1000);
+  onCleanup(() => clearInterval(machinesListTimer));
 
   createEffect(() => {
     console.log(batches());
@@ -29,11 +40,6 @@ export const BatchListing: Component = () => {
     setBatchToShow(batch);
     setShowInfo(true);
   };
-
-  onMount(async () => {
-    const response = await fetch(`/api/batches`);
-    setBatches(await response.json());
-  });
 
   return (
     <>
