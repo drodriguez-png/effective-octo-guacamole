@@ -42,7 +42,7 @@ async fn main() -> Result<(), std::io::Error> {
             ))
         })
         .level(log::LevelFilter::Error)
-        .level_for("sigmanest_interface", log::LevelFilter::Trace)
+        .level_for("sigmanest_interface", log::LevelFilter::Debug)
         .chain(std::io::stdout())
         .chain(
             std::fs::OpenOptions::new()
