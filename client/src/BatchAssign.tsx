@@ -7,10 +7,15 @@ import {
   Switch,
   createResource,
   createSignal,
-  onMount,
+  onCleanup,
 } from "solid-js";
 import { FiInfo } from "solid-icons/fi";
 import { NestInfo } from "./components/Nest";
+
+const getMachines = async () => {
+  const response = await fetch(`/api/machines`);
+  return response.json();
+};
 
 const getPrograms = async (machine: string) => {
   if (!machine) return;
@@ -21,27 +26,19 @@ const getPrograms = async (machine: string) => {
   return response.json();
 };
 
-const getProgram = async (nest: string) => {
-  if (nest === null) return;
-
-  const response = await fetch(`/api/program/${nest}`);
-  return response.json();
-};
-
 export const BatchAssign: Component = () => {
-  const [machines, setMachines] = createSignal([]);
   const [machine, setMachine] = createSignal(
     localStorage.getItem("machine") || "",
   );
+  const [info, showInfo] = createSignal<string | null>(null);
+
+  const [machines, { refetch }] = createResource(getMachines);
   const [programs] = createResource(machine, getPrograms);
 
-  const [info, showInfo] = createSignal(null);
-  const [expandedInfo] = createResource(info, getProgram);
-
-  onMount(async () => {
-    const response = await fetch(`/api/machines`);
-    setMachines(await response.json());
-  });
+  const machinesListTimer = setInterval(() => {
+    refetch();
+  }, 60 * 1000);
+  onCleanup(() => clearInterval(machinesListTimer));
 
   return (
     <div class="w-3/5 min-w-96 overflow-hidden rounded-2xl">
@@ -123,17 +120,12 @@ export const BatchAssign: Component = () => {
                   </Index>
                 </tbody>
               </table>
-              <Show when={expandedInfo.loading}>
-                <div>Fetching program data...</div>
+              <Show when={info()}>
+                <NestInfo
+                  name={info() || ""}
+                  onCloseEvent={() => showInfo(null)}
+                />
               </Show>
-              <Switch>
-                <Match when={expandedInfo.error}>
-                  <span>Error: {expandedInfo.error()}</span>
-                </Match>
-                <Match when={expandedInfo()}>
-                  <NestInfo nest={expandedInfo()} />
-                </Match>
-              </Switch>
             </div>
           </Match>
         </Switch>
