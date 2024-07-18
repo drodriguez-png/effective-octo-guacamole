@@ -1,16 +1,15 @@
 import {
   Component,
+  For,
   Index,
   Match,
   Show,
   Switch,
-  Suspense,
   createResource,
   createSignal,
   onMount,
 } from "solid-js";
-import DropList from "./components/DropList";
-import { FiInfo, FiX } from "solid-icons/fi";
+import { FiInfo } from "solid-icons/fi";
 import { NestInfo } from "./components/Nest";
 
 const getPrograms = async (machine: string) => {
@@ -32,7 +31,7 @@ const getProgram = async (nest: string) => {
 export const BatchAssign: Component = () => {
   const [machines, setMachines] = createSignal([]);
   const [machine, setMachine] = createSignal(
-    localStorage.getItem("machine") || ""
+    localStorage.getItem("machine") || "",
   );
   const [programs] = createResource(machine, getPrograms);
 
@@ -45,13 +44,16 @@ export const BatchAssign: Component = () => {
   });
 
   return (
-    <div class="flex flex-col w-3/5 min-w-96 rounded-2xl overflow-hidden">
-      <DropList
-        items={machines()}
-        name="Machine"
-        setValue={setMachine}
-        value={machine}
-      />
+    <div class="w-3/5 min-w-96 overflow-hidden rounded-2xl">
+      <select value={machine()} class="m-2 rounded-lg bg-slate-300 p-2">
+        <For each={machines()}>
+          {(item) => (
+            <option value={item} onChange={() => setMachine(item)}>
+              {item}
+            </option>
+          )}
+        </For>
+      </select>
       <section>
         <Show when={programs.loading}>
           <p class="col-span-full row-span-full place-self-center">
@@ -72,11 +74,11 @@ export const BatchAssign: Component = () => {
           </Match>
           <Match when={programs()}>
             <div
-              class="overflow-auto m-4 shadow-md sm:rounded-lg"
+              class="m-4 overflow-auto shadow-md sm:rounded-lg"
               // style={{ height: "80vh" }}
             >
               <table class="w-full text-sm text-gray-500">
-                <thead class="z-10 top-0 sticky text-xs text-gray-700 uppercase bg-gradient-to-tr from-amber-300 to-orange-400">
+                <thead class="sticky top-0 z-10 bg-gradient-to-tr from-amber-300 to-orange-400 text-xs uppercase text-gray-700">
                   <tr>
                     <th scope="col" class="px-6 py-3"></th>
                     <th scope="col" class="px-6 py-3">
@@ -100,7 +102,7 @@ export const BatchAssign: Component = () => {
                         >
                           <th class="px-6 py-4">
                             <FiInfo
-                              class="rounded hover:ring-2 ring-offset-8"
+                              class="rounded ring-offset-8 hover:ring-2"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 showInfo(item());
@@ -109,7 +111,7 @@ export const BatchAssign: Component = () => {
                           </th>
                           <th
                             scope="row"
-                            class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"
+                            class="whitespace-nowrap px-6 py-4 font-medium text-gray-900"
                           >
                             {item()}
                           </th>
