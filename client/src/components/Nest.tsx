@@ -3,13 +3,13 @@ import {
   Component,
   createEffect,
   createResource,
-  createSignal,
   For,
   Show,
   Switch,
   Match,
 } from "solid-js";
 import { Portal } from "solid-js/web";
+import { cuttingTimeStr } from "../utils";
 
 type Nest = {
   archivePacketId: number;
@@ -112,7 +112,7 @@ const NestInfo: Component<Props> = (props: Props) => {
                 <h1 class="text-lg font-semibold">Program</h1>
                 <ul>
                   <li>Program: {nest().program.programName}</li>
-                  <li>Runtime: {nest().program.cuttingTime}</li>
+                  <li>Runtime: {cuttingTimeStr(nest().program.cuttingTime)}</li>
                 </ul>
               </div>
               <div class="p-2">
