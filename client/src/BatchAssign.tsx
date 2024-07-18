@@ -5,7 +5,6 @@ import {
   Match,
   Show,
   Switch,
-  createEffect,
   createResource,
   createSignal,
   onCleanup,
@@ -27,6 +26,8 @@ const getMachines = async () => {
 const getPrograms = async (machine: string) => {
   if (!machine) return;
 
+  console.log(`Setting machine to ${machine}`);
+
   localStorage.setItem("machine", machine);
 
   const response = await fetch(`/api/${machine}`);
@@ -42,24 +43,22 @@ export const BatchAssign: Component = () => {
   const [machines, { refetch }] = createResource(getMachines);
   const [programs] = createResource<Program[], any>(machine, getPrograms);
 
-  createEffect(() => {
-    console.log(programs());
-  });
-
   const machinesListTimer = setInterval(() => {
     refetch();
   }, 60 * 1000);
   onCleanup(() => clearInterval(machinesListTimer));
 
   return (
-    <div class="w-3/5 min-w-96 overflow-hidden rounded-2xl">
-      <select value={machine()} class="m-2 rounded-lg bg-slate-300 p-2">
+    <div class="w-3/5 min-w-96 overflow-hidden rounded-2xl bg-gradient-to-tr from-amber-200 to-orange-400">
+      <select
+        value={machine()}
+        onChange={(e) =>
+          setMachine((e.currentTarget as HTMLSelectElement).value)
+        }
+        class="m-2 rounded-lg bg-slate-300 p-2"
+      >
         <For each={machines()}>
-          {(item) => (
-            <option value={item} onChange={() => setMachine(item)}>
-              {item}
-            </option>
-          )}
+          {(item) => <option value={item}>{item}</option>}
         </For>
       </select>
       <section>
@@ -86,7 +85,7 @@ export const BatchAssign: Component = () => {
               // style={{ height: "80vh" }}
             >
               <table class="w-full text-sm text-gray-500">
-                <thead class="sticky top-0 z-10 bg-gradient-to-tr from-amber-300 to-orange-400 text-xs uppercase text-gray-700">
+                <thead class="sticky top-0 z-10 bg-gradient-to-tr from-amber-100 to-amber-300 text-xs uppercase text-gray-700">
                   <tr>
                     <th scope="col" class="px-6 py-3"></th>
                     <th scope="col" class="px-6 py-3">
@@ -102,7 +101,7 @@ export const BatchAssign: Component = () => {
                     {(item) => (
                       <>
                         <tr
-                          class="border-t hover:bg-gray-100"
+                          class="border-t bg-slate-100 hover:bg-slate-300"
                           onClick={() => showInfo(item().program)}
                         >
                           <th class="px-6 py-4">
