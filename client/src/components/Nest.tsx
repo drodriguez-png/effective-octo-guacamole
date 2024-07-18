@@ -1,13 +1,5 @@
 import { FiX } from "solid-icons/fi";
-import {
-  Component,
-  createEffect,
-  createResource,
-  For,
-  Show,
-  Switch,
-  Match,
-} from "solid-js";
+import { Component, createResource, For, Show, Switch, Match } from "solid-js";
 import { Portal } from "solid-js/web";
 import { cuttingTimeStr } from "../utils";
 
@@ -61,12 +53,7 @@ const getProgram = async (nest: string) => {
 
 const NestInfo: Component<Props> = (props: Props) => {
   const name = () => props.name;
-
   const [nest] = createResource(name, getProgram);
-
-  createEffect(() => {
-    console.log(nest());
-  });
 
   const exportInfo = () => {
     const blob = new Blob([JSON.stringify(nest(), null, 2)], {
