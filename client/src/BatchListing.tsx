@@ -8,7 +8,7 @@ import {
   createSignal,
   onMount,
 } from "solid-js";
-import { FiInfo, FiX } from "solid-icons/fi";
+import { FiX } from "solid-icons/fi";
 
 type Batch = {
   batch: string;
@@ -45,11 +45,11 @@ export const BatchListing: Component = () => {
         }
       >
         <div
-          class="overflow-auto m-4 shadow-md sm:rounded-lg"
+          class="m-4 overflow-auto shadow-md sm:rounded-lg"
           style={{ height: "80vh" }}
         >
           <table class="w-full text-sm text-gray-500">
-            <thead class="z-10 top-0 sticky text-xs text-gray-700 uppercase bg-gradient-to-tr from-amber-300 to-orange-400">
+            <thead class="sticky top-0 z-10 bg-gradient-to-tr from-amber-300 to-orange-400 text-xs uppercase text-gray-700">
               <tr>
                 <th scope="col" class="px-6 py-3">
                   Batch
@@ -66,12 +66,12 @@ export const BatchListing: Component = () => {
               <For each={batches()}>
                 {(item) => (
                   <tr
-                    class="border-t hover:bg-gray-100 py-4"
+                    class="border-t py-4 hover:bg-gray-100"
                     onClick={() => showBatch(item)}
                   >
                     <th
                       scope="row"
-                      class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"
+                      class="whitespace-nowrap px-6 py-4 font-medium text-gray-900"
                     >
                       {item.batch}
                     </th>
@@ -84,16 +84,16 @@ export const BatchListing: Component = () => {
           </table>
 
           <dialog
-            class="border rounded-lg backdrop-blur-sm overflow-auto"
+            class="overflow-auto rounded-lg border backdrop-blur-sm"
             open={showInfo()}
           >
-            <header class="p-2 border-b-2 bg-gradient-to-tr from-amber-300 to-orange-400">
+            <header class="border-b-2 bg-gradient-to-tr from-amber-300 to-orange-400 p-2">
               <p>
                 Batch:{" "}
                 <span class="select-all underline">{batchToShow()?.batch}</span>
               </p>
               <FiX
-                class="absolute top-2 right-2 rounded hover:ring-2"
+                class="absolute right-2 top-2 rounded hover:ring-2"
                 onClick={() => setShowInfo(false)}
               />
             </header>
