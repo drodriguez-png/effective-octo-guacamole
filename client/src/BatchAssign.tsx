@@ -28,7 +28,6 @@ const getPrograms = async (machine: string) => {
   if (!machine) return;
 
   console.log(`Setting machine to ${machine}`);
-
   localStorage.setItem("machine", machine);
 
   const response = await fetch(`/api/${machine}`);
@@ -36,30 +35,42 @@ const getPrograms = async (machine: string) => {
 };
 
 export const BatchAssign: Component = () => {
+  // TODO: should state migrate to a context manager
   const [machine, setMachine] = createSignal(
     localStorage.getItem("machine") || "",
   );
   const [info, showInfo] = createSignal<string | null>(null);
 
-  const [machines, { refetch }] = createResource(getMachines);
-  const [programs] = createResource<Program[], any>(machine, getPrograms);
-
-  const machinesListTimer = setInterval(() => {
-    refetch();
-  }, 60 * 1000);
-  onCleanup(() => clearInterval(machinesListTimer));
+  const [machines, { refetch: fetchMachines }] = createResource(getMachines);
+  const [programs, { refetch: fetchPrograms }] = createResource<Program[], any>(
+    machine,
+    getPrograms,
+  );
+  const timer = setInterval(
+    () => {
+      fetchMachines();
+      fetchPrograms();
+    },
+    5 * 60 * 1000,
+  );
+  onCleanup(() => clearInterval(timer));
 
   return (
     <div class="w-3/5 min-w-96 overflow-hidden rounded-2xl bg-gradient-to-tr from-amber-200 to-orange-400">
       <select
         value={machine()}
+        onClick={() => fetchMachines()}
         onChange={(e) =>
           setMachine((e.currentTarget as HTMLSelectElement).value)
         }
         class="m-2 rounded-lg bg-gray-200 p-2"
       >
         <For each={machines()}>
-          {(item) => <option value={item}>{item}</option>}
+          {(item) => (
+            <option class="hover:bg-slate-200" value={item}>
+              {item}
+            </option>
+          )}
         </For>
       </select>
       <section>
