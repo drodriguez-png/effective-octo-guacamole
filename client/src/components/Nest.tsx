@@ -89,7 +89,10 @@ const NestInfo: Component<Props> = (props: Props) => {
           </Match>
           <Match when={nest()}>
             <header class="flex items-center border-b-2 bg-gradient-to-tr from-amber-300 to-orange-400 p-2">
-              <p class="grow">
+              <p class="mx-2 select-none rounded-full bg-cyan-400 px-2 font-mono text-xs">
+                {nest().archivePacketId}
+              </p>
+              <p class="grow text-lg">
                 <span class="select-all">{nest().program.programName}</span>
               </p>
               <FiX class="rounded hover:ring-2" onClick={props.onCloseEvent} />
@@ -99,6 +102,7 @@ const NestInfo: Component<Props> = (props: Props) => {
                 <h1 class="text-lg font-semibold">Program</h1>
                 <ul>
                   <li>Program: {nest().program.programName}</li>
+                  <li>RepeatID: {nest().program.repeatId}</li>
                   <li>Runtime: {cuttingTimeStr(nest().program.cuttingTime)}</li>
                 </ul>
               </div>
