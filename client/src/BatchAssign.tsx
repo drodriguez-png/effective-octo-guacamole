@@ -16,6 +16,7 @@ import { cuttingTimeStr } from "./utils";
 type Program = {
   program: string;
   cuttingTime: number;
+  repeats: number;
 };
 
 const getMachines = async () => {
@@ -55,7 +56,7 @@ export const BatchAssign: Component = () => {
         onChange={(e) =>
           setMachine((e.currentTarget as HTMLSelectElement).value)
         }
-        class="m-2 rounded-lg bg-slate-300 p-2"
+        class="m-2 rounded-lg bg-gray-200 p-2"
       >
         <For each={machines()}>
           {(item) => <option value={item}>{item}</option>}
@@ -94,6 +95,9 @@ export const BatchAssign: Component = () => {
                     <th scope="col" class="px-6 py-3">
                       Runtime
                     </th>
+                    <th scope="col" class="px-6 py-3">
+                      Repeats
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -122,6 +126,7 @@ export const BatchAssign: Component = () => {
                           <td class="px-6 py-4">
                             {cuttingTimeStr(item().cuttingTime)}
                           </td>
+                          <td class="px-6 py-4">{item().repeats}</td>
                         </tr>
                       </>
                     )}

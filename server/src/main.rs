@@ -123,8 +123,19 @@ async fn get_programs(
     let results = conn
         .query(
             r#"
-SELECT DISTINCT ProgramName, CuttingTime
+SELECT DISTINCT
+    ProgramName,
+    CuttingTime,
+    rpt.Repeats
 FROM ProgramMachine
+INNER JOIN (
+    SELECT
+		ProgramName AS p,
+		COUNT(RepeatID) AS Repeats
+    FROM Program
+    GROUP BY ProgramName
+) AS rpt
+    ON rpt.p=ProgramMachine.ProgramName
 WHERE MachineName=@P1
             "#,
             &[&machine],
@@ -138,6 +149,7 @@ WHERE MachineName=@P1
                     .map(|row| {
                         json!({
                             "program": row.get::<&str, _>("ProgramName").unwrap(),
+                            "repeats": row.get::<i32, _>("Repeats").unwrap(),
                             "cuttingTime": row.get::<f64, _>("CuttingTime").unwrap()
                         })
                     })
