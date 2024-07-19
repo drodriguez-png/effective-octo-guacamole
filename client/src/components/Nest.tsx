@@ -1,4 +1,5 @@
 import { FiX } from "solid-icons/fi";
+import { ImSpinner8 } from "solid-icons/im";
 import { Component, createResource, For, Show, Switch, Match } from "solid-js";
 import { Portal } from "solid-js/web";
 import { cuttingTimeStr } from "../utils";
@@ -78,6 +79,7 @@ const NestInfo: Component<Props> = (props: Props) => {
       >
         <Show when={nest.loading}>
           <main class="border-4 bg-gradient-to-tr from-sky-300 to-teal-400 p-16">
+            <ImSpinner8 class="animate-spin" />
             Fetching nest data...
           </main>
         </Show>
