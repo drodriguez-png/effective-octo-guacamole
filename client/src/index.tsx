@@ -7,6 +7,8 @@ import "solid-devtools";
 import "./index.css";
 import { BatchAssign } from "./BatchAssign";
 import { BatchListing } from "./BatchListing";
+import { NotFound } from "./NotFound";
+import { Feedback } from "./Feedback";
 
 const root = document.getElementById("root");
 
@@ -22,10 +24,13 @@ const Layout = (props: any) => {
       <nav class="flex items-center justify-between space-x-2 bg-gray-800 p-4">
         <div class="flex items-center space-x-2">
           <A class="router-link" activeClass="ring" href="/assign">
-            Batch Assign
+            Machine Console
           </A>
           <A class="router-link" activeClass="ring" href="/batches">
-            Batch Listing
+            Batches
+          </A>
+          <A class="router-link" activeClass="ring" href="/feedback">
+            Sigmanest Feedback
           </A>
         </div>
       </nav>
@@ -50,6 +55,8 @@ render(
       <Route path="/" component={() => <Navigate href="/assign" />} />
       <Route path="/assign" component={BatchAssign} />
       <Route path="/batches" component={BatchListing} />
+      <Route path="/feedback" component={Feedback} />
+      <Route path="*404" component={NotFound} />
     </Router>
   ),
   root!,
