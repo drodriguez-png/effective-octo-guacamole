@@ -1,8 +1,9 @@
-import { FiX } from "solid-icons/fi";
+import { FiX, FiAlertTriangle } from "solid-icons/fi";
 import { ImSpinner8 } from "solid-icons/im";
 import { Component, createResource, For, Show, Switch, Match } from "solid-js";
 import { Portal } from "solid-js/web";
 import { cuttingTimeStr } from "../utils";
+import { json } from "@solidjs/router";
 
 type Nest = {
   archivePacketId: number;
@@ -46,8 +47,6 @@ type Props = {
 };
 
 const getProgram = async (nest: string) => {
-  if (nest === null) return {};
-
   const response = await fetch(`/api/nest/${nest}`);
   return response.json();
 };
@@ -78,15 +77,24 @@ const NestInfo: Component<Props> = (props: Props) => {
         open={true}
       >
         <Show when={nest.loading}>
-          <main class="border-4 bg-gradient-to-tr from-sky-300 to-teal-400 p-16">
-            <ImSpinner8 class="animate-spin" />
-            Fetching nest data...
+          <main class="rounded-lg border-4 bg-gradient-to-tr from-sky-300 to-teal-400 p-4">
+            <div class="flex items-center space-x-2 font-sans">
+              <span>
+                <ImSpinner8 class="animate-spin" />
+              </span>
+              <p>fetching nest data...</p>
+            </div>
           </main>
         </Show>
         <Switch>
           <Match when={nest.error}>
-            <main class="border-4 border-rose-500 bg-gradient-to-tr from-red-200 to-red-500 p-16">
-              <span>Error: {nest.error()}</span>
+            <main class="rounded-lg border-4 border-rose-500 bg-gradient-to-tr from-red-200 to-red-500 p-4">
+              <div class="flex items-center space-x-2 font-sans">
+                <span>
+                  <FiAlertTriangle class="size-5 animate-pulse" />
+                </span>
+                <p>failed to retrieve nest data</p>
+              </div>
             </main>
           </Match>
           <Match when={nest()}>

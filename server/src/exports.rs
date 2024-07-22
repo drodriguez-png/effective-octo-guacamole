@@ -118,7 +118,7 @@ where ProgramName=@P1;
         .into_iter();
 
     let (archive_packet_id, program) = match results.next() {
-        Some(mut programs) => programs
+        Some(mut programs) if programs.len() > 0 => programs
             .pop()
             .map(|p| {
                 (
@@ -132,7 +132,7 @@ where ProgramName=@P1;
                 )
             })
             .unwrap(),
-        None => {
+        _ => {
             return Err(anyhow::anyhow!("Program {} not found", nest));
         }
     };
