@@ -48,10 +48,7 @@ export const BatchListing: Component = () => {
           </p>
         }
       >
-        <div
-          class="m-4 overflow-auto shadow-md sm:rounded-lg"
-          style={{ height: "80vh" }}
-        >
+        <div class="m-4 overflow-auto shadow-md sm:rounded-lg">
           <table class="w-full text-sm text-gray-500">
             <thead class="sticky top-0 z-10 bg-gradient-to-tr from-amber-300 to-orange-400 text-xs uppercase text-gray-700">
               <tr>
