@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bb8::PooledConnection;
 use bb8_tiberius::ConnectionManager;
 use serde::{Deserialize, Serialize};
@@ -169,10 +171,10 @@ where ProgramName=@P1;
         Some(rems) => rems
             .iter()
             .map(|r| Remnant {
-                remnant_name: r.get::<&str, _>("SheetName").unwrap().into(),
-                length: r.get("SheetName").unwrap(),
-                width: r.get("SheetName").unwrap(),
-                area: r.get("SheetName").unwrap(),
+                remnant_name: r.get::<&str, _>("RemnantName").unwrap().into(),
+                length: r.get("Length").unwrap(),
+                width: r.get("Width").unwrap(),
+                area: r.get("Area").unwrap(),
             })
             .collect(),
         None => Vec::new(),
@@ -187,65 +189,151 @@ where ProgramName=@P1;
     })
 }
 
-pub async fn export_feedback(
-    conn: &mut SqlConn<'_>,
-    nest: &String,
-) -> Result<NestExport, SqlError> {
+pub async fn export_feedback(conn: &mut SqlConn<'_>) -> Result<Vec<NestExport>, SqlError> {
     let mut results = conn
-        .query(
+        .simple_query(
             r#"
 select
 	AutoId, ProgramName, RepeatID,
 	ArchivePacketID, TransType,
-	MachineName, CuttingTime,
-	UsedArea, ScrapFraction
-from STPrgArc
-where ProgramName=@P1;
-select
-	AutoId, ProgramName, RepeatID,
-	ArchivePacketID, TransType,
-	WONumber, PartName, QtyInProcess,
+	STPIPArc.WONumber, STPIPArc.PartName, QtyInProcess,
+    Data1 as Job, cast(Data2 as int) as Shipment,
 	TrueArea, NestedArea
 from STPIPArc
-where ProgramName=@P1;
+inner join Part on Part.PartName=STPIPArc.PartName and Part.WONumber=STPIPArc.WONumber;
 select
 	RemnantName, ProgramName, RepeatID,
 	Length, Width, Area, Weight,
 	PrimeCode, Qty
-from Remnant
-where ProgramName=@P1;
+from Remnant;
+select
+	AutoId, ProgramName, RepeatID,
+	ArchivePacketID, TransType,
+	MachineName, CuttingTime,
+	UsedArea, ScrapFraction,
+	Stock.SheetName, Stock.PrimeCode
+from STPrgArc
+inner join Stock on Stock.SheetName = STPrgArc.SheetName;
     "#,
-            &[nest],
         )
         .await?
         .into_results()
         .await
         .map(|res| {
-            log::trace!("{:#?}", res);
+            log::trace!("{:?}", res);
             res
         })?
         .into_iter();
 
+    let mut parts: HashMap<(String, i32), Vec<Part>> = match results.next() {
+        Some(parts_rows) => {
+            let mut parts: HashMap<(String, i32), Vec<Part>> = HashMap::new();
+
+            for row in parts_rows {
+                let key = (
+                    row.get::<&str, _>("ProgramName").unwrap().into(),
+                    row.get::<i32, _>("RepeatID").unwrap(),
+                );
+                let part = Part {
+                    part_name: row.get::<&str, _>("PartName").unwrap().into(),
+                    part_qty: row.get("QtyInProcess").unwrap(),
+                    job: row.get::<&str, _>("Job").unwrap().into(),
+                    shipment: row.get("Shipment").unwrap(),
+                    true_area: row.get("TrueArea").unwrap(),
+                    nested_area: row.get("NestedArea").unwrap(),
+                };
+
+                match parts.get_mut(&key) {
+                    Some(found) => found.push(part),
+                    None => {
+                        parts.insert(key, vec![part]);
+                    }
+                }
+            }
+
+            parts
+        }
+        _ => HashMap::new(),
+    };
+
+    let mut remnants: HashMap<(String, i32), Vec<Remnant>> = match results.next() {
+        Some(rems) => {
+            let mut remnants: HashMap<(String, i32), Vec<Remnant>> = HashMap::new();
+
+            for row in rems {
+                log::debug!("{:?}", row);
+                let key = (
+                    row.get::<&str, _>("ProgramName").unwrap().into(),
+                    row.get::<i32, _>("RepeatID").unwrap(),
+                );
+
+                let rem = Remnant {
+                    remnant_name: row.get::<&str, _>("RemnantName").unwrap().into(),
+                    length: row.get("Length").unwrap(),
+                    width: row.get("Width").unwrap(),
+                    area: row.get("Area").unwrap(),
+                };
+
+                match remnants.get_mut(&key) {
+                    Some(found) => found.push(rem),
+                    None => {
+                        remnants.insert(key, vec![rem]);
+                    }
+                }
+            }
+
+            remnants
+        }
+        _ => HashMap::new(),
+    };
+
     match results.next() {
         Some(program_rows) => {
-            // TODO: cannot use program_rows[0] because of repeatID and table might have multiple entries
-            let archive_packet_id = program_rows[0].get("ArchivePacketID").unwrap_or_default();
+            program_rows
+                .iter()
+                .map(|row| {
+                    // TODO: cannot use program_rows[0] because of repeatID and table might have multiple entries
+                    let archive_packet_id = row.get("ArchivePacketID").unwrap_or_default();
 
-            let state = match program_rows[0].get("TransType") {
-                Some("SN100") => todo!(),
-                Some("SN101") => TransactionType::Deleted,
-                Some("SN102") => TransactionType::Updated,
-                _ => unreachable!(),
-            };
+                    let state = match row.get("TransType") {
+                        Some("SN100") => {
+                            let key: (String, i32) = (
+                                row.get::<&str, _>("ProgramName").unwrap().into(),
+                                row.get::<i32, _>("RepeatID").unwrap(),
+                            );
 
-            Ok(NestExport {
-                archive_packet_id,
-                state,
-            })
+                            let program = Program {
+                                program_name: row.get::<&str, _>("ProgramName").unwrap().into(),
+                                repeat_id: row.get::<i32, _>("RepeatID").unwrap(),
+                                machine_name: row.get::<&str, _>("MachineName").unwrap().into(),
+                                cutting_time: row.get("CuttingTime").unwrap(),
+                            };
+
+                            let sheet = Sheet {
+                                sheet_name: row.get::<&str, _>("SheetName").unwrap().into(),
+                                material_master: row.get::<&str, _>("PrimeCode").unwrap().into(),
+                            };
+
+                            TransactionType::Created(Nest {
+                                archive_packet_id,
+                                program,
+                                parts: parts.remove(&key).unwrap_or(Vec::new()),
+                                sheet,
+                                remnants: remnants.remove(&key).unwrap_or(Vec::new()),
+                            })
+                        }
+                        Some("SN101") => TransactionType::Deleted,
+                        Some("SN102") => TransactionType::Updated,
+                        _ => unreachable!(),
+                    };
+
+                    Ok(NestExport {
+                        archive_packet_id,
+                        state,
+                    })
+                })
+                .collect()
         }
-        None => Ok(NestExport {
-            archive_packet_id: -1,
-            state: TransactionType::NotFound,
-        }),
+        None => Ok(vec![]),
     }
 }

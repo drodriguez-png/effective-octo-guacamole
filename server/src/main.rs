@@ -9,7 +9,10 @@ use axum::{
 };
 use serde_json::{json, Value};
 
-use sigmanest_interface::{db, exports::export_nest};
+use sigmanest_interface::{
+    db,
+    exports::{export_feedback, export_nest, NestExport},
+};
 
 #[derive(Debug, serde::Deserialize)]
 struct ProgramUpdateParams {
@@ -92,6 +95,7 @@ async fn main() -> Result<(), std::io::Error> {
         .route("/batches", get(get_batches))
         .route("/:machine", get(get_programs))
         .route("/nest/:nest", get(get_nest).post(update_program))
+        .route("/feedback", get(get_feedback))
         .with_state(state);
 
     // run our app with hyper, listening globally on port 3080
@@ -138,6 +142,19 @@ async fn get_batches(State(_state): State<Arc<AppState>>) -> (StatusCode, Json<V
     ]);
 
     (StatusCode::OK, Json(data))
+}
+
+async fn get_feedback(
+    State(state): State<Arc<AppState>>,
+) -> Result<(StatusCode, Json<Vec<NestExport>>), AppError> {
+    log::debug!("Requested feedback");
+
+    let state = Arc::clone(&state);
+    let mut conn = state.db.get_owned().await.unwrap();
+
+    let feedback = export_feedback(&mut conn).await?;
+
+    Ok((StatusCode::OK, Json(feedback)))
 }
 
 async fn get_programs(
