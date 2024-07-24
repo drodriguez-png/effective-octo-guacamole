@@ -3,15 +3,19 @@ use std::sync::Arc;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::{IntoResponse, Json, Response},
+    response::Json,
     routing::get,
     Router,
 };
 use serde_json::{json, Value};
 
 use sigmanest_interface::{
-    db,
-    exports::{export_feedback, export_nest, NestExport},
+    db::{
+        self,
+        api::{FeedbackEntry, Nest},
+        exports::export_feedback,
+    },
+    Result,
 };
 
 #[derive(Debug, serde::Deserialize)]
@@ -32,37 +36,8 @@ impl AppState {
     }
 }
 
-// Error handling: see
-//  https://docs.rs/axum/latest/axum/error_handling/index.html
-//  https://github.com/tokio-rs/axum/blob/main/examples/anyhow-error-response/src/main.rs
-#[derive(Debug)]
-struct AppError(anyhow::Error);
-
-// Tell axum how to convert `AppError` into a response.
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            // Json(json!({ "reason": format!("{}", self.0)})),
-            format!("{}", self.0),
-        )
-            .into_response()
-    }
-}
-
-// This enables using `?` on functions that return `Result<_, anyhow::Error>` to turn them into
-// `Result<_, AppError>`. That way you don't need to do that manually.
-impl<E> From<E> for AppError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(err: E) -> Self {
-        Self(err.into())
-    }
-}
-
 #[tokio::main]
-async fn main() -> Result<(), std::io::Error> {
+async fn main() -> std::result::Result<(), std::io::Error> {
     fern::Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
@@ -74,14 +49,20 @@ async fn main() -> Result<(), std::io::Error> {
             ))
         })
         .level(log::LevelFilter::Error)
-        .level_for("sigmanest_interface", log::LevelFilter::Debug)
-        .chain(std::io::stdout())
+        .level_for("sigmanest_interface", log::LevelFilter::Trace)
         .chain(
-            std::fs::OpenOptions::new()
-                .create(true)
-                .truncate(true)
-                .write(true)
-                .open("server.log")?,
+            fern::Dispatch::new()
+                .level(log::LevelFilter::Debug)
+                .chain(std::io::stdout()),
+        )
+        .chain(
+            fern::Dispatch::new().level(log::LevelFilter::Trace).chain(
+                std::fs::OpenOptions::new()
+                    .create(true)
+                    .truncate(true)
+                    .write(true)
+                    .open("server.log")?,
+            ),
         )
         .apply()
         .expect("failed to init logging");
@@ -146,13 +127,12 @@ async fn get_batches(State(_state): State<Arc<AppState>>) -> (StatusCode, Json<V
 
 async fn get_feedback(
     State(state): State<Arc<AppState>>,
-) -> Result<(StatusCode, Json<Vec<NestExport>>), AppError> {
+) -> Result<(StatusCode, Json<Vec<FeedbackEntry<Nest>>>)> {
     log::debug!("Requested feedback");
 
     let state = Arc::clone(&state);
-    let mut conn = state.db.get_owned().await.unwrap();
 
-    let feedback = export_feedback(&mut conn).await?;
+    let feedback = export_feedback(state.db.clone()).await?;
 
     Ok((StatusCode::OK, Json(feedback)))
 }
@@ -212,12 +192,12 @@ WHERE MachineName=@P1
 async fn get_nest(
     State(state): State<Arc<AppState>>,
     Path(program): Path<String>,
-) -> Result<(StatusCode, Json<Value>), AppError> {
+) -> Result<(StatusCode, Json<Value>)> {
     log::debug!("Requested program {}", program);
 
     let state = Arc::clone(&state);
     let mut conn = state.db.get_owned().await.unwrap();
-    let nest = export_nest(&mut conn, &program).await?;
+    let nest = Nest::get(&mut conn, &program).await?;
 
     log::debug!("Nest found");
     Ok((StatusCode::OK, Json(serde_json::to_value(nest).unwrap())))

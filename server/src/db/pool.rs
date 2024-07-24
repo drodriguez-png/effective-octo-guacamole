@@ -1,12 +1,17 @@
+use bb8::PooledConnection;
+use bb8_tiberius::ConnectionManager;
+
 /// Convenience export of database Pool type
 pub type DbPool = bb8::Pool<bb8_tiberius::ConnectionManager>;
+pub type SqlConn<'a> = PooledConnection<'a, ConnectionManager>;
 
 /// Builds a connection pool for a database
 pub async fn build_db_pool() -> DbPool {
-    log::debug!("** init db pool");
+    log::trace!("** init db pool");
 
     // sigmanest interface dev
     let config = {
+        log::debug!("using development database config");
         let mut config = tiberius::Config::new();
         config.host("HIISQLSERV6");
         config.database("SNDBaseISap");
@@ -22,6 +27,7 @@ pub async fn build_db_pool() -> DbPool {
 
     // production
     // let config = {
+    //     log::debug!("using development database config");
     //     let mut config = tiberius::Config::new();
     //     config.host(std::env::var("SndbServer").unwrap());
     //     config.database(std::env::var("SndbDatabase").unwrap());
@@ -38,14 +44,15 @@ pub async fn build_db_pool() -> DbPool {
         Err(_) => panic!("ConnectionManager failed to connect to database"),
     };
 
-    log::debug!("** > db connection Manager built");
+    log::trace!("** > db connection Manager built");
 
     let pool = match bb8::Pool::builder().max_size(8).build(mgr).await {
         Ok(pool) => pool,
         Err(_) => panic!("database pool failed to build"),
     };
 
-    log::debug!("** > db pool built");
+    log::trace!("** > db pool built");
 
+    log::info!("database connected");
     pool
 }
