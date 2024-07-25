@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use axum::{
     extract::{Path, State},
@@ -10,6 +10,7 @@ use axum::{
 use serde_json::{json, Value};
 
 use sigmanest_interface::{
+    batch::Batch,
     db::{
         self,
         api::{FeedbackEntry, Nest},
@@ -26,12 +27,14 @@ struct ProgramUpdateParams {
 #[derive(Debug)]
 struct AppState {
     pub db: db::DbPool,
+    pub batches: Mutex<Option<Vec<Batch>>>,
 }
 
 impl AppState {
     pub async fn new() -> Self {
         Self {
             db: db::build_db_pool().await,
+            batches: Mutex::new(None),
         }
     }
 }
@@ -110,19 +113,25 @@ async fn get_machines(State(state): State<Arc<AppState>>) -> (StatusCode, Json<V
     }
 }
 
-async fn get_batches(State(_state): State<Arc<AppState>>) -> (StatusCode, Json<Value>) {
+async fn get_batches(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Vec<Batch>>) {
     log::debug!("Requested batches list");
 
-    let data = json!([
-        { "batch": "B000001", "mm": "50/50W-0008", "type": "new" },
-        { "batch": "B005038", "mm": "50/50W-0008", "type": "new" },
-        { "batch": "B000701", "mm": "50/50W-0008", "type": "new" },
-        { "batch": "B010064", "mm": "50/50W-0008", "type": "new" },
-        { "batch": "B008802", "mm": "50/50W-0008", "type": "new" },
-        { "batch": "B000031", "mm": "50/50W-0008", "type": "new" },
-    ]);
+    let state = Arc::clone(&state);
+    let mut batches = state.batches.lock().unwrap();
 
-    (StatusCode::OK, Json(data))
+    if let None = *batches {
+        // load batches from data source
+        *batches = Some(vec![
+            Batch::new("B000001", "50/50W-0008"),
+            Batch::new("B005038", "50/50W-0008"),
+            Batch::new("B000701", "50/50W-0008"),
+            Batch::new("B010064", "50/50W-0008"),
+            Batch::new("B008802", "50/50W-0008"),
+            Batch::new("B000031", "50/50W-0008"),
+        ]);
+    }
+
+    (StatusCode::OK, Json(batches.as_ref().unwrap().clone()))
 }
 
 async fn get_feedback(

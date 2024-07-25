@@ -1,3 +1,4 @@
+pub mod batch;
 pub mod db;
 
 pub mod error {
