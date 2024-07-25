@@ -1,16 +1,18 @@
 import {
   Component,
   For,
+  Show,
   Suspense,
   createEffect,
   createResource,
   createSignal,
   onCleanup,
 } from "solid-js";
-import { FiX } from "solid-icons/fi";
+import { FiRefreshCcw, FiX } from "solid-icons/fi";
+import { Portal } from "solid-js/web";
 
 type Batch = {
-  batch: string;
+  id: string;
   mm: string;
   type: string;
 };
@@ -25,10 +27,10 @@ export const BatchListing: Component = () => {
   const [batchToShow, setBatchToShow] = createSignal<Batch>();
   const [showInfo, setShowInfo] = createSignal(false);
 
-  const machinesListTimer = setInterval(() => {
-    refetch();
-  }, 60 * 1000);
-  onCleanup(() => clearInterval(machinesListTimer));
+  // const machinesListTimer = setInterval(() => {
+  //   refetch();
+  // }, 60 * 1000);
+  // onCleanup(() => clearInterval(machinesListTimer));
 
   createEffect(() => {
     console.log(batches());
@@ -61,6 +63,14 @@ export const BatchListing: Component = () => {
                 <th scope="col" class="px-6 py-3">
                   Type
                 </th>
+                <th>
+                  <button
+                    class="m-2 rounded p-2 hover:bg-slate-400"
+                    onClick={refetch}
+                  >
+                    <FiRefreshCcw />
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -74,7 +84,7 @@ export const BatchListing: Component = () => {
                       scope="row"
                       class="whitespace-nowrap px-6 py-4 font-medium text-gray-900"
                     >
-                      {item.batch}
+                      {item.id}
                     </th>
                     <td class="px-6 py-4">{item.mm}</td>
                     <td class="px-6 py-4">{item.type}</td>
@@ -84,32 +94,52 @@ export const BatchListing: Component = () => {
             </tbody>
           </table>
 
-          <dialog
-            class="overflow-auto rounded-lg border backdrop-blur-sm"
-            open={showInfo()}
-          >
-            <header class="border-b-2 bg-gradient-to-tr from-amber-300 to-orange-400 p-2">
-              <p>
-                Batch:{" "}
-                <span class="select-all underline">{batchToShow()?.batch}</span>
-              </p>
-              <FiX
-                class="absolute right-2 top-2 rounded hover:ring-2"
+          <Show when={showInfo()}>
+            <Portal>
+              <div
+                class="absolute inset-0 z-40 h-full w-full bg-slate-500 opacity-75"
                 onClick={() => setShowInfo(false)}
-              />
-            </header>
-            <main class="p-4">
-              <ul>
-                <li>
-                  Material Master:
-                  <span class="select-all underline decoration-sky-500">
-                    {batchToShow()?.mm}
-                  </span>
-                </li>
-                <li>Batch Type: {batchToShow()?.type}</li>
-              </ul>
-            </main>
-          </dialog>
+              ></div>
+              <dialog
+                class="fixed inset-0 z-50 overflow-auto rounded-lg border backdrop-blur-sm"
+                open={showInfo()}
+              >
+                <header class="border-b-2 bg-gradient-to-tr from-amber-300 to-orange-400 p-2">
+                  <p>
+                    <span class="select-all">{batchToShow()?.id}</span>
+                  </p>
+                  <FiX
+                    class="absolute right-2 top-2 rounded hover:ring-2"
+                    onClick={() => setShowInfo(false)}
+                  />
+                </header>
+                <main class="p-4">
+                  <div class="m-4 overflow-auto shadow-md sm:rounded-lg">
+                    <table>
+                      <tbody>
+                        <tr class="m-4 hover:bg-gray-100">
+                          <td class="px-2">
+                            <strong>Material Master</strong>
+                          </td>
+                          <td class="px-2">
+                            <span class="select-all decoration-sky-500">
+                              {batchToShow()?.mm}
+                            </span>
+                          </td>
+                        </tr>
+                        <tr class="m-4 border-t hover:bg-gray-100">
+                          <td class="px-2">
+                            <strong>Batch Type</strong>
+                          </td>
+                          <td class="px-2">{batchToShow()?.type}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </main>
+              </dialog>
+            </Portal>
+          </Show>
         </div>
       </Suspense>
     </>
