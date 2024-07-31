@@ -16,6 +16,8 @@ pub mod error {
         SqlError(#[from] tiberius::error::Error),
         #[error("Database pool error: see server logs.")]
         SqlPoolError,
+        #[error("Failed to parse csv file")]
+        CsvError,
         #[error("Requested resource not found")]
         NotFound(String),
     }
@@ -44,6 +46,13 @@ pub mod error {
         fn from(value: bb8::RunError<T>) -> Self {
             log::error!("Casting bb8 error to app error: {:#?}", value);
             Self::SqlPoolError
+        }
+    }
+
+    impl From<csv::Error> for Error {
+        fn from(value: csv::Error) -> Self {
+            log::error!("Casting csv error to app error: {:#?}", value);
+            Self::CsvError
         }
     }
 }

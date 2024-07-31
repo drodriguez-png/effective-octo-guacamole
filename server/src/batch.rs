@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct Batch {
     pub id: String,
     pub mm: String,
+    #[serde(rename(deserialize = "remnant"))]
     pub r#type: BatchType,
 }
 
@@ -25,19 +26,17 @@ impl Batch {
     }
 
     pub fn get_batches() -> crate::Result<Vec<Self>> {
-        Ok(vec![
-            Self::new("B000001", "50/50W-0008"),
-            Self::new("B005038", "50/50W-0008"),
-            Self::new("B000701", "50/50W-0008"),
-            Self::new("B010064", "50/50W-0008"),
-            Self::new("B008802", "50/50W-0008"),
-            Self::new("B000031", "50/50W-0008"),
-        ])
+        csv::Reader::from_path("batches.csv")?
+            .into_deserialize::<Batch>()
+            .map(|r| r.map_err(crate::Error::from))
+            .collect()
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BatchType {
+    #[serde(rename(deserialize = "N"))]
     New,
+    #[serde(rename(deserialize = "Y"))]
     Remnant,
 }
