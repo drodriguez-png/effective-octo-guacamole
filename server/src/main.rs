@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use axum::{
     extract::{Path, State},
@@ -8,6 +8,7 @@ use axum::{
     Router,
 };
 use serde_json::{json, Value};
+use tokio::sync::Mutex;
 
 use sigmanest_interface::{
     batch::Batch,
@@ -113,25 +114,18 @@ async fn get_machines(State(state): State<Arc<AppState>>) -> (StatusCode, Json<V
     }
 }
 
-async fn get_batches(State(state): State<Arc<AppState>>) -> (StatusCode, Json<Vec<Batch>>) {
+async fn get_batches(State(state): State<Arc<AppState>>) -> Result<(StatusCode, Json<Vec<Batch>>)> {
     log::debug!("Requested batches list");
 
     let state = Arc::clone(&state);
-    let mut batches = state.batches.lock().unwrap();
+    let mut batches = state.batches.lock().await;
 
     if let None = *batches {
         // load batches from data source
-        *batches = Some(vec![
-            Batch::new("B000001", "50/50W-0008"),
-            Batch::new("B005038", "50/50W-0008"),
-            Batch::new("B000701", "50/50W-0008"),
-            Batch::new("B010064", "50/50W-0008"),
-            Batch::new("B008802", "50/50W-0008"),
-            Batch::new("B000031", "50/50W-0008"),
-        ]);
+        *batches = Some(Batch::get_batches()?);
     }
 
-    (StatusCode::OK, Json(batches.as_ref().unwrap().clone()))
+    Ok((StatusCode::OK, Json(batches.as_ref().unwrap().clone())))
 }
 
 async fn get_feedback(

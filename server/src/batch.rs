@@ -23,6 +23,17 @@ impl Batch {
             r#type: BatchType::Remnant,
         }
     }
+
+    pub fn get_batches() -> crate::Result<Vec<Self>> {
+        Ok(vec![
+            Self::new("B000001", "50/50W-0008"),
+            Self::new("B005038", "50/50W-0008"),
+            Self::new("B000701", "50/50W-0008"),
+            Self::new("B010064", "50/50W-0008"),
+            Self::new("B008802", "50/50W-0008"),
+            Self::new("B000031", "50/50W-0008"),
+        ])
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
