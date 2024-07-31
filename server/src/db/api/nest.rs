@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Nest {
-    // pub archive_packet_id: i32,
+    pub archive_packet_id: i32,
     pub program: Program,
     pub parts: Vec<Part>,
     pub sheet: Sheet,
@@ -56,7 +56,7 @@ where ProgramName=@P1;
             })?
             .into_iter();
 
-        let (_archive_packet_id, program) = match results.next() {
+        let (archive_packet_id, program) = match results.next() {
             Some(mut programs) if programs.len() > 0 => programs
                 .pop()
                 .map(|p| {
@@ -97,7 +97,7 @@ where ProgramName=@P1;
         };
 
         Ok(Nest {
-            // archive_packet_id,
+            archive_packet_id,
             program,
             parts,
             sheet,
@@ -111,7 +111,7 @@ impl TryFrom<&tiberius::Row> for Nest {
 
     fn try_from(row: &tiberius::Row) -> Result<Self> {
         Ok(Nest {
-            // archive_packet_id: row.try_get("ArchivePacketID")?.unwrap(),
+            archive_packet_id: row.try_get("ArchivePacketID")?.unwrap(),
             program: Program::try_from(row)?,
             parts: Vec::new(),
             sheet: Sheet::try_from(row)?,

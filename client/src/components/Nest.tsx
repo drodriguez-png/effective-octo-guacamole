@@ -3,43 +3,8 @@ import { ImSpinner8 } from "solid-icons/im";
 import { Component, createResource, For, Show, Switch, Match } from "solid-js";
 import { Portal } from "solid-js/web";
 import { cuttingTimeStr } from "../utils";
-import { json } from "@solidjs/router";
 
-type Nest = {
-  archivePacketId: number;
-  program: Program;
-  parts: Part[];
-  sheet: Sheet;
-  remnants: Remnant[];
-};
-
-type Part = {
-  partName: string;
-  partQty: number;
-  job: string;
-  shipment: number;
-  nestedArea: number;
-  trueArea: number;
-};
-
-type Program = {
-  programName: string;
-  repeatId: number;
-  machineName: string;
-  cuttingTime: number;
-};
-
-type Sheet = {
-  materialMaster: string;
-  sheetName: string;
-};
-
-type Remnant = {
-  remnantName: string;
-  length: number;
-  width: number;
-  area: number;
-};
+import { Nest } from "../nest";
 
 type Props = {
   name: string;
@@ -110,11 +75,34 @@ const NestInfo: Component<Props> = (props: Props) => {
             <main class="grid grid-cols-1 divide-y p-4">
               <div class="p-2">
                 <h1 class="text-lg font-semibold">Program</h1>
-                <ul>
-                  <li>Program: {nest().program.programName}</li>
-                  <li>RepeatID: {nest().program.repeatId}</li>
-                  <li>Runtime: {cuttingTimeStr(nest().program.cuttingTime)}</li>
-                </ul>
+                <table>
+                  <tbody>
+                    <tr class="m-4 hover:bg-gray-100">
+                      <td class="px-2">
+                        <strong>Program</strong>
+                      </td>
+                      <td class="px-2">
+                        <span class="select-all decoration-sky-500">
+                          {nest().program.programName}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr class="m-4 border-t hover:bg-gray-100">
+                      <td class="px-2">
+                        <strong>RepeatID</strong>
+                      </td>
+                      <td class="px-2">{nest().program.repeatId}</td>
+                    </tr>
+                    <tr class="m-4 border-t hover:bg-gray-100">
+                      <td class="px-2">
+                        <strong>Runtime</strong>
+                      </td>
+                      <td class="px-2">
+                        {cuttingTimeStr(nest().program.cuttingTime)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
               <div class="p-2">
                 <h1 class="text-lg font-semibold">Sheet</h1>
