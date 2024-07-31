@@ -87,7 +87,9 @@ export const BatchListing: Component = () => {
                       {item.id}
                     </th>
                     <td class="px-6 py-4">{item.mm}</td>
-                    <td class="px-6 py-4">{item.type}</td>
+                    <td class="px-6 py-4" colspan={2}>
+                      {item.type}
+                    </td>
                   </tr>
                 )}
               </For>
