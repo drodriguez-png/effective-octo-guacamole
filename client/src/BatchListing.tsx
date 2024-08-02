@@ -45,7 +45,7 @@ export const BatchListing: Component = () => {
           </p>
         }
       >
-        <div class="m-4 overflow-y-hidden shadow-md hover:overflow-y-auto sm:rounded-lg">
+        <div class="m-4 overflow-y-hidden rounded-lg shadow-md hover:overflow-y-auto">
           <table class="w-full text-sm text-gray-500">
             <thead class="sticky top-0 z-10 bg-gradient-to-tr from-amber-300 to-orange-400 text-xs uppercase text-gray-700">
               <tr>
