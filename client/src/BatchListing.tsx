@@ -45,12 +45,15 @@ export const BatchListing: Component = () => {
           </p>
         }
       >
-        <div class="m-4 overflow-auto shadow-md sm:rounded-lg">
+        <div class="m-4 overflow-y-hidden shadow-md hover:overflow-y-auto sm:rounded-lg">
           <table class="w-full text-sm text-gray-500">
             <thead class="sticky top-0 z-10 bg-gradient-to-tr from-amber-300 to-orange-400 text-xs uppercase text-gray-700">
               <tr>
                 <th scope="col" class="px-6 py-3">
                   Batch
+                </th>
+                <th scope="col" class="px-6 py-3">
+                  Sheet Name
                 </th>
                 <th scope="col" class="px-6 py-3">
                   Material Master
@@ -81,6 +84,7 @@ export const BatchListing: Component = () => {
                     >
                       {item.id}
                     </th>
+                    <td class="px-6 py-4">{item.sheetName}</td>
                     <td class="px-6 py-4">{item.mm}</td>
                     <td class="px-6 py-4" colspan={2}>
                       {item.type}
