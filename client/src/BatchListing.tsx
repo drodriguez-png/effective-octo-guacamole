@@ -10,12 +10,7 @@ import {
 } from "solid-js";
 import { FiRefreshCcw, FiX } from "solid-icons/fi";
 import { Portal } from "solid-js/web";
-
-type Batch = {
-  id: string;
-  mm: string;
-  type: string;
-};
+import { Batch } from "./api/batch";
 
 const getBatches = async () => {
   const response = await fetch(`/api/batches`);

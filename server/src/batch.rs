@@ -4,27 +4,12 @@ use serde::{Deserialize, Serialize};
 pub struct Batch {
     pub id: String,
     pub mm: String,
+    pub sheet_name: String,
     #[serde(rename(deserialize = "remnant"))]
     pub r#type: BatchType,
 }
 
 impl Batch {
-    pub fn new(id: &str, mm: &str) -> Self {
-        Self {
-            id: String::from(id),
-            mm: String::from(mm),
-            r#type: BatchType::New,
-        }
-    }
-
-    pub fn remnant(id: &str, mm: &str) -> Self {
-        Self {
-            id: String::from(id),
-            mm: String::from(mm),
-            r#type: BatchType::Remnant,
-        }
-    }
-
     pub fn get_batches() -> crate::Result<Vec<Self>> {
         csv::Reader::from_path("batches.csv")?
             .into_deserialize::<Batch>()

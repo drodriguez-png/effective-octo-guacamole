@@ -23,6 +23,15 @@ use sigmanest_interface::{
 #[derive(Debug, serde::Deserialize)]
 struct ProgramUpdateParams {
     batch: String,
+    state: ProgramState,
+}
+
+#[derive(Debug, serde::Deserialize)]
+enum ProgramState {
+    Initiated,
+    Processing,
+    Complete,
+    Cancelled,
 }
 
 #[derive(Debug)]
@@ -78,6 +87,7 @@ async fn main() -> std::result::Result<(), std::io::Error> {
         .route("/", get(|| async { "root request not implemented yet" }))
         .route("/machines", get(get_machines))
         .route("/batches", get(get_batches))
+        .route("/batches/:program", get(get_batches_for_program))
         .route("/:machine", get(get_programs))
         .route("/nest/:nest", get(get_nest).post(update_program))
         .route("/feedback", get(get_feedback))
@@ -126,6 +136,36 @@ async fn get_batches(State(state): State<Arc<AppState>>) -> Result<(StatusCode, 
     }
 
     Ok((StatusCode::OK, Json(batches.as_ref().unwrap().clone())))
+}
+
+async fn get_batches_for_program(
+    State(state): State<Arc<AppState>>,
+    Path(program): Path<String>,
+) -> Result<(StatusCode, Json<Vec<Batch>>)> {
+    log::debug!("Requested batches list for program `{}`", program);
+
+    let state = Arc::clone(&state);
+
+    let mut batches = state.batches.lock().await;
+    if let None = *batches {
+        // load batches from data source
+        *batches = Some(Batch::get_batches()?);
+    }
+
+    let mut conn = state.db.get_owned().await.unwrap();
+    let nest = Nest::get(&mut conn, &program).await?;
+
+    // TODO: handle nested on singleton sheet
+
+    let mm_batches = batches
+        .as_ref()
+        .unwrap()
+        .iter()
+        .filter(|bat| bat.sheet_name == nest.sheet.sheet_name)
+        .map(|bat| bat.clone())
+        .collect();
+
+    Ok((StatusCode::OK, Json(mm_batches)))
 }
 
 async fn get_feedback(
@@ -211,9 +251,24 @@ async fn update_program(
     Path(program): Path<String>,
     Json(params): Json<ProgramUpdateParams>,
 ) -> (StatusCode, Json<Value>) {
-    log::debug!("Requested update for {}<{}>", program, params.batch);
+    // TODO: log processing changes to database
 
-    // TODO: post update to SimTrans
+    match params.state {
+        ProgramState::Initiated => log::trace!("Program {} initiated", program),
+        ProgramState::Processing => {
+            // TODO: move NC"
+            log::info!(
+                "Program {} is moved to processing with batch {}",
+                program,
+                params.batch
+            );
+        }
+        ProgramState::Complete => {
+            // TODO: issue SimTrans update
+            log::info!("Program {} complete with batch {}", program, params.batch);
+        }
+        ProgramState::Cancelled => log::info!("Program {} cancelled", program),
+    }
 
     (StatusCode::CREATED, Json(Value::Null))
 }

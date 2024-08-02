@@ -12,6 +12,7 @@ import {
 import { FiInfo } from "solid-icons/fi";
 import { NestInfo } from "./components/Nest";
 import { cuttingTimeStr } from "./utils";
+import { NestAssign } from "./components/Assign";
 
 type Program = {
   program: string;
@@ -40,8 +41,11 @@ export const BatchAssign: Component = () => {
     localStorage.getItem("machine") || "",
   );
   const [info, showInfo] = createSignal<string | null>(null);
+  const [assign, showAssign] = createSignal<string | null>(null);
 
-  const [machines, { refetch: fetchMachines }] = createResource(getMachines);
+  const [machines, { refetch: fetchMachines }] = createResource<string[], any>(
+    getMachines,
+  );
   const [programs, { refetch: fetchPrograms }] = createResource<Program[], any>(
     machine,
     getPrograms,
@@ -63,7 +67,7 @@ export const BatchAssign: Component = () => {
         onChange={(e) =>
           setMachine((e.currentTarget as HTMLSelectElement).value)
         }
-        class="m-2 rounded-lg bg-gray-200 p-2"
+        class="m-2 rounded-lg border-black bg-gray-200 p-2"
       >
         <For each={machines()}>
           {(item) => (
@@ -99,16 +103,13 @@ export const BatchAssign: Component = () => {
               <table class="w-full text-sm text-gray-500">
                 <thead class="sticky top-0 z-10 bg-gradient-to-tr from-amber-100 to-amber-300 text-xs uppercase text-gray-700">
                   <tr>
-                    <th scope="col" class="px-6 py-3"></th>
-                    <th scope="col" class="px-6 py-3">
-                      Program
-                    </th>
-                    <th scope="col" class="px-6 py-3">
-                      Runtime
-                    </th>
-                    <th scope="col" class="px-6 py-3">
-                      Repeats
-                    </th>
+                    <For each={["", "Program", "Runtime", "Repeats"]}>
+                      {(title) => (
+                        <th scope="col" class="px-6 py-3">
+                          {title}
+                        </th>
+                      )}
+                    </For>
                   </tr>
                 </thead>
                 <tbody>
@@ -117,7 +118,7 @@ export const BatchAssign: Component = () => {
                       <>
                         <tr
                           class="border-t bg-slate-100 hover:bg-slate-300"
-                          onClick={() => showInfo(item().program)}
+                          onClick={() => showAssign(item().program)}
                         >
                           <th class="px-6 py-4">
                             <FiInfo
@@ -148,6 +149,12 @@ export const BatchAssign: Component = () => {
                 <NestInfo
                   name={info() || ""}
                   onCloseEvent={() => showInfo(null)}
+                />
+              </Show>
+              <Show when={assign()}>
+                <NestAssign
+                  name={assign() || ""}
+                  onCloseEvent={() => showAssign(null)}
                 />
               </Show>
             </div>
