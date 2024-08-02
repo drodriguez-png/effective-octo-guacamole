@@ -202,18 +202,18 @@ INNER JOIN (
 		ProgramName AS p,
 		COUNT(RepeatID) AS Repeats
     FROM Program
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM TransAct
+        WHERE TransType = 'SN70'
+        AND TransAct.ProgramName=Program.ProgramName
+        AND TransAct.ProgramRepeat=Program.RepeatId
+    )
     GROUP BY ProgramName
 ) AS rpt
     ON rpt.p=ProgramMachine.ProgramName
 WHERE MachineName=@P1
-AND NOT EXISTS (
-	SELECT 1
-	FROM TransAct
-	WHERE TransType = 'SN70'
-	AND TransAct.ProgramName=Program.ProgramName
-	AND TransAct.ProgramRepeat=Program.RepeatId
-)
-
+AND rpt.Repeats > 0
             "#,
             &[&machine],
         )
@@ -255,7 +255,7 @@ async fn get_nest(
 }
 
 async fn update_program(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Path(program): Path<String>,
     Json(params): Json<ProgramUpdateParams>,
 ) -> (StatusCode, Json<Value>) {
@@ -265,17 +265,39 @@ async fn update_program(
         ProgramState::Initiated => log::trace!("Program {} initiated", program),
         ProgramState::Processing => {
             // TODO: move NC"
-            log::info!(
+            log::trace!(
                 "Program {} is moved to processing with batch {}",
                 program,
                 params.batch
             );
         }
         ProgramState::Complete => {
-            // TODO: issue SimTrans update
             log::info!("Program {} complete with batch {}", program, params.batch);
+
+            // issue SimTrans update
+            let state = Arc::clone(&state);
+            let mut conn = state.db.get_owned().await.unwrap();
+            let update = conn
+                .execute(
+                    r#"
+INSERT INTO TransAct(TransType,District,ProgramName,ProgramRepeat)
+VALUES (
+    SELECT TOP 1
+        'SN70',1,@P1,RepeatId
+    FROM Program
+    WHERE ProgramName=@P1
+)
+                    "#,
+                    &[&program],
+                )
+                .await;
+
+            if let Err(e) = update {
+                log::error!("Failed to push program update to SimTrans");
+                log::error!("{:#?}", e);
+            }
         }
-        ProgramState::Cancelled => log::info!("Program {} cancelled", program),
+        ProgramState::Cancelled => log::trace!("Program {} cancelled", program),
     }
 
     (StatusCode::CREATED, Json(Value::Null))
