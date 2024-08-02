@@ -4,6 +4,7 @@ import {
   Show,
   Suspense,
   createEffect,
+  createMemo,
   createResource,
   createSignal,
   onCleanup,
@@ -11,6 +12,11 @@ import {
 import { FiRefreshCcw, FiX } from "solid-icons/fi";
 import { Portal } from "solid-js/web";
 import { Batch } from "./api/batch";
+
+type QtyBatch = {
+  qty: number;
+  batch: Batch;
+};
 
 const getBatches = async () => {
   const response = await fetch(`/api/batches`);
@@ -21,6 +27,24 @@ export const BatchListing: Component = () => {
   const [batches, { refetch }] = createResource(getBatches);
   const [batchToShow, setBatchToShow] = createSignal<Batch>();
   const [showInfo, setShowInfo] = createSignal(false);
+
+  const [grouped, setGrouped] = createSignal(false);
+  const ungroupedBatches = createMemo(() =>
+    batches()?.map((batch: Batch) => [batch, 1]),
+  );
+  const groupedBatches = createMemo<[Batch, number][]>(() =>
+    batches()
+      ? Object.values(
+          batches()?.reduce((res: any, val: Batch) => {
+            if (!res[val.sheetName]) res[val.sheetName] = [val, 0];
+
+            res[val.sheetName][1]++;
+
+            return res;
+          }, {}),
+        )
+      : [],
+  );
 
   // const machinesListTimer = setInterval(() => {
   //   refetch();
@@ -45,6 +69,14 @@ export const BatchListing: Component = () => {
           </p>
         }
       >
+        <label>
+          <input
+            type="checkbox"
+            checked={grouped()}
+            onChange={() => setGrouped((prev) => !prev)}
+          />
+          Group batches
+        </label>
         <div class="m-4 overflow-y-hidden rounded-lg shadow-md hover:overflow-y-auto">
           <table class="w-full text-sm text-gray-500">
             <thead class="sticky top-0 z-10 bg-gradient-to-tr from-amber-300 to-orange-400 text-xs uppercase text-gray-700">
@@ -58,6 +90,11 @@ export const BatchListing: Component = () => {
                 <th scope="col" class="px-6 py-3">
                   Material Master
                 </th>
+                <Show when={grouped}>
+                  <th scope="col" class="px-6 py-3">
+                    Qty
+                  </th>
+                </Show>
                 <th scope="col" class="px-6 py-3">
                   Type
                 </th>
@@ -72,8 +109,8 @@ export const BatchListing: Component = () => {
               </tr>
             </thead>
             <tbody>
-              <For each={batches()}>
-                {(item) => (
+              <For each={grouped() ? groupedBatches() : ungroupedBatches()}>
+                {([item, qty]) => (
                   <tr
                     class="border-t py-4 hover:bg-gray-100"
                     onClick={() => showBatch(item)}
@@ -86,6 +123,9 @@ export const BatchListing: Component = () => {
                     </th>
                     <td class="px-6 py-4">{item.sheetName}</td>
                     <td class="px-6 py-4">{item.mm}</td>
+                    <Show when={grouped}>
+                      <td class="px-6 py-3">{qty}</td>
+                    </Show>
                     <td class="px-6 py-4" colspan={2}>
                       {item.type}
                     </td>
