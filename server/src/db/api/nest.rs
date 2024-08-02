@@ -25,8 +25,8 @@ select
 	MachineName, CuttingTime
 from Program
 where ProgramName=@P1;
-select
-	ProgramName, RepeatID,
+select distinct
+	ProgramName,
 	PIP.WONumber, PIP.PartName, QtyInProcess as Qty,
 	Data1 as Job, cast(Data2 as int) as Shipment,
 	TrueArea, NestedArea
@@ -38,8 +38,8 @@ select distinct
 from Stock
 inner join Program on Stock.SheetName=Program.SheetName
 where ProgramName=@P1;
-select
-	RemnantName, ProgramName, RepeatID,
+select distinct
+	RemnantName, ProgramName,
 	Length, Width, Area, Weight,
 	PrimeCode, Qty
 from Remnant
@@ -57,13 +57,10 @@ where ProgramName=@P1;
             .into_iter();
 
         let (archive_packet_id, program) = match results.next() {
-            Some(mut programs) if programs.len() > 0 => programs
-                .pop()
-                .map(|p| {
-                    Program::try_from(&p)
-                        .map(|prg| (p.get::<i32, _>("ArchivePacketID").unwrap(), prg))
-                })
-                .unwrap(),
+            Some(mut programs) if programs.len() > 0 => {
+                let p = programs.swap_remove(0);
+                Program::try_from(&p).map(|prg| (p.get::<i32, _>("ArchivePacketID").unwrap(), prg))
+            }
             _ => {
                 return Err(Error::NotFound(format!("Program {} not found", nest)));
             }
