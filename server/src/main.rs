@@ -206,6 +206,14 @@ INNER JOIN (
 ) AS rpt
     ON rpt.p=ProgramMachine.ProgramName
 WHERE MachineName=@P1
+AND NOT EXISTS (
+	SELECT 1
+	FROM TransAct
+	WHERE TransType = 'SN70'
+	AND TransAct.ProgramName=Program.ProgramName
+	AND TransAct.ProgramRepeat=Program.RepeatId
+)
+
             "#,
             &[&machine],
         )
