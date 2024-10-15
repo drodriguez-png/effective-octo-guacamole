@@ -5,6 +5,7 @@ import {
   Match,
   Show,
   Switch,
+  createEffect,
   createResource,
   createSignal,
   onCleanup,
@@ -42,6 +43,13 @@ export const BatchAssign: Component = () => {
   );
   const [info, showInfo] = createSignal<string | null>(null);
   const [assign, showAssign] = createSignal<string | null>(null);
+  createEffect(() => {
+    if (machines()) {
+      if (machine() == "" && machines().length > 0) {
+        setMachine(machines()[0]);
+      }
+    }
+  });
 
   const [machines, { refetch: fetchMachines }] = createResource<string[], any>(
     getMachines,
