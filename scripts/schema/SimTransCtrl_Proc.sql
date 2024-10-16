@@ -5,20 +5,11 @@ IF NOT EXISTS (SELECT name FROM sys.schemas WHERE name = 'HighSteel')
 	EXEC('CREATE SCHEMA HighSteel AUTHORIZATION dbo');
 GO
 
-CREATE OR ALTER FUNCTION HighSteel.GetSimTransDistrictFromSapSystem (@system VARCHAR(3))
-RETURNS INT
-AS
-BEGIN
-	-- TODO: infer district from system
-	--	- 'PRD' -> 2
-	--	- 'QAS' -> 1
-	--	- 'DEV' -> 1
-	--	- 'SBX' -> 1
-	CASE @system
-		WHEN 'PRD' THEN RETURN 2
-		ELSE RETURN 1
-	END;
-END;
+CREATE TABLE HighSteel.SapInterfaceConfig (
+	SapSystem VARCHAR(3) PRIMARY KEY,
+	SimTransDistrict INT NOT NULL,
+	RemnantDxfPath VARCHAR(255)
+);
 GO
 
 CREATE OR ALTER PROCEDURE HighSteel.SapInventory
@@ -35,7 +26,7 @@ AS
 SET NOCOUNT ON
 BEGIN
 	DECLARE @district INT;
-	SET @district = GetSimTransDistrictFromSapSystem(@system);
+	SELECT @district = SimTransDistrict FROM SapInterfaceConfig WHERE SapSystem = @system;
 
 	-- TODO : diff data with Sigmanest
 	--	- requires full list of transactions for a given material
@@ -72,4 +63,5 @@ BEGIN
 		FileName    -- {remnant geometry folder}\{SheetName}.dxf
 	)
 	VALUES ('SN97',1,@sheet_name,@qty,@matl,@thk,@mm,@file)
-END
+END;
+GO
