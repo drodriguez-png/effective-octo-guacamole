@@ -5,7 +5,7 @@ IF NOT EXISTS (SELECT name FROM sys.schemas WHERE name = 'HighSteel')
 	EXEC('CREATE SCHEMA HighSteel AUTHORIZATION dbo');
 GO
 
-CREATE FUNCTION HighSteel.GetSimTransDistrictFromSapSystem (@system VARCHAR(3))
+CREATE OR ALTER FUNCTION HighSteel.GetSimTransDistrictFromSapSystem (@system VARCHAR(3))
 RETURNS @district INT
 AS
 BEGIN
