@@ -6,7 +6,7 @@ IF NOT EXISTS (SELECT name FROM sys.schemas WHERE name = 'HighSteel')
 GO
 
 CREATE OR ALTER FUNCTION HighSteel.GetSimTransDistrictFromSapSystem (@system VARCHAR(3))
-RETURNS @district INT
+RETURNS INT
 AS
 BEGIN
 	-- TODO: infer district from system
@@ -15,8 +15,8 @@ BEGIN
 	--	- 'DEV' -> 1
 	--	- 'SBX' -> 1
 	CASE @system
-		WHEN 'PRD' THEN SET  2
-		ELSE SET 1
+		WHEN 'PRD' THEN RETURN 2
+		ELSE RETURN 1
 	END;
 END;
 GO
