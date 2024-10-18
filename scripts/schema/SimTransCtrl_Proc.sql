@@ -137,7 +137,7 @@ END;
 GO
 
 -- ********************************************
--- *    Interface 1: Inventory                *
+-- *    Interface 2: Inventory                *
 -- ********************************************
 -- TODO: move to `integration` schema
 CREATE OR ALTER PROCEDURE dbo.PushSapInventory
@@ -268,7 +268,7 @@ GO
 -- TODO: create view
 
 -- ********************************************
--- *    Interface 1: Update Program           *
+-- *    Interface 4: Update Program           *
 -- ********************************************
 -- TODO: move to `integration` schema
 -- TODO: create procedure
