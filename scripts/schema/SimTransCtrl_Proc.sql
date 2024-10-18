@@ -88,25 +88,6 @@ BEGIN
 
 	INSERT INTO TransAct
 	(
-		TransType,  -- `SN81`
-		District,
-		TransID,	-- for logging purposes
-		OrderNo,    -- work order name
-		ItemName,   -- Material Master
-		Qty,
-		Material,   -- {spec}-{grade}{test}
-		Customer,   -- State(occurrence)
-		DwgNumber,  -- Drawing name
-		Remark,     -- autoprocess instruction
-		ItemData1,  -- Job(project)
-		ItemData2,  -- Shipment
-		ItemData5,  -- PART hours order for shipment
-		ItemData6,  -- secondary operation 1
-		ItemData7,  -- secondary operation 2
-		ItemData8,  -- secondary operation 3
-		ItemData9,  -- part name (Material Master with job removed)
-		ItemData10, -- Raw material master (from BOM, if exists)
-		ItemData14  -- `HighHeatNum`
 	)
 	SELECT
 		'SN81',
@@ -117,21 +98,41 @@ BEGIN
 		@part_name,
 		@qty,
 		@matl,
+			TransType,  -- `SN81`
+			District,
+			TransID,	-- for logging purposes
+			OrderNo,	-- work order name
+			ItemName,	-- Material Master
+			Qty,
+			Material,	-- {spec}-{grade}{test}
+			Customer,	-- State(occurrence)
+			DwgNumber,	-- Drawing name
+			Remark,		-- autoprocess instruction
+			ItemData1,	-- Job(project)
+			ItemData2,	-- Shipment
+			ItemData5,	-- PART hours order for shipment
+			ItemData6,	-- secondary operation 1
+			ItemData7,	-- secondary operation 2
+			ItemData8,	-- secondary operation 3
+			ItemData9,	-- part name (Material Master with job removed)
+			ItemData10,	-- Raw material master (from BOM, if exists)
+			ItemData14,	-- `HighHeatNum`
+			ItemData18	-- SAP event id
 
-		@state,
-		@dwg,
-		@codegen,	-- autoprocess instruction
-		@job,
-		@shipment,
-		@chargeref,	-- PART hours order for shipment
-		@op1,	-- secondary operation 1
-		@op2,	-- secondary operation 2
-		@op3,	-- secondary operation 3
-		@mark,	-- part name (Material Master with job removed)
-		@raw_mm
-		'HighHeatNum'
 	FROM dbo.SapInterfaceConfig
 	WHERE SapSystem = @sap_system
+			@state,
+			@dwg,
+			@codegen,	-- autoprocess instruction
+			@job,
+			@shipment,
+			@chargeref,	-- PART hours order for shipment
+			@op1,	-- secondary operation 1
+			@op2,	-- secondary operation 2
+			@op3,	-- secondary operation 3
+			@mark,	-- part name (Material Master with job removed)
+			@raw_mm,
+			'HighHeatNum',
 END;
 GO
 
@@ -208,22 +209,22 @@ BEGIN
 		
 		-- [3] Add/Update stock via SimTrans
 		INSERT INTO dbo.TransAct (
-			TransType,  -- `SN91A or SN97`
+			TransType,	-- `SN91A or SN97`
 			District,
 			TransID,	-- for logging purposes
-			ItemName,   -- SheetName
+			ItemName,	-- SheetName
 			Qty,
-			Material,   -- {spec}-{grade}{test}
-			Thickness,  -- Thickness batch characteristic
+			Material,	-- {spec}-{grade}{test}
+			Thickness,	-- Thickness batch characteristic
 			Width,
 			Length,
-			PrimeCode,  -- Material Master
+			PrimeCode,	-- Material Master
 			BinNumber,	-- SAP event id
 			ItemData1,	-- Notes line 1
 			ItemData2,	-- Notes line 2
 			ItemData3,	-- Notes line 3
 			ItemData4,	-- Notes line 4
-			FileName    -- {remnant geometry folder}\{SheetName}.dxf
+			FileName	-- {remnant geometry folder}\{SheetName}.dxf
 		)
 		SELECT
 			-- SimTrans transaction
@@ -298,11 +299,11 @@ BEGIN
 	-- [1] Update program
 	INSERT INTO TransAct
 	(
-		TransType,    -- `SN76`
+		TransType,		-- `SN76`
 		District,
-		TransID,
-		ProgramName,  -- Program name/number
-		ProgramRepeat -- Repeat ID of the program
+		TransID,		-- for logging purposes
+		ProgramName,	-- Program name/number
+		ProgramRepeat	-- Repeat ID of the program
 	)
 	SELECT
 		'SN76',
