@@ -1,19 +1,17 @@
 
 USE SNDBaseISap;
 
-IF NOT EXISTS (SELECT name FROM sys.schemas WHERE name = 'HighSteel')
-	EXEC('CREATE SCHEMA HighSteel AUTHORIZATION dbo');
-GO
-
-CREATE TABLE HighSteel.SapInterfaceConfig (
+-- TODO: move to `integration` schema
+-- TODO: change all uses of SapInterfaceConfig to use `integration` schema
+CREATE TABLE dbo.SapInterfaceConfig (
 	SapSystem VARCHAR(3) PRIMARY KEY,
 	SimTransDistrict INT NOT NULL,
 	RemnantDxfPath VARCHAR(255)
 );
 GO
 
-CREATE OR ALTER PROCEDURE HighSteel.SapInventory
-	@system VARCHAR(3),
+-- TODO: move to `integration` schema
+CREATE OR ALTER PROCEDURE dbo.PushSapInventory
 	@sheet_name VARCHAR(50),
 	@qty INT,
 	@matl VARCHAR(50),
