@@ -163,3 +163,91 @@ BEGIN
 	END;
 END;
 GO
+
+-- TODO: move to `integration` schema
+CREATE OR ALTER PROCEDURE dbo.PushSapDemand
+	@sap_system VARCHAR(3),
+	@_sap_event_id NUMERIC(20,0),	-- SAP: numeric 20 positions, no decimal
+	
+	@work_order VARCHAR(50),
+	@part_name VARCHAR(50),
+	@qty INT,
+	@matl VARCHAR(50),
+
+	-- TODO: validate which of these can truly be NULL
+	@state VARCHAR(50) NULL,
+	@dwg VARCHAR(50) NULL,
+	@codegen VARCHAR(50) NULL,	-- autoprocess instruction
+	@job VARCHAR(50) NULL,
+	@shipment VARCHAR(50) NULL,
+	@chargeref VARCHAR(50) NULL,	-- PART hours order for shipment
+	@op1 VARCHAR(50) NULL,	-- secondary operation 1
+	@op2 VARCHAR(50) NULL,	-- secondary operation 2
+	@op3 VARCHAR(50) NULL,	-- secondary operation 3
+	@mark VARCHAR(50) NULL,	-- part name (Material Master with job removed)
+	@raw_mm VARCHAR(50)  NULL
+AS
+SET NOCOUNT ON
+BEGIN
+	EXEC dbo.ValidateSimTransIsConfiguredForSapSystem @sap_system = @sap_system;
+	
+	DECLARE @sap_event_id VARCHAR(50)
+	SET @sap_event_id = CAST(@_sap_event_id AS VARCHAR(50))
+
+	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
+	-- The use of this as TransID is purely for diagnostic reasons,
+	-- 	so truncating it to the 10 least significant digits is OK.
+	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10)
+
+	-- TODO:
+	--	- calculate mark from part name?
+	--	- OR calculate part name from job and mark?
+
+	INSERT INTO TransAct
+	(
+		TransType,  -- `SN81`
+		District,
+		TransID,	-- for logging purposes
+		OrderNo,    -- work order name
+		ItemName,   -- Material Master
+		Qty,
+		Material,   -- {spec}-{grade}{test}
+		Customer,   -- State(occurrence)
+		DwgNumber,  -- Drawing name
+		Remark,     -- autoprocess instruction
+		ItemData1,  -- Job(project)
+		ItemData2,  -- Shipment
+		ItemData5,  -- PART hours order for shipment
+		ItemData6,  -- secondary operation 1
+		ItemData7,  -- secondary operation 2
+		ItemData8,  -- secondary operation 3
+		ItemData9,  -- part name (Material Master with job removed)
+		ItemData10, -- Raw material master (from BOM, if exists)
+		ItemData14  -- `HighHeatNum`
+	)
+	SELECT
+		'SN81',
+		SimTransDistrict,
+		@trans_id,
+
+		@work_order,
+		@part_name,
+		@qty,
+		@matl,
+
+		@state,
+		@dwg,
+		@codegen,	-- autoprocess instruction
+		@job,
+		@shipment,
+		@chargeref,	-- PART hours order for shipment
+		@op1,	-- secondary operation 1
+		@op2,	-- secondary operation 2
+		@op3,	-- secondary operation 3
+		@mark,	-- part name (Material Master with job removed)
+		@raw_mm
+		'HighHeatNum'
+	FROM dbo.SapInterfaceConfig
+	WHERE SapSystem = @sap_system
+END;
+GO
