@@ -12,7 +12,7 @@ CREATE TABLE dbo.SapInterfaceConfig (
 
 	-- Path format template string to build DXF file
 	-- Must include the substring '<sheet_name>' for sheet_name replacement
-	RemnantDxfPath VARCHAR(255)
+	RemnantDxfTemplate VARCHAR(255)
 
 	-- if columns are added that collide with the dbo.Stock table,
 	-- 	table qualifications will have to be added in step [1]
@@ -155,7 +155,7 @@ BEGIN
 
 			-- sheet geometry DXF file (remnants only)
 			CASE @sheet_type
-				WHEN 'Remnant' THEN REPLACE(RemnantDxfPath, '<sheet_name>', @sheet_name)
+				WHEN 'Remnant' THEN REPLACE(RemnantDxfTemplate, '<sheet_name>', @sheet_name)
 				ELSE NULL
 			END
 		FROM dbo.SapInterfaceConfig
