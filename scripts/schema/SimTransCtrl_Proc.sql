@@ -124,7 +124,7 @@ BEGIN
 			District,
 			TransID,	-- for logging purposes
 			OrderNo,	-- work order name
-			ItemName,	-- Material Master
+			ItemName,	-- Material Master (part name)
 			Qty,
 			Material,	-- {spec}-{grade}{test}
 			Customer,	-- State(occurrence)
