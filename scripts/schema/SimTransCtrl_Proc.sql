@@ -194,11 +194,11 @@ BEGIN
 		AND dbo.SapInterfaceConfig.SapSystem = @sap_system;
 	END;
 
-	-- Null @sheet_name means inventory for that material master has no
-	-- 	inventory in SAP, so all inventory with the same @mm needs to be
-	-- 	removed in Sigmanest.
+	-- @sheet_name is Null and @qty = 0 means SAP has no inventory for that
+	-- 	material master, so all inventory with the same @mm needs to be removed
+	-- 	from Sigmanest.
 	-- 	-> handled by [1]
-	IF @sheet_name IS NOT NULL
+	IF @qty > 0
 	BEGIN
 		-- [2] Delete any staged SimTrans transactions that would
 		-- 	delete this sheet before it is added/updated.
