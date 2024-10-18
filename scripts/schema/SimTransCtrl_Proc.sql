@@ -36,7 +36,6 @@ BEGIN
 END;
 GO
 
-
 -- TODO: move to `integration` schema
 CREATE OR ALTER PROCEDURE dbo.PushSapInventory
 	@sap_system VARCHAR(3),
