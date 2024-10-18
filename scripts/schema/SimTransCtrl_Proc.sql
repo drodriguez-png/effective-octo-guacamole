@@ -316,7 +316,6 @@ GO
 -- *    Interface 4: Update Program           *
 -- ********************************************
 -- TODO: move to `integration` schema
--- TODO: create procedure
 CREATE OR ALTER PROCEDURE dbo.PushSapInventory
 	@sap_system VARCHAR(3),
 	@_sap_event_id NUMERIC(20,0),	-- SAP: numeric 20 positions, no decimal
