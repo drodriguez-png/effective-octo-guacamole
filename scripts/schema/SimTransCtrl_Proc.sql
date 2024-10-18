@@ -62,7 +62,7 @@ CREATE OR ALTER PROCEDURE dbo.PushSapInventory
 AS
 SET NOCOUNT ON
 BEGIN
-	EXEC dbo.ValidateSimTransIsConfiguredForSapSystem @sap_system = @sap_system;
+	EXEC dbo.ValidateSimTransIsConfiguredForSapSystem @sap_system;
 	
 	DECLARE @sap_event_id VARCHAR(50)
 	SET @sap_event_id = CAST(@_sap_event_id AS VARCHAR(50))
@@ -189,7 +189,7 @@ CREATE OR ALTER PROCEDURE dbo.PushSapDemand
 AS
 SET NOCOUNT ON
 BEGIN
-	EXEC dbo.ValidateSimTransIsConfiguredForSapSystem @sap_system = @sap_system;
+	EXEC dbo.ValidateSimTransIsConfiguredForSapSystem @sap_system;
 	
 	DECLARE @sap_event_id VARCHAR(50)
 	SET @sap_event_id = CAST(@_sap_event_id AS VARCHAR(50))
