@@ -99,14 +99,16 @@ BEGIN
 			District,
 			TransID,	-- for logging purposes
 			OrderNo,
-			ItemName
+			ItemName,
+			ItemData18
 		)
 		SELECT
 			'SN82',
 			SimTransDistrict,
 			@trans_id,
 			WONumber,
-			PartName
+			PartName,
+			@sap_event_id
 		FROM dbo.Part, dbo.SapInterfaceConfig
 		WHERE dbo.Part.PartName = @part_name
 		AND dbo.Part.Data18 != @sap_event_id
@@ -118,6 +120,15 @@ BEGIN
 	-- 	-> handled by [1]
 	IF @qty > 0
 	BEGIN
+		-- [2] Delete any staged SimTrans transactions that would
+		-- 	delete this demand before it is added/updated.
+		-- This removes transactions added in [1] that are not necessary.
+		DELETE FROM dbo.TransAct
+		WHERE OrderNo = @work_order
+		AND ItemName = @part_name
+		AND ItemData18 = @sap_event_id;
+		
+		-- [3] Add/Update demand via SimTrans
 		INSERT INTO TransAct
 		(
 			TransType,  -- `SN81`
