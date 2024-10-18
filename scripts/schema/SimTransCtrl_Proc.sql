@@ -86,18 +86,40 @@ BEGIN
 	--	- calculate mark from part name?
 	--	- OR calculate part name from job and mark?
 
-	INSERT INTO TransAct
-	(
-	)
-	SELECT
-		'SN81',
-		SimTransDistrict,
-		@trans_id,
+	-- Pre-event processing for any group of calls for the same @sap_event_id
+	-- Because of this `IF` statement, this will only do anything on the first
+	-- 	call for a given SAP event id (which should be for one material master).
+	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM TransAct)
+	BEGIN
+		-- [1] Preemtively set all sheets to be removed for the given @mm
+		-- This makes sure any sheets in Sigmanest that are not in SAP are removed
+		-- 	since SAP will not always tell us that those sheets were removed.
+		INSERT INTO dbo.TransAct (
+			TransType,
+			District,
+			TransID,	-- for logging purposes
+			OrderNo,
+			ItemName
+		)
+		SELECT
+			'SN82',
+			SimTransDistrict,
+			@trans_id,
+			WONumber,
+			PartName
+		FROM dbo.Part, dbo.SapInterfaceConfig
+		WHERE dbo.Part.PartName = @part_name
+		AND dbo.Part.Data18 != @sap_event_id
+		AND dbo.SapInterfaceConfig.SapSystem = @sap_system;
+	END;
 
-		@work_order,
-		@part_name,
-		@qty,
-		@matl,
+	-- @qty = 0 means SAP has no demand for that material master, so all demand
+	-- 	with the same @part_name needs to be removed from Sigmanest.
+	-- 	-> handled by [1]
+	IF @qty > 0
+	BEGIN
+		INSERT INTO TransAct
+		(
 			TransType,  -- `SN81`
 			District,
 			TransID,	-- for logging purposes
@@ -118,9 +140,17 @@ BEGIN
 			ItemData10,	-- Raw material master (from BOM, if exists)
 			ItemData14,	-- `HighHeatNum`
 			ItemData18	-- SAP event id
+		)
+		SELECT
+			'SN81',
+			SimTransDistrict,
+			@trans_id,
 
-	FROM dbo.SapInterfaceConfig
-	WHERE SapSystem = @sap_system
+			@work_order,
+			@part_name,
+			@qty,
+			@matl,
+
 			@state,
 			@dwg,
 			@codegen,	-- autoprocess instruction
@@ -133,6 +163,10 @@ BEGIN
 			@mark,	-- part name (Material Master with job removed)
 			@raw_mm,
 			'HighHeatNum',
+			@sap_event_id
+		FROM dbo.SapInterfaceConfig
+		WHERE SapSystem = @sap_system
+	END;
 END;
 GO
 
