@@ -4,8 +4,14 @@ USE SNDBaseISap;
 -- TODO: move to `integration` schema
 -- TODO: change all uses of SapInterfaceConfig to use `integration` schema
 CREATE TABLE dbo.SapInterfaceConfig (
+	-- Name of SAP system (PRD, QAS, etc.)
 	SapSystem VARCHAR(3) PRIMARY KEY,
+
+	-- SimTrans district (Sigmanest system) involved with SAP system
 	SimTransDistrict INT NOT NULL,
+
+	-- Path format template string to build DXF file
+	-- Must include the substring '<sheet_name>' for sheet_name replacement
 	RemnantDxfPath VARCHAR(255)
 
 	-- if columns are added that collide with the dbo.Stock table,
@@ -149,7 +155,7 @@ BEGIN
 
 			-- sheet geometry DXF file (remnants only)
 			CASE @sheet_type
-				WHEN 'Remnant' THEN CONCAT(RemnantDxfPath, '\', @sheet_name, '.dxf')
+				WHEN 'Remnant' THEN REPLACE(RemnantDxfPath, '<sheet_name>', @sheet_name)
 				ELSE NULL
 			END
 		FROM dbo.SapInterfaceConfig
