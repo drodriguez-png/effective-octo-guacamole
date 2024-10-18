@@ -1,4 +1,4 @@
-
+-- Purpose: Create stored procedures for interfacing SAP with Sigmanest
 USE SNDBaseISap;
 
 -- TODO: move to `integration` schema
