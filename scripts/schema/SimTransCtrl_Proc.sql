@@ -14,8 +14,10 @@ CREATE TABLE dbo.SapInterfaceConfig (
 	-- Must include the substring '<sheet_name>' for sheet_name replacement
 	RemnantDxfTemplate VARCHAR(255)
 
-	-- if columns are added that collide with the dbo.Stock table,
-	-- 	table qualifications will have to be added in step [1]
+	-- if columns are added that collide with the the following tables,
+	-- 	table qualifications for columns will have to be added
+	--		- dbo.Stock
+	--		- dbo.Program
 );
 GO
 
@@ -269,3 +271,48 @@ GO
 -- ********************************************
 -- TODO: move to `integration` schema
 -- TODO: create procedure
+CREATE OR ALTER PROCEDURE dbo.PushSapInventory
+	@sap_system VARCHAR(3),
+	@_sap_event_id NUMERIC(20,0),	-- SAP: numeric 20 positions, no decimal
+
+	@archive_packet_id VARCHAR(50)
+AS
+SET NOCOUNT ON
+BEGIN
+	-- Expected Condition:
+	-- 	It is expected that the program with the given ArchivePacketID exists.
+	-- 	If program update in Sigmanest is disabled and all Interface 3
+	-- 		transactionshave posted, then this should hold
+	-- TODO: do we need further validation
+
+	EXEC dbo.ValidateSimTransIsConfiguredForSapSystem @sap_system;
+	
+	DECLARE @sap_event_id VARCHAR(50)
+	SET @sap_event_id = CAST(@_sap_event_id AS VARCHAR(50))
+
+	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
+	-- The use of this as TransID is purely for diagnostic reasons,
+	-- 	so truncating it to the 10 least significant digits is OK.
+	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10)
+
+	-- [1] Update program
+	INSERT INTO TransAct
+	(
+		TransType,    -- `SN76`
+		District,
+		TransID,
+		ProgramName,  -- Program name/number
+		ProgramRepeat -- Repeat ID of the program
+	)
+	SELECT
+		'SN76',
+		SimTransDistrict,
+		@trans_id,
+
+		ProgramName,
+		RepeatId
+	FROM dbo.Program, dbo.SapInterfaceConfig
+	WHERE SapSystem = @sap_system
+	AND ArchivePacketID = @archive_packet_id
+END;
+GO
