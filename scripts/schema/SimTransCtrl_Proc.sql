@@ -69,6 +69,27 @@ BEGIN
 		-- [1] Preemtively set all parts to be removed for the given @mm
 		-- This ensures that any demand in Sigmanest that is not in SAP is
 		--	removed since SAP will not always tell us that the demand was removed.
+		WITH _parts AS (
+			SELECT
+				PartName,
+				WONumber,
+				QtyCompleted + (
+					SELECT COALESCE(SUM(QtyInProcess), 0)
+					FROM dbo.PIP AS _pip
+					WHERE _prt.PartName = _pip.PartName
+					AND   _prt.WONumber = _pip.WONumber
+				) AS QtyCommited
+			FROM dbo.Part AS _prt
+			WHERE PartName = @part_name
+			-- keeps transactions from being inserted if the SimTrans runs in the 
+			--	middle of a data push.
+			AND Data18 != @sap_event_id
+		),
+		_cfg AS (
+			SELECT SimTransDistrict
+			FROM dbo.SapInterfaceConfig
+			WHERE SapSystem = @sap_system
+		)
 		INSERT INTO dbo.TransAct (
 			TransType,
 			District,
@@ -79,30 +100,18 @@ BEGIN
 			ItemData18
 		)
 		SELECT
-			'SN81',
-			SimTransDistrict,
+			CASE
+				WHEN _parts.QtyCommited = 0
+					THEN 'SN82'	-- Delete part from work order
+					ELSE 'SN81'	-- Modify part in work order
+			END,
+			_cfg.SimTransDistrict,
 			@trans_id,
-			WONumber,
-			PartName,
-			QtyCompleted + (
-				SELECT COALESCE(SUM(QtyInProcess), 0)
-				FROM dbo.PIP
-				WHERE dbo.PIP.PartName = dbo.Part.PartName
-				AND dbo.PIP.WONumber = dbo.Part.WONumber
-			),
+			_parts.WONumber,
+			_parts.PartName,
+			_parts.QtyCommited,
 			@sap_event_id
-		FROM dbo.Part, dbo.SapInterfaceConfig
-		WHERE dbo.Part.PartName = @part_name
-		AND dbo.SapInterfaceConfig.SapSystem = @sap_system
-		-- keeps transactions from being inserted if the SimTrans runs in the 
-		--	middle of a data push.
-		AND dbo.Part.Data18 != @sap_event_id;
-
-		-- Handle TransType switch to remove duplicate PIP query
-		-- SN81 -> Modify part in work order
-		-- SN82 -> Delete part from work order
-		UPDATE dbo.TransAct SET TransType = 'SN82'
-		WHERE Qty = 0 AND TransType = 'SN81';
+		FROM _parts, _cfg;
 	END;
 
 	-- @qty = 0 means SAP has no demand for that material master, so all demand
@@ -120,6 +129,11 @@ BEGIN
 		AND ItemData18 = @sap_event_id;
 		
 		-- [3] Add/Update demand via SimTrans
+		WITH _cfg AS (
+			SELECT SimTransDistrict
+			FROM dbo.SapInterfaceConfig
+			WHERE SapSystem = @sap_system
+		)
 		INSERT INTO TransAct
 		(
 			TransType,  -- `SN81`
@@ -145,7 +159,7 @@ BEGIN
 		)
 		SELECT
 			'SN81',
-			SimTransDistrict,
+			_cfg.SimTransDistrict,
 			@trans_id,
 
 			@work_order,
@@ -166,8 +180,7 @@ BEGIN
 			@raw_mm,
 			'HighHeatNum',
 			@sap_event_id
-		FROM dbo.SapInterfaceConfig
-		WHERE SapSystem = @sap_system
+		FROM _cfg
 	END;
 END;
 GO
@@ -212,6 +225,24 @@ BEGIN
 		-- (excluding any sheets that are part of active nests). This makes
 		-- sure any sheets in Sigmanest that are not in SAP are removed since
 		-- SAP will not always tell us that those sheets were removed.
+		WITH _sheets AS (
+			SELECT
+				SheetName,
+				Material,
+				Thickness,
+				Width,
+				Length
+			FROM dbo.Stock
+			WHERE dbo.Stock.PrimeCode = @mm
+			-- keeps transactions from being inserted if the SimTrans runs in the 
+			--	middle of a data push.
+			AND dbo.Stock.BinNumber != @sap_event_id
+		),
+		_cfg AS (
+			SELECT SimTransDistrict
+			FROM dbo.SapInterfaceConfig
+			WHERE SapSystem = @sap_system
+		)
 		INSERT INTO dbo.TransAct (
 			TransType,
 			District,
@@ -225,20 +256,15 @@ BEGIN
 		)
 		SELECT
 			'SN91A',
-			SimTransDistrict,
+			_cfg.SimTransDistrict,
 			@trans_id,
-			SheetName,
+			_sheets.SheetName,
 			0,
-			Material,
-			Thickness,
-			Length,
-			Width
-		FROM dbo.Stock, dbo.SapInterfaceConfig
-		WHERE dbo.Stock.PrimeCode = @mm
-		AND dbo.SapInterfaceConfig.SapSystem = @sap_system
-		-- keeps transactions from being inserted if the SimTrans runs in the 
-		--	middle of a data push.
-		AND dbo.Stock.BinNumber != @sap_event_id;
+			_sheets.Material,
+			_sheets.Thickness,
+			_sheets.Length,
+			_sheets.Width
+		FROM _sheets, _cfg
 	END;
 
 	-- @sheet_name is Null and @qty = 0 means SAP has no inventory for that
@@ -255,6 +281,13 @@ BEGIN
 		WHERE ItemName = @sheet_name;
 		
 		-- [3] Add/Update stock via SimTrans
+		WITH _cfg AS (
+			SELECT
+				RemnantDxfTemplate,
+				SimTransDistrict
+			FROM dbo.SapInterfaceConfig
+			WHERE SapSystem = @sap_system
+		)
 		INSERT INTO dbo.TransAct (
 			TransType,	-- `SN91A or SN97`
 			District,
@@ -279,7 +312,7 @@ BEGIN
 				WHEN 'Remnant' THEN 'SN97'
 				ELSE 'SN91A'
 			END,
-			SimTransDistrict,
+			_cfg.SimTransDistrict,
 			@trans_id,
 
 			@sheet_name,
@@ -299,11 +332,11 @@ BEGIN
 
 			-- sheet geometry DXF file (remnants only)
 			CASE @sheet_type
-				WHEN 'Remnant' THEN REPLACE(RemnantDxfTemplate, '<sheet_name>', @sheet_name)
+				WHEN 'Remnant'
+					THEN REPLACE(_cfg.RemnantDxfTemplate, '<sheet_name>', @sheet_name)
 				ELSE NULL
 			END
-		FROM dbo.SapInterfaceConfig
-		WHERE SapSystem = @sap_system
+		FROM _cfg
 	END;
 END;
 GO
@@ -341,6 +374,18 @@ BEGIN
 	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10)
 
 	-- [1] Update program
+	WITH _program AS (
+		SELECT
+			ProgramName,
+			RepeatID
+		FROM dbo.Program
+		WHERE ArchivePacketID = @archive_packet_id
+	),
+	_cfg AS (
+		SELECT SimTransDistrict
+		FROM dbo.SapInterfaceConfig
+		WHERE SapSystem = @sap_system
+	)
 	INSERT INTO TransAct
 	(
 		TransType,		-- `SN76`
@@ -351,12 +396,10 @@ BEGIN
 	)
 	SELECT
 		'SN76',
-		SimTransDistrict,
+		_cfg.SimTransDistrict,
 		@trans_id,
-
-		ProgramName,
-		RepeatId
-	FROM dbo.Program, dbo.SapInterfaceConfig
-	WHERE SapSystem = @sap_system
-	AND ArchivePacketID = @archive_packet_id
+		_program.ProgramName,
+		_program.RepeatId
+	FROM _program, _cfg
 END;
+GO
