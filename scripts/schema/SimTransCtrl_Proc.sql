@@ -66,28 +66,43 @@ BEGIN
 	-- 	call for a given SAP event id (which should be for one material master).
 	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM TransAct)
 	BEGIN
-		-- [1] Preemtively set all sheets to be removed for the given @mm
-		-- This makes sure any sheets in Sigmanest that are not in SAP are removed
-		-- 	since SAP will not always tell us that those sheets were removed.
+		-- [1] Preemtively set all parts to be removed for the given @mm
+		-- This ensures that any demand in Sigmanest that is not in SAP is
+		--	removed since SAP will not always tell us that the demand was removed.
 		INSERT INTO dbo.TransAct (
 			TransType,
 			District,
 			TransID,	-- for logging purposes
 			OrderNo,
 			ItemName,
+			Qty,
 			ItemData18
 		)
 		SELECT
-			'SN82',
+			'SN81',
 			SimTransDistrict,
 			@trans_id,
 			WONumber,
 			PartName,
+			QtyCompleted + (
+				SELECT COALESCE(SUM(QtyInProcess), 0)
+				FROM dbo.PIP
+				WHERE dbo.PIP.PartName = dbo.Part.PartName
+				AND dbo.PIP.WONumber = dbo.Part.WONumber
+			),
 			@sap_event_id
 		FROM dbo.Part, dbo.SapInterfaceConfig
 		WHERE dbo.Part.PartName = @part_name
-		AND dbo.Part.Data18 != @sap_event_id
-		AND dbo.SapInterfaceConfig.SapSystem = @sap_system;
+		AND dbo.SapInterfaceConfig.SapSystem = @sap_system
+		-- keeps transactions from being inserted if the SimTrans runs in the 
+		--	middle of a data push.
+		AND dbo.Part.Data18 != @sap_event_id;
+
+		-- Handle TransType switch to remove duplicate PIP query
+		-- SN81 -> Modify part in work order
+		-- SN82 -> Delete part from work order
+		UPDATE dbo.TransAct SET TransType = 'SN82'
+		WHERE Qty = 0 AND TransType = 'SN81';
 	END;
 
 	-- @qty = 0 means SAP has no demand for that material master, so all demand
@@ -98,6 +113,7 @@ BEGIN
 		-- [2] Delete any staged SimTrans transactions that would
 		-- 	delete this demand before it is added/updated.
 		-- This removes transactions added in [1] that are not necessary.
+		-- This step is optional, but it helps the performance of the SimTrans.
 		DELETE FROM dbo.TransAct
 		WHERE OrderNo = @work_order
 		AND ItemName = @part_name
