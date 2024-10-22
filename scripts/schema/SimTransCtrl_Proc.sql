@@ -21,29 +21,6 @@ CREATE TABLE dbo.SapInterfaceConfig (
 );
 GO
 
--- TODO: move to `integration` schema
--- TODO: change all uses of ValidateSimTransIsConfiguredForSapSystem to use `integration` schema
-CREATE OR ALTER PROCEDURE dbo.ValidateSimTransIsConfiguredForSapSystem
-	@sap_system VARCHAR(3)
-AS
-BEGIN
-	-- Validate that SAP system is configured for SimTrans
-	-- Because we use `INSERT INTO ... SELECT ... FROM SapInterfaceConfig`,
-	--	if an SAP system is not configured, it will silently fail to insert
-	--	SimTrans transactions.
-	IF NOT EXISTS (
-		SELECT 1 FROM dbo.SapInterfaceConfig
-		WHERE SapSystem = @sap_system
-	)
-		RAISERROR(
-			N'SAP system `%s` is not configured for the SimTrans',	-- msg template
-			10,	-- severity
-			1,	-- state
-			@sap_system	-- argument for template formatting
-		);
-END;
-GO
-
 -- ********************************************
 -- *    Interface 1: Demand                   *
 -- ********************************************
@@ -72,8 +49,6 @@ CREATE OR ALTER PROCEDURE dbo.PushSapDemand
 AS
 SET NOCOUNT ON
 BEGIN
-	EXEC dbo.ValidateSimTransIsConfiguredForSapSystem @sap_system;
-	
 	DECLARE @sap_event_id VARCHAR(50)
 	SET @sap_event_id = CAST(@_sap_event_id AS VARCHAR(50))
 
@@ -204,8 +179,6 @@ CREATE OR ALTER PROCEDURE dbo.PushSapInventory
 AS
 SET NOCOUNT ON
 BEGIN
-	EXEC dbo.ValidateSimTransIsConfiguredForSapSystem @sap_system;
-	
 	DECLARE @sap_event_id VARCHAR(50)
 	SET @sap_event_id = CAST(@_sap_event_id AS VARCHAR(50))
 
@@ -330,8 +303,6 @@ BEGIN
 	-- 		transactionshave posted, then this should hold
 	-- TODO: do we need further validation
 
-	EXEC dbo.ValidateSimTransIsConfiguredForSapSystem @sap_system;
-	
 	DECLARE @sap_event_id VARCHAR(50)
 	SET @sap_event_id = CAST(@_sap_event_id AS VARCHAR(50))
 
