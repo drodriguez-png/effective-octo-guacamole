@@ -193,23 +193,36 @@ BEGIN
 	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM TransAct)
 	BEGIN
 		-- [1] Preemtively set all sheets to be removed for the given @mm
-		-- This makes sure any sheets in Sigmanest that are not in SAP are removed
-		-- 	since SAP will not always tell us that those sheets were removed.
+		-- (excluding any sheets that are part of active nests). This makes
+		-- sure any sheets in Sigmanest that are not in SAP are removed since
+		-- SAP will not always tell us that those sheets were removed.
 		INSERT INTO dbo.TransAct (
 			TransType,
 			District,
 			TransID,	-- for logging purposes
-			ItemName
+			ItemName,
+			Qty,
+			Material,	-- required by SimTrans for SN91A
+			Thickness,	-- required by SimTrans for SN91A
+			Length,		-- required by SimTrans for SN91A
+			Width		-- required by SimTrans for SN91A
 		)
 		SELECT
-			'SN96',
+			'SN91A',
 			SimTransDistrict,
 			@trans_id,
-			SheetName
+			SheetName,
+			0,
+			Material,
+			Thickness,
+			Length,
+			Width
 		FROM dbo.Stock, dbo.SapInterfaceConfig
 		WHERE dbo.Stock.PrimeCode = @mm
-		AND dbo.Stock.BinNumber != @sap_event_id
-		AND dbo.SapInterfaceConfig.SapSystem = @sap_system;
+		AND dbo.SapInterfaceConfig.SapSystem = @sap_system
+		-- keeps transactions from being inserted if the SimTrans runs in the 
+		--	middle of a data push.
+		AND dbo.Stock.BinNumber != @sap_event_id;
 	END;
 
 	-- @sheet_name is Null and @qty = 0 means SAP has no inventory for that
@@ -218,12 +231,12 @@ BEGIN
 	-- 	-> handled by [1]
 	IF @qty > 0
 	BEGIN
-		-- [2] Delete any staged SimTrans transactions that would
-		-- 	delete this sheet before it is added/updated.
+		-- [2] Delete any staged SimTrans transactions that would delete/update
+		-- this sheet before it is added/updated.
 		-- This removes transactions added in [1] that are not necessary.
+		-- This step is optional, but it helps the performance of the SimTrans.
 		DELETE FROM dbo.TransAct
-		WHERE PrimeCode = @mm
-		AND BinNumber = @sap_event_id;
+		WHERE ItemName = @sheet_name;
 		
 		-- [3] Add/Update stock via SimTrans
 		INSERT INTO dbo.TransAct (
