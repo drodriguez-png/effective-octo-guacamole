@@ -344,7 +344,77 @@ GO
 -- *    Interface 3: Create/Delete Nest       *
 -- ********************************************
 -- TODO: move to `integration` schema
--- TODO: create view
+-- TODO: where do these live? On each system's database?
+CREATE OR ALTER VIEW dbo.GetProgramFeedback
+AS
+	SELECT
+		AutoID,
+		ArchivePacketID,
+		CASE TransType
+			WHEN 'SN100' THEN 'Created'
+			WHEN 'SN101' THEN 'Deleted'
+			WHEN 'SN102' THEN 'Updated' -- not used
+			ELSE '<unreachable>'
+		END AS Status,
+		ProgramName,
+		MachineName,
+		CuttingTime
+	FROM dbo.STPrgArc
+	WHERE TransType IN ('SN100', 'SN101');
+GO
+CREATE OR ALTER VIEW dbo.GetPartFeedback
+AS
+	SELECT
+		_pip.AutoID,
+		_pip.ArchivePacketID,
+		CASE _pip.TransType
+			WHEN 'SN100' THEN 'Created'
+			WHEN 'SN101' THEN 'Deleted'
+			WHEN 'SN102' THEN 'Updated' -- not used
+			ELSE '<unreachable>'
+		END AS Status,
+		_pip.PartName,
+		_pip.QtyInProcess AS PartQty,
+		_prt.Data1 AS Job,
+		_prt.Data2 AS Shipment,
+		_pip.TrueArea,
+		_pip.NestedArea
+	FROM dbo.STPIPArc AS _pip
+	INNER JOIN dbo.Part AS _prt
+		ON  _pip.PartName = _prt.PartName
+		AND _pip.WONumber = _prt.WONumber
+	WHERE _pip.TransType IN ('SN100', 'SN101');
+GO
+CREATE OR ALTER VIEW dbo.GetProgramSheets
+AS
+	SELECT
+		_prg.ProgramName,
+		_stock.SheetName,
+		_stock.PrimeCode AS MaterialMaster
+	FROM STPrgArc AS _prg
+	INNER JOIN Stock AS _stock
+		ON _prg.SheetName = _stock.SheetName
+GO
+CREATE OR ALTER VIEW dbo.GetProgramRemnants
+AS
+	SELECT
+		_prg.ProgramName,
+		_remnant.RemnantName,
+		_remnant.Area
+	FROM STPrgArc AS _prg
+	INNER JOIN Remnant AS _remnant
+		ON  _prg.ProgramName = _remnant.ProgramName
+		AND _prg.RepeatID    = _remnant.RepeatID
+GO
+CREATE OR ALTER PROCEDURE dbo.DeleteFeedback
+	@archive_packet_id VARCHAR(50)
+AS
+SET NOCOUNT ON
+BEGIN
+	DELETE FROM STPrgArc WHERE ArchivePacketID = @archive_packet_id;
+	DELETE FROM STPIPArc WHERE ArchivePacketID = @archive_packet_id;
+END;
+GO
 
 -- ********************************************
 -- *    Interface 4: Update Program           *
