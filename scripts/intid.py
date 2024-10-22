@@ -20,3 +20,15 @@ print(tabulate(
 	tablefmt="rounded_outline",
 	intfmt=",",
 ))
+
+table = ["Transactions per Day,Years until Overflow".split(",")]
+for trans in (100, 500, 1_000, 5_000, 10_000, 100_000, 500_000, 1_000_000):
+	years = m // (365 * trans)
+	table.append([trans,years])
+
+print(tabulate(
+	table,
+	headers="firstrow",
+	tablefmt="rounded_outline",
+	intfmt=",",
+))
