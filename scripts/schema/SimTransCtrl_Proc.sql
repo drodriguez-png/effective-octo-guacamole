@@ -331,4 +331,3 @@ BEGIN
 	WHERE SapSystem = @sap_system
 	AND ArchivePacketID = @archive_packet_id
 END;
-GO
