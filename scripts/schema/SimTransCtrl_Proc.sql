@@ -13,11 +13,6 @@ CREATE TABLE dbo.SapInterfaceConfig (
 	-- Path format template string to build DXF file
 	-- Must include the substring '<sheet_name>' for sheet_name replacement
 	RemnantDxfTemplate VARCHAR(255)
-
-	-- if columns are added that collide with the the following tables,
-	-- 	table qualifications for columns will have to be added
-	--		- dbo.Stock
-	--		- dbo.Program
 );
 GO
 
