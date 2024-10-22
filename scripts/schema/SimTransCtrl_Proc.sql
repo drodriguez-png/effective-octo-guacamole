@@ -49,8 +49,8 @@ CREATE OR ALTER PROCEDURE dbo.PushSapDemand
 AS
 SET NOCOUNT ON
 BEGIN
-	DECLARE @sap_event_id VARCHAR(50)
-	SET @sap_event_id = CAST(@_sap_event_id AS VARCHAR(50))
+	-- CAST to SimTrans column format
+	DECLARE @sap_event_id VARCHAR(50) = CAST(@_sap_event_id AS VARCHAR(50))
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
@@ -208,8 +208,8 @@ CREATE OR ALTER PROCEDURE dbo.PushSapInventory
 AS
 SET NOCOUNT ON
 BEGIN
-	DECLARE @sap_event_id VARCHAR(50)
-	SET @sap_event_id = CAST(@_sap_event_id AS VARCHAR(50))
+	-- CAST to SimTrans column format
+	DECLARE @sap_event_id VARCHAR(50) = CAST(@_sap_event_id AS VARCHAR(50))
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
@@ -277,8 +277,7 @@ BEGIN
 		-- this sheet before it is added/updated.
 		-- This removes transactions added in [1] that are not necessary.
 		-- This step is optional, but it helps the performance of the SimTrans.
-		DELETE FROM dbo.TransAct
-		WHERE ItemName = @sheet_name;
+		DELETE FROM dbo.TransAct WHERE ItemName = @sheet_name;
 		
 		-- [3] Add/Update stock via SimTrans
 		WITH _cfg AS (
@@ -364,9 +363,9 @@ BEGIN
 	-- 	If program update in Sigmanest is disabled and all Interface 3
 	-- 		transactionshave posted, then this should hold
 	-- TODO: do we need further validation
-
-	DECLARE @sap_event_id VARCHAR(50)
-	SET @sap_event_id = CAST(@_sap_event_id AS VARCHAR(50))
+	
+	-- CAST to SimTrans column format
+	DECLARE @sap_event_id VARCHAR(50) = CAST(@_sap_event_id AS VARCHAR(50))
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
