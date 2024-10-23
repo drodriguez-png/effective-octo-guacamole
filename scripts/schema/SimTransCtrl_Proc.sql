@@ -345,8 +345,6 @@ GO
 -- ********************************************
 -- *    Interface 3: Create/Delete Nest       *
 -- ********************************************
--- TODO: move to `integration` schema
--- TODO: where do these live? On each system's database?
 CREATE OR ALTER VIEW dbo.GetProgramFeedback
 AS
 	SELECT
