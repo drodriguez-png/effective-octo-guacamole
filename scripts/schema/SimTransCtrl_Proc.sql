@@ -38,7 +38,6 @@ CREATE OR ALTER PROCEDURE dbo.PushSapDemand
 	@qty INT,
 	@matl VARCHAR(50),
 
-	-- TODO: validate which of these can truly be NULL
 	@state VARCHAR(50) NULL,
 	@dwg VARCHAR(50) NULL,
 	@codegen VARCHAR(50) NULL,	-- autoprocess instruction
@@ -61,9 +60,9 @@ BEGIN
 	-- 	so truncating it to the 10 least significant digits is OK.
 	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10)
 
-	-- TODO:
-	--	- calculate mark from part name?
-	--	- OR calculate part name from job and mark?
+	-- set @mark by stripping @job from @part_name
+	IF @mark IS NULL
+		SET @mark = REPLACE(@part_name, CONCAT(@job, '-'), '');
 
 	-- Pre-event processing for any group of calls for the same @sap_event_id
 	-- Because of this `IF` statement, this will only do anything on the first
