@@ -390,6 +390,7 @@ AS
 GO
 CREATE OR ALTER VIEW dbo.GetProgramSheets
 AS
+	-- TODO: add ArchivePacketID
 	SELECT
 		_prg.ProgramName,
 		_stock.SheetName,
@@ -400,6 +401,7 @@ AS
 GO
 CREATE OR ALTER VIEW dbo.GetProgramRemnants
 AS
+	-- TODO: add ArchivePacketID
 	SELECT
 		_prg.ProgramName,
 		_remnant.RemnantName,
