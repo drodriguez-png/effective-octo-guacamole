@@ -23,7 +23,7 @@ GO
 CREATE OR ALTER PROCEDURE dbo.PushSapDemand
 	@sap_system VARCHAR(3),
 	@_sap_event_id NUMERIC(20,0),	-- SAP: numeric 20 positions, no decimal
-	
+
 	@work_order VARCHAR(50),
 	@part_name VARCHAR(50),
 	@qty INT,
@@ -122,7 +122,7 @@ BEGIN
 		WHERE OrderNo = @work_order
 		AND ItemName = @part_name
 		AND ItemData18 = @sap_event_id;
-		
+
 		-- [3] Add/Update demand via SimTrans
 		WITH _cfg AS (
 			SELECT SimTransDistrict
@@ -273,7 +273,7 @@ BEGIN
 		-- This removes transactions added in [1] that are not necessary.
 		-- This step is optional, but it helps the performance of the SimTrans.
 		DELETE FROM dbo.TransAct WHERE ItemName = @sheet_name;
-		
+
 		-- [3] Add/Update stock via SimTrans
 		WITH _cfg AS (
 			SELECT
@@ -427,8 +427,7 @@ BEGIN
 	-- 	It is expected that the program with the given ArchivePacketID exists.
 	-- 	If program update in Sigmanest is disabled and all Interface 3
 	-- 		transactionshave posted, then this should hold
-	-- TODO: do we need further validation
-	
+
 	-- CAST to SimTrans column format
 	DECLARE @sap_event_id VARCHAR(50) = CAST(@_sap_event_id AS VARCHAR(50))
 
