@@ -387,9 +387,8 @@ AS
 GO
 CREATE OR ALTER VIEW dbo.GetProgramSheets
 AS
-	-- TODO: add ArchivePacketID
 	SELECT
-		_prg.ProgramName,
+		_prg.ArchivePacketID,
 		_stock.SheetName,
 		_stock.PrimeCode AS MaterialMaster
 	FROM STPrgArc AS _prg
@@ -398,9 +397,8 @@ AS
 GO
 CREATE OR ALTER VIEW dbo.GetProgramRemnants
 AS
-	-- TODO: add ArchivePacketID
 	SELECT
-		_prg.ProgramName,
+		_prg.ArchivePacketID,
 		_remnant.RemnantName,
 		_remnant.Area
 	FROM STPrgArc AS _prg
