@@ -1,8 +1,18 @@
 -- Purpose: Create stored procedures for interfacing SAP with Sigmanest
 USE SNDBaseISap;
 
--- TODO: move to `integration` schema
--- TODO: change all uses of SapInterfaceConfig to use `integration` schema
+-- TODO: each district could point to a different SQL server for queries
+-- TODO: move the following to `integration` schema
+-- 	- dbo.SapInterfaceConfig
+-- 	- dbo.PushSapDemand
+-- 	- dbo.PushSapInventory
+-- 	- dbo.GetProgramFeedback
+-- 	- dbo.GetPartFeedback
+-- 	- dbo.GetProgramSheets
+-- 	- dbo.GetProgramRemnants
+-- 	- dbo.DeleteFeedback
+-- 	- dbo.UpdateProgram
+
 CREATE TABLE dbo.SapInterfaceConfig (
 	-- Name of SAP system (PRD, QAS, etc.)
 	SapSystem VARCHAR(3) PRIMARY KEY,
@@ -19,7 +29,6 @@ GO
 -- ********************************************
 -- *    Interface 1: Demand                   *
 -- ********************************************
--- TODO: move to `integration` schema
 CREATE OR ALTER PROCEDURE dbo.PushSapDemand
 	@sap_system VARCHAR(3),
 	@_sap_event_id NUMERIC(20,0),	-- SAP: numeric 20 positions, no decimal
@@ -183,7 +192,6 @@ GO
 -- ********************************************
 -- *    Interface 2: Inventory                *
 -- ********************************************
--- TODO: move to `integration` schema
 CREATE OR ALTER PROCEDURE dbo.PushSapInventory
 	@sap_system VARCHAR(3),
 	@_sap_event_id NUMERIC(20,0),	-- SAP: numeric 20 positions, no decimal
@@ -414,7 +422,7 @@ GO
 -- ********************************************
 -- *    Interface 4: Update Program           *
 -- ********************************************
--- TODO: move to `integration` schema
+CREATE OR ALTER PROCEDURE dbo.UpdateProgram
 CREATE OR ALTER PROCEDURE dbo.PushSapInventory
 	@sap_system VARCHAR(3),
 	@_sap_event_id NUMERIC(20,0),	-- SAP: numeric 20 positions, no decimal
