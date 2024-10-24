@@ -137,8 +137,7 @@ BEGIN
 			FROM dbo.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		)
-		INSERT INTO TransAct
-		(
+		INSERT INTO TransAct (
 			TransType,  -- `SN81`
 			District,
 			TransID,	-- for logging purposes
@@ -453,8 +452,7 @@ BEGIN
 		FROM dbo.SapInterfaceConfig
 		WHERE SapSystem = @sap_system
 	)
-	INSERT INTO TransAct
-	(
+	INSERT INTO TransAct (
 		TransType,		-- `SN76`
 		District,
 		TransID,		-- for logging purposes
