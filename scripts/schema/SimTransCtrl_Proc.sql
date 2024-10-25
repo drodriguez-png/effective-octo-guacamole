@@ -400,13 +400,19 @@ AS
 		AND _prg.RepeatID    = _remnant.RepeatID
 	WHERE _prg.TransType = 'SN100'	-- program post
 GO
-CREATE OR ALTER PROCEDURE dbo.DeleteFeedback
-	-- TODO: should this be deleting feedback using AutoID instead?
+CREATE OR ALTER PROCEDURE dbo.DeleteProgramFeedback
 	@feedback_id INT
 AS
 SET NOCOUNT ON
 BEGIN
 	DELETE FROM STPrgArc WHERE AutoID = @feedback_id;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.DeletePartInProgressFeedback
+	@feedback_id INT
+AS
+SET NOCOUNT ON
+BEGIN
 	DELETE FROM STPIPArc WHERE AutoID = @feedback_id;
 END;
 GO
