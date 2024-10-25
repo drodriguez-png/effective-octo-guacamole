@@ -398,14 +398,16 @@ AS
 	INNER JOIN Remnant AS _remnant
 		ON  _prg.ProgramName = _remnant.ProgramName
 		AND _prg.RepeatID    = _remnant.RepeatID
+	WHERE _prg.TransType = 'SN100'	-- program post
 GO
 CREATE OR ALTER PROCEDURE dbo.DeleteFeedback
-	@archive_packet_id VARCHAR(50)
+	-- TODO: should this be deleting feedback using AutoID instead?
+	@feedback_id INT
 AS
 SET NOCOUNT ON
 BEGIN
-	DELETE FROM STPrgArc WHERE ArchivePacketID = @archive_packet_id;
-	DELETE FROM STPIPArc WHERE ArchivePacketID = @archive_packet_id;
+	DELETE FROM STPrgArc WHERE AutoID = @feedback_id;
+	DELETE FROM STPIPArc WHERE AutoID = @feedback_id;
 END;
 GO
 
