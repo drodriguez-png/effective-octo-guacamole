@@ -31,7 +31,7 @@ GO
 -- ********************************************
 CREATE OR ALTER PROCEDURE dbo.PushSapDemand
 	@sap_system VARCHAR(3),
-	@_sap_event_id NUMERIC(20,0),	-- SAP: numeric 20 positions, no decimal
+	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	@work_order VARCHAR(50),
 	@part_name VARCHAR(50),
@@ -52,9 +52,6 @@ CREATE OR ALTER PROCEDURE dbo.PushSapDemand
 AS
 SET NOCOUNT ON
 BEGIN
-	-- CAST to SimTrans column format
-	DECLARE @sap_event_id VARCHAR(50) = CAST(@_sap_event_id AS VARCHAR(50))
-
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
 	-- 	so truncating it to the 10 least significant digits is OK.
@@ -192,7 +189,7 @@ GO
 -- ********************************************
 CREATE OR ALTER PROCEDURE dbo.PushSapInventory
 	@sap_system VARCHAR(3),
-	@_sap_event_id NUMERIC(20,0),	-- SAP: numeric 20 positions, no decimal
+	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	@sheet_name VARCHAR(50),
 	@sheet_type VARCHAR(64),
@@ -209,9 +206,6 @@ CREATE OR ALTER PROCEDURE dbo.PushSapInventory
 AS
 SET NOCOUNT ON
 BEGIN
-	-- CAST to SimTrans column format
-	DECLARE @sap_event_id VARCHAR(50) = CAST(@_sap_event_id AS VARCHAR(50))
-
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
 	-- 	so truncating it to the 10 least significant digits is OK.
@@ -420,7 +414,7 @@ GO
 -- ********************************************
 CREATE OR ALTER PROCEDURE dbo.UpdateProgram
 	@sap_system VARCHAR(3),
-	@_sap_event_id NUMERIC(20,0),	-- SAP: numeric 20 positions, no decimal
+	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	@archive_packet_id VARCHAR(50)
 AS
@@ -430,9 +424,6 @@ BEGIN
 	-- 	It is expected that the program with the given ArchivePacketID exists.
 	-- 	If program update in Sigmanest is disabled and all Interface 3
 	-- 		transactionshave posted, then this should hold
-
-	-- CAST to SimTrans column format
-	DECLARE @sap_event_id VARCHAR(50) = CAST(@_sap_event_id AS VARCHAR(50))
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
