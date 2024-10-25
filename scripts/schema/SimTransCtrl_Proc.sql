@@ -416,7 +416,7 @@ CREATE OR ALTER PROCEDURE dbo.UpdateProgram
 	@sap_system VARCHAR(3),
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
-	@archive_packet_id VARCHAR(50)
+	@archive_packet_id INT
 AS
 SET NOCOUNT ON
 BEGIN
