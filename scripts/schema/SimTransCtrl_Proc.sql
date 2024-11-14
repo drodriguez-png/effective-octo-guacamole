@@ -390,26 +390,19 @@ AS
 		CASE TransType
 			WHEN 'SN100' THEN 'Created'
 			WHEN 'SN101' THEN 'Deleted'
-			WHEN 'SN102' THEN 'Updated' -- not used
-			ELSE '<unreachable>'
 		END AS Status,
 		ProgramName,
 		MachineName,
 		CuttingTime
 	FROM dbo.STPrgArc
-	WHERE TransType IN ('SN100', 'SN101');
+	WHERE TransType IN ('SN100', 'SN101');	-- program post, delete
+END;
 GO
 CREATE OR ALTER VIEW dbo.GetPartFeedback
 AS
 	SELECT
 		_pip.AutoID,
 		_pip.ArchivePacketID,
-		CASE _pip.TransType
-			WHEN 'SN100' THEN 'Created'
-			WHEN 'SN101' THEN 'Deleted'
-			WHEN 'SN102' THEN 'Updated' -- not used
-			ELSE '<unreachable>'
-		END AS Status,
 		_pip.PartName,
 		_pip.QtyInProcess AS PartQty,
 		_prt.Data1 AS Job,
@@ -420,7 +413,7 @@ AS
 	INNER JOIN dbo.Part AS _prt
 		ON  _pip.PartName = _prt.PartName
 		AND _pip.WONumber = _prt.WONumber
-	WHERE _pip.TransType IN ('SN100', 'SN101');
+	WHERE _pip.TransType = 'SN100'	-- program post
 GO
 CREATE OR ALTER VIEW dbo.GetProgramSheets
 AS
