@@ -444,12 +444,13 @@ AS
 		AND _prg.RepeatID    = _remnant.RepeatID
 	WHERE _prg.TransType = 'SN100'	-- program post
 GO
+
 CREATE OR ALTER PROCEDURE dbo.DeleteProgramFeedback
 	@feedback_id INT
-AS
+AS	
 SET NOCOUNT ON
 BEGIN
-	DELETE FROM STPrgArc WHERE AutoID = @feedback_id;
+	DELETE FROM dbo.STPrgArc WHERE AutoID = @feedback_id;
 END;
 GO
 CREATE OR ALTER PROCEDURE dbo.DeletePartInProgressFeedback
@@ -457,7 +458,7 @@ CREATE OR ALTER PROCEDURE dbo.DeletePartInProgressFeedback
 AS
 SET NOCOUNT ON
 BEGIN
-	DELETE FROM STPIPArc WHERE AutoID = @feedback_id;
+	DELETE FROM dbo.STPIPArc WHERE AutoID = @feedback_id;
 END;
 GO
 
