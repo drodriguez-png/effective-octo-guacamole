@@ -3,14 +3,18 @@ USE SNDBaseISap;
 
 -- TODO: each district could point to a different SQL server for queries
 -- TODO: move the following to `integration` schema
--- 	- dbo.SapInterfaceConfig
+-- 	- dbo.Slab
+-- 	- dbo.SlabSheetAllocation
+-- 	- dbo.SlabPartAllocation
 -- 	- dbo.PushSapDemand
 -- 	- dbo.PushSapInventory
+--	- dbo.DeleteUnusedFeedback
 -- 	- dbo.GetProgramFeedback
 -- 	- dbo.GetPartFeedback
 -- 	- dbo.GetProgramSheets
 -- 	- dbo.GetProgramRemnants
--- 	- dbo.DeleteFeedback
+-- 	- dbo.DeleteProgramFeedback
+-- 	- dbo.DeletePartFeedback
 -- 	- dbo.UpdateProgram
 
 CREATE TABLE dbo.SapInterfaceConfig (
@@ -23,6 +27,46 @@ CREATE TABLE dbo.SapInterfaceConfig (
 	-- Path format template string to build DXF file
 	-- Must include the substring '<sheet_name>' for sheet_name replacement
 	RemnantDxfTemplate VARCHAR(255)
+);
+INSERT INTO dbo.SapInterfaceConfig
+VALUES
+	('QAS', 1, '\\hssieng\SNDataDev\RemSaveOutput\DXF'),
+	('PRD', 2, '\\hssieng\SNDataPrd\RemSaveOutput\DXF'),
+	('DEV', 3, '\\hssieng\SNDataSbx\RemSaveOutput\DXF');
+GO
+CREATE TABLE Slab(
+	SlabId INT PRIMARY KEY	
+);
+GO
+CREATE TABLE SlabParts(
+	Id INT PRIMARY KEY,
+	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
+	PartName VARCHAR(100),
+	Qty INT
+);
+GO
+CREATE TABLE SlabSheetAllocation (
+	Id INT PRIMARY KEY,
+	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
+	SheetIndex INT NOT NULL,
+	SheetName VARCHAR(50),
+	XPosition FLOAT,
+	YPosition FLOAT,
+	Rotation FLOAT,
+
+	-- TODO: other sheet fields
+	Width FLOAT,
+	Length FLOAT
+);
+GO
+CREATE TABLE SlabPartAllocation (
+	Id INT PRIMARY KEY,
+	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
+	SlabPartId INT FOREIGN KEY REFERENCES SlabParts(Id),
+	PartName VARCHAR(100),
+	WoNumber VARCHAR(50),
+	Qty INT
+	-- TODO: other part fields
 );
 GO
 
