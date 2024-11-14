@@ -158,6 +158,12 @@ BEGIN
 		FROM _parts, _cfg;
 	END;
 
+	-- reduce @qty for any parts allocated for slabs
+	SELECT @qty = @qty - SUM(Qty)
+	FROM dbo.SlabPartAllocation
+	WHERE PartName = @part_name
+	AND WoNumber = @work_order;
+
 	-- @qty = 0 means SAP has no demand for that material master, so all demand
 	-- 	with the same @part_name needs to be removed from Sigmanest.
 	-- 	-> handled by [1]
@@ -306,6 +312,11 @@ BEGIN
 		FROM _sheets, _cfg
 	END;
 
+	-- reduce @qty for any sheets allocated for slabs
+	SELECT @qty = @qty - COUNT(SheetName)
+	FROM SlabSheetAllocation
+	WHERE SheetName = @sheet_name;
+
 	-- @sheet_name is Null and @qty = 0 means SAP has no inventory for that
 	-- 	material master, so all inventory with the same @mm needs to be removed
 	-- 	from Sigmanest.
@@ -415,6 +426,7 @@ END;
 GO
 CREATE OR ALTER PROCEDURE dbo.GetPartFeedback
 AS
+	-- TODO: handle slabs
 	SELECT
 		_pip.AutoID,
 		_pip.ArchivePacketID,
@@ -434,6 +446,7 @@ AS
 GO
 CREATE OR ALTER PROCEDURE dbo.GetProgramSheets
 AS
+	-- TODO: handle slabs
 	SELECT
 		_prg.ArchivePacketID,
 		_stock.SheetName,
@@ -449,6 +462,7 @@ AS
 GO
 CREATE OR ALTER PROCEDURE dbo.GetProgramRemnants
 AS
+	-- TODO: handle slabs
 	SELECT
 		_prg.ArchivePacketID,
 		_remnant.RemnantName,
@@ -497,6 +511,10 @@ BEGIN
 	-- The use of this as TransID is purely for diagnostic reasons,
 	-- 	so truncating it to the 10 least significant digits is OK.
 	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10)
+
+	-- TODO: handle slabs
+	--	- remove allocations
+	--	- update or delete slab programs?
 
 	-- [1] Update program
 	WITH _program AS (
