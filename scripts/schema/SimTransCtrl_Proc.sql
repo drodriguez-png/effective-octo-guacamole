@@ -130,7 +130,7 @@ BEGIN
 			AND Data18 != @sap_event_id
 		),
 		_cfg AS (
-			SELECT SimTransDistrict
+			SELECT TOP 1 SimTransDistrict
 			FROM dbo.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		)
@@ -174,7 +174,7 @@ BEGIN
 
 		-- [3] Add/Update demand via SimTrans
 		WITH _cfg AS (
-			SELECT SimTransDistrict
+			SELECT TOP 1 SimTransDistrict
 			FROM dbo.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		)
@@ -278,7 +278,7 @@ BEGIN
 			AND dbo.Stock.BinNumber != @sap_event_id
 		),
 		_cfg AS (
-			SELECT SimTransDistrict
+			SELECT TOP 1 SimTransDistrict
 			FROM dbo.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		)
@@ -320,7 +320,7 @@ BEGIN
 
 		-- [3] Add/Update stock via SimTrans
 		WITH _cfg AS (
-			SELECT
+			SELECT TOP 1
 				RemnantDxfTemplate,
 				SimTransDistrict
 			FROM dbo.SapInterfaceConfig
@@ -491,7 +491,7 @@ BEGIN
 		WHERE ArchivePacketID = @archive_packet_id
 	),
 	_cfg AS (
-		SELECT SimTransDistrict
+		SELECT TOP 1 SimTransDistrict
 		FROM dbo.SapInterfaceConfig
 		WHERE SapSystem = @sap_system
 	)
