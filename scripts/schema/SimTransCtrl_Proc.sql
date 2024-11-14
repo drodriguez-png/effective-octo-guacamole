@@ -382,8 +382,23 @@ GO
 -- ********************************************
 -- *    Interface 3: Create/Delete Nest       *
 -- ********************************************
-CREATE OR ALTER VIEW dbo.GetProgramFeedback
+CREATE OR ALTER PROCEDURE dbo.DeleteUnusedFeedback
 AS
+SET NOCOUNT ON
+BEGIN
+	DELETE FROM dbo.STPrgArc WHERE TransType NOT IN ('SN100', 'SN101');
+	DELETE FROM dbo.STPIPArc WHERE TransType NOT IN ('SN100');
+	
+	DELETE FROM dbo.STPrtArc;
+	DELETE FROM dbo.STRemArc;
+	DELETE FROM dbo.STShtArc;
+	DELETE FROM dbo.STWOArc;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.GetProgramFeedback
+AS
+BEGIN
+	EXEC dbo.DeleteUnusedFeedback;
 	SELECT
 		AutoID,
 		ArchivePacketID,
@@ -398,11 +413,12 @@ AS
 	WHERE TransType IN ('SN100', 'SN101');	-- program post, delete
 END;
 GO
-CREATE OR ALTER VIEW dbo.GetPartFeedback
+CREATE OR ALTER PROCEDURE dbo.GetPartFeedback
 AS
 	SELECT
 		_pip.AutoID,
 		_pip.ArchivePacketID,
+		_pip.SheetName,
 		_pip.PartName,
 		_pip.QtyInProcess AS PartQty,
 		_prt.Data1 AS Job,
@@ -414,18 +430,24 @@ AS
 		ON  _pip.PartName = _prt.PartName
 		AND _pip.WONumber = _prt.WONumber
 	WHERE _pip.TransType = 'SN100'	-- program post
+	AND _pip.QtyInProcess > 0	-- qty = 0 for parts not on a sheet for slabs
 GO
-CREATE OR ALTER VIEW dbo.GetProgramSheets
+CREATE OR ALTER PROCEDURE dbo.GetProgramSheets
 AS
 	SELECT
 		_prg.ArchivePacketID,
 		_stock.SheetName,
 		_stock.PrimeCode AS MaterialMaster
 	FROM STPrgArc AS _prg
+	INNER JOIN SIP
+		ON _prg.ProgramName = SIP.ProgramName
+		AND _prg.RepeatID = SIP.RepeatID
 	INNER JOIN Stock AS _stock
-		ON _prg.SheetName = _stock.SheetName
+		-- cannot match on SheetName because when sheets are combined, they will differ
+		ON SIP.SheetName = _stock.SheetName
+	WHERE _prg.TransType = 'SN100'	-- program post
 GO
-CREATE OR ALTER VIEW dbo.GetProgramRemnants
+CREATE OR ALTER PROCEDURE dbo.GetProgramRemnants
 AS
 	SELECT
 		_prg.ArchivePacketID,
