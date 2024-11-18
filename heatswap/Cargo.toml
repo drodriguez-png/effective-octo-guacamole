@@ -1,0 +1,8 @@
+[package]
+name = "heatswap"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gumdrop = "0.8.1"
+thiserror = "2.0.3"
