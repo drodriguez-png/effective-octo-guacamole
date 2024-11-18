@@ -34,11 +34,12 @@ VALUES
 	('PRD', 2, '\\hssieng\SNDataPrd\RemSaveOutput\DXF'),
 	('DEV', 3, '\\hssieng\SNDataSbx\RemSaveOutput\DXF');
 GO
-CREATE TABLE Slab(
-	SlabId INT PRIMARY KEY	
+CREATE TABLE Slab (
+	SlabId INT PRIMARY KEY,
+	ArchivePacketID INT
 );
 GO
-CREATE TABLE SlabParts(
+CREATE TABLE SlabParts (
 	Id INT PRIMARY KEY,
 	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
 	PartName VARCHAR(100),
