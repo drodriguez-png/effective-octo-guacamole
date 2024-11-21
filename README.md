@@ -1,13 +1,7 @@
 # Sap-Sigmanest Interface
 
-## backend server
-```
-cd server
-cargo run
-```
-
-## frontend server
-```
-cd client
-pnpm run dev
-```
+## Components
+- heatswap: placeholder CLI for heatswap program
+- schema:
+	- `SimTransCtrl_Proc.sql`: stored procedures for SimTrans interface
+	- `GetFeedback.sql`: feedback tables query for testing
