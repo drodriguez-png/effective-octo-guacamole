@@ -36,16 +36,30 @@ VALUES
 GO
 CREATE TABLE Slab (
 	SlabId INT PRIMARY KEY,
-	ArchivePacketID INT
+	ArchivePacketID INT,
+	Archived BIT
 );
-GO
+CREATE TABLE SlabNests (
+	NestId INT PRIMARY KEY,
+	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
+	ProgramName VARCHAR(50),
+	RepeatId INT
+);
 CREATE TABLE SlabParts (
 	Id INT PRIMARY KEY,
 	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
 	PartName VARCHAR(100),
 	Qty INT
 );
-GO
+CREATE TABLE SlabPartAllocation (
+	Id INT PRIMARY KEY,
+	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
+	SlabPartId INT FOREIGN KEY REFERENCES SlabParts(Id),
+	SlabPartIndex INT NOT NULL,
+	PartName VARCHAR(100),
+	WoNumber VARCHAR(50),
+	Qty INT
+);
 CREATE TABLE SlabSheetAllocation (
 	Id INT PRIMARY KEY,
 	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
@@ -53,21 +67,12 @@ CREATE TABLE SlabSheetAllocation (
 	SheetName VARCHAR(50),
 	XPosition FLOAT,
 	YPosition FLOAT,
-	Rotation FLOAT,
-
-	-- TODO: other sheet fields
-	Width FLOAT,
-	Length FLOAT
+	Rotation FLOAT
 );
-GO
-CREATE TABLE SlabPartAllocation (
+CREATE TABLE SplitSheetAllocation (
 	Id INT PRIMARY KEY,
-	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
-	SlabPartId INT FOREIGN KEY REFERENCES SlabParts(Id),
-	PartName VARCHAR(100),
-	WoNumber VARCHAR(50),
-	Qty INT
-	-- TODO: other part fields
+	SheetName VARCHAR(50),
+	Qty INT,
 );
 GO
 
@@ -159,11 +164,12 @@ BEGIN
 		FROM _parts, _cfg;
 	END;
 
+	-- TODO: move slab parts to '_slab' work order?
 	-- reduce @qty for any parts allocated for slabs
-	SELECT @qty = @qty - SUM(Qty)
-	FROM dbo.SlabPartAllocation
-	WHERE PartName = @part_name
-	AND WoNumber = @work_order;
+	--SELECT @qty = @qty - SUM(Qty)
+	--FROM dbo.SlabPartAllocation
+	--WHERE PartName = @part_name
+	--AND WoNumber = @work_order;
 
 	-- @qty = 0 means SAP has no demand for that material master, so all demand
 	-- 	with the same @part_name needs to be removed from Sigmanest.
@@ -313,9 +319,16 @@ BEGIN
 		FROM _sheets, _cfg
 	END;
 
-	-- reduce @qty for any sheets allocated for slabs
-	SELECT @qty = @qty - COUNT(SheetName)
-	FROM SlabSheetAllocation
+	-- Handle split sheets
+	DECLARE @id INT = 0;
+	DECLARE @split_name VARCHAR(50);
+	DECLARE @split_qty INT;
+	DECLARE @split_wid FLOAT;
+	DECLARE @split_len FLOAT;
+
+	-- reduce @qty for any sheets allocated for split sheets
+	SELECT @qty = @qty - SUM(Qty)
+	FROM SplitSheetAllocation
 	WHERE SheetName = @sheet_name;
 
 	-- @sheet_name is Null and @qty = 0 means SAP has no inventory for that
@@ -513,9 +526,8 @@ BEGIN
 	-- 	so truncating it to the 10 least significant digits is OK.
 	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10)
 
-	-- TODO: handle slabs
-	--	- remove allocations
-	--	- update or delete slab programs?
+	-- archive slab (if applicable)
+	UPDATE Slab SET Archived=1 WHERE ArchivePacketID = @archive_packet_id;
 
 	-- [1] Update program
 	WITH _program AS (
@@ -524,6 +536,18 @@ BEGIN
 			RepeatID
 		FROM dbo.Program
 		WHERE ArchivePacketID = @archive_packet_id
+
+		UNION
+
+		-- children programs, if a slab
+		SELECT
+			ProgramName,
+			RepeatID
+		FROM dbo.SlabNests
+		WHERE SlabId = (
+			SELECT SlabId FROM Slab
+			WHERE ArchivePacketID = @archive_packet_id
+		)
 	),
 	_cfg AS (
 		SELECT SimTransDistrict
@@ -543,6 +567,6 @@ BEGIN
 		@trans_id,
 		_program.ProgramName,
 		_program.RepeatId
-	FROM _program, _cfg
+	FROM _program, _cfg;
 END;
 GO
