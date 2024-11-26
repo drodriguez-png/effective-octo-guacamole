@@ -105,7 +105,7 @@ BEGIN
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
 	-- 	so truncating it to the 10 least significant digits is OK.
-	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10)
+	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
 
 	-- set @mark by stripping @job from @part_name
 	IF @mark IS NULL
@@ -266,7 +266,7 @@ BEGIN
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
 	-- 	so truncating it to the 10 least significant digits is OK.
-	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10)
+	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
 
 	-- Pre-event processing for any group of calls for the same @sap_event_id
 	-- Because of this `IF` statement, this will only do anything on the first
@@ -524,7 +524,7 @@ BEGIN
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
 	-- 	so truncating it to the 10 least significant digits is OK.
-	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10)
+	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
 
 	-- archive slab (if applicable)
 	UPDATE Slab SET Archived=1 WHERE ArchivePacketID = @archive_packet_id;
