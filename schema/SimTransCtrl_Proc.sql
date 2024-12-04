@@ -268,13 +268,6 @@ BEGIN
 		FROM _sheets, _cfg
 	END;
 
-	-- Handle split sheets
-	DECLARE @id INT = 0;
-	DECLARE @split_name VARCHAR(50);
-	DECLARE @split_qty INT;
-	DECLARE @split_wid FLOAT;
-	DECLARE @split_len FLOAT;
-
 	-- @sheet_name is Null and @qty = 0 means SAP has no inventory for that
 	-- 	material master, so all inventory with the same @mm needs to be removed
 	-- 	from Sigmanest.
