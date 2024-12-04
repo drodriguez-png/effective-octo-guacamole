@@ -3,9 +3,6 @@ USE SNDBaseISap;
 
 -- TODO: each district could point to a different SQL server for queries
 -- TODO: move the following to `integration` schema
--- 	- dbo.Slab
--- 	- dbo.SlabSheetAllocation
--- 	- dbo.SlabPartAllocation
 -- 	- dbo.PushSapDemand
 -- 	- dbo.PushSapInventory
 --	- dbo.DeleteUnusedFeedback
@@ -33,47 +30,6 @@ VALUES
 	('QAS', 1, '\\hssieng\SNDataDev\RemSaveOutput\DXF'),
 	('PRD', 2, '\\hssieng\SNDataPrd\RemSaveOutput\DXF'),
 	('DEV', 3, '\\hssieng\SNDataSbx\RemSaveOutput\DXF');
-GO
-CREATE TABLE Slab (
-	SlabId INT PRIMARY KEY,
-	ArchivePacketID INT,
-	Archived BIT
-);
-CREATE TABLE SlabNests (
-	NestId INT PRIMARY KEY,
-	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
-	ProgramName VARCHAR(50),
-	RepeatId INT
-);
-CREATE TABLE SlabParts (
-	Id INT PRIMARY KEY,
-	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
-	PartName VARCHAR(100),
-	Qty INT
-);
-CREATE TABLE SlabPartAllocation (
-	Id INT PRIMARY KEY,
-	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
-	SlabPartId INT FOREIGN KEY REFERENCES SlabParts(Id),
-	SlabPartIndex INT NOT NULL,
-	PartName VARCHAR(100),
-	WoNumber VARCHAR(50),
-	Qty INT
-);
-CREATE TABLE SlabSheetAllocation (
-	Id INT PRIMARY KEY,
-	SlabId INT FOREIGN KEY REFERENCES Slab(SlabId),
-	SheetIndex INT NOT NULL,
-	SheetName VARCHAR(50),
-	XPosition FLOAT,
-	YPosition FLOAT,
-	Rotation FLOAT
-);
-CREATE TABLE SplitSheetAllocation (
-	Id INT PRIMARY KEY,
-	SheetName VARCHAR(50),
-	Qty INT,
-);
 GO
 
 -- ********************************************
@@ -163,13 +119,6 @@ BEGIN
 			@sap_event_id
 		FROM _parts, _cfg;
 	END;
-
-	-- TODO: move slab parts to '_slab' work order?
-	-- reduce @qty for any parts allocated for slabs
-	--SELECT @qty = @qty - SUM(Qty)
-	--FROM dbo.SlabPartAllocation
-	--WHERE PartName = @part_name
-	--AND WoNumber = @work_order;
 
 	-- @qty = 0 means SAP has no demand for that material master, so all demand
 	-- 	with the same @part_name needs to be removed from Sigmanest.
@@ -326,11 +275,6 @@ BEGIN
 	DECLARE @split_wid FLOAT;
 	DECLARE @split_len FLOAT;
 
-	-- reduce @qty for any sheets allocated for split sheets
-	SELECT @qty = @qty - SUM(Qty)
-	FROM SplitSheetAllocation
-	WHERE SheetName = @sheet_name;
-
 	-- @sheet_name is Null and @qty = 0 means SAP has no inventory for that
 	-- 	material master, so all inventory with the same @mm needs to be removed
 	-- 	from Sigmanest.
@@ -413,7 +357,7 @@ SET NOCOUNT ON
 BEGIN
 	DELETE FROM dbo.STPrgArc WHERE TransType NOT IN ('SN100', 'SN101');
 	DELETE FROM dbo.STPIPArc WHERE TransType NOT IN ('SN100');
-	
+
 	DELETE FROM dbo.STPrtArc;
 	DELETE FROM dbo.STRemArc;
 	DELETE FROM dbo.STShtArc;
@@ -440,7 +384,6 @@ END;
 GO
 CREATE OR ALTER PROCEDURE dbo.GetPartFeedback
 AS
-	-- TODO: handle slabs
 	SELECT
 		_pip.AutoID,
 		_pip.ArchivePacketID,
@@ -456,11 +399,9 @@ AS
 		ON  _pip.PartName = _prt.PartName
 		AND _pip.WONumber = _prt.WONumber
 	WHERE _pip.TransType = 'SN100'	-- program post
-	AND _pip.QtyInProcess > 0	-- qty = 0 for parts not on a sheet for slabs
 GO
 CREATE OR ALTER PROCEDURE dbo.GetProgramSheets
 AS
-	-- TODO: handle slabs
 	SELECT
 		_prg.ArchivePacketID,
 		_stock.SheetName,
@@ -476,7 +417,6 @@ AS
 GO
 CREATE OR ALTER PROCEDURE dbo.GetProgramRemnants
 AS
-	-- TODO: handle slabs
 	SELECT
 		_prg.ArchivePacketID,
 		_remnant.RemnantName,
@@ -526,9 +466,6 @@ BEGIN
 	-- 	so truncating it to the 10 least significant digits is OK.
 	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
 
-	-- archive slab (if applicable)
-	UPDATE Slab SET Archived=1 WHERE ArchivePacketID = @archive_packet_id;
-
 	-- [1] Update program
 	WITH _program AS (
 		SELECT
@@ -536,18 +473,6 @@ BEGIN
 			RepeatID
 		FROM dbo.Program
 		WHERE ArchivePacketID = @archive_packet_id
-
-		UNION
-
-		-- children programs, if a slab
-		SELECT
-			ProgramName,
-			RepeatID
-		FROM dbo.SlabNests
-		WHERE SlabId = (
-			SELECT SlabId FROM Slab
-			WHERE ArchivePacketID = @archive_packet_id
-		)
 	),
 	_cfg AS (
 		SELECT SimTransDistrict
