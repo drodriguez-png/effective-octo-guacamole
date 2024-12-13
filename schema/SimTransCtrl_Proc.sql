@@ -5,13 +5,8 @@ USE SNDBaseISap;
 -- TODO: move the following to `integration` schema
 -- 	- dbo.PushSapDemand
 -- 	- dbo.PushSapInventory
---	- dbo.DeleteUnusedFeedback
--- 	- dbo.GetProgramFeedback
--- 	- dbo.GetPartFeedback
--- 	- dbo.GetProgramSheets
--- 	- dbo.GetProgramRemnants
--- 	- dbo.DeleteProgramFeedback
--- 	- dbo.DeletePartFeedback
+-- 	- dbo.GetFeedback
+-- 	- dbo.DeleteFeedback
 -- 	- dbo.UpdateProgram
 
 CREATE TABLE dbo.SapInterfaceConfig (
@@ -344,97 +339,95 @@ GO
 -- ********************************************
 -- *    Interface 3: Create/Delete Nest       *
 -- ********************************************
-CREATE OR ALTER PROCEDURE dbo.DeleteUnusedFeedback
+CREATE OR ALTER PROCEDURE GetFeedback
 AS
-SET NOCOUNT ON
 BEGIN
-	DELETE FROM dbo.STPrgArc WHERE TransType NOT IN ('SN100', 'SN101');
-	DELETE FROM dbo.STPIPArc WHERE TransType NOT IN ('SN100');
+	DECLARE @created VARCHAR(50) = 'SN100';
+	DECLARE @deleted VARCHAR(50) = 'SN101';
 
+	-- remove reposts (SN100 and SN101 exist for the same ArchivePacketID)
+	DELETE FROM STPrgArc
+	WHERE ArchivePacketID IN (
+		SELECT ArchivePacketID FROM STPrgArc WHERE TransType = @created
+		INTERSECT
+		SELECT ArchivePacketID FROM STPrgArc WHERE TransType = @deleted
+	);
+
+	-- clear unused feedback
+	DELETE FROM dbo.STPrgArc
+		WHERE TransType NOT IN (@deleted, @created);	-- discard updates
+	DELETE FROM dbo.STPIPArc;
 	DELETE FROM dbo.STPrtArc;
 	DELETE FROM dbo.STRemArc;
 	DELETE FROM dbo.STShtArc;
 	DELETE FROM dbo.STWOArc;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.GetProgramFeedback
-AS
-BEGIN
-	EXEC dbo.DeleteUnusedFeedback;
+
+	-- programs
 	SELECT
-		AutoID,
+		AutoID AS FeedbackId,
 		ArchivePacketID,
 		CASE TransType
-			WHEN 'SN100' THEN 'Created'
-			WHEN 'SN101' THEN 'Deleted'
+			WHEN @created THEN 'Created'
+			WHEN @deleted THEN 'Deleted'
 		END AS Status,
 		ProgramName,
 		MachineName,
 		CuttingTime
 	FROM dbo.STPrgArc
-	WHERE TransType IN ('SN100', 'SN101');	-- program post, delete
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.GetPartFeedback
-AS
+
+	-- parts
 	SELECT
-		_pip.AutoID,
-		_pip.ArchivePacketID,
-		_pip.SheetName,
-		_pip.PartName,
-		_pip.QtyInProcess AS PartQty,
-		_prt.Data1 AS Job,
-		_prt.Data2 AS Shipment,
-		_pip.TrueArea,
-		_pip.NestedArea
-	FROM dbo.STPIPArc AS _pip
-	INNER JOIN dbo.Part AS _prt
-		ON  _pip.PartName = _prt.PartName
-		AND _pip.WONumber = _prt.WONumber
-	WHERE _pip.TransType = 'SN100'	-- program post
-GO
-CREATE OR ALTER PROCEDURE dbo.GetProgramSheets
-AS
+		Programs.ArchivePacketID,
+		1 AS SheetIndex,	-- TODO: implement for slabs
+		Parts.PartName,
+		Parts.QtyInProcess AS PartQty,
+		PartData.Data1 AS Job,
+		PartData.Data2 AS Shipment,
+		Parts.TrueArea,
+		Parts.NestedArea
+	FROM STPrgArc AS Programs
+	INNER JOIN dbo.PIP AS Parts
+		ON  Programs.ProgramName = Parts.ProgramName
+		AND Programs.RepeatID    = Parts.RepeatID
+	INNER JOIN dbo.Part AS PartData
+		ON  Parts.PartName = PartData.PartName
+		AND Parts.WONumber = PartData.WONumber
+	WHERE Programs.TransType = @created;	-- program post
+
+	-- sheet(s)
 	SELECT
-		_prg.ArchivePacketID,
-		_stock.SheetName,
-		_stock.PrimeCode AS MaterialMaster
-	FROM STPrgArc AS _prg
+		Programs.ArchivePacketID,
+		1 AS SheetIndex,	-- TODO: implement for slabs
+		Sheets.SheetName,
+		Sheets.PrimeCode AS MaterialMaster
+	FROM STPrgArc AS Programs
 	INNER JOIN SIP
-		ON _prg.ProgramName = SIP.ProgramName
-		AND _prg.RepeatID = SIP.RepeatID
-	INNER JOIN Stock AS _stock
+		ON Programs.ProgramName = SIP.ProgramName
+		AND Programs.RepeatID = SIP.RepeatID
+	INNER JOIN Stock AS Sheets
 		-- cannot match on SheetName because when sheets are combined, they will differ
-		ON SIP.SheetName = _stock.SheetName
-	WHERE _prg.TransType = 'SN100'	-- program post
-GO
-CREATE OR ALTER PROCEDURE dbo.GetProgramRemnants
-AS
+		ON SIP.SheetName = Sheets.SheetName
+	WHERE Programs.TransType = @created;	-- program post
+
+	-- remnant(s)
 	SELECT
-		_prg.ArchivePacketID,
-		_remnant.RemnantName,
-		_remnant.Area
-	FROM STPrgArc AS _prg
-	INNER JOIN Remnant AS _remnant
-		ON  _prg.ProgramName = _remnant.ProgramName
-		AND _prg.RepeatID    = _remnant.RepeatID
-	WHERE _prg.TransType = 'SN100'	-- program post
+		Programs.ArchivePacketID,
+		1 AS SheetIndex,	-- TODO: implement for slabs
+		Remnants.RemnantName,
+		Remnants.Area
+	FROM STPrgArc AS Programs
+	INNER JOIN Remnant AS Remnants
+		ON  Programs.ProgramName = Remnants.ProgramName
+		AND Programs.RepeatID    = Remnants.RepeatID
+	WHERE Programs.TransType = @created;	-- program post
+END;
 GO
 
-CREATE OR ALTER PROCEDURE dbo.DeleteProgramFeedback
-	@feedback_id INT
-AS	
-SET NOCOUNT ON
-BEGIN
-	DELETE FROM dbo.STPrgArc WHERE AutoID = @feedback_id;
-END;
-GO
-CREATE OR ALTER PROCEDURE dbo.DeletePartInProgressFeedback
+CREATE OR ALTER PROCEDURE DeleteFeedback
 	@feedback_id INT
 AS
-SET NOCOUNT ON
 BEGIN
-	DELETE FROM dbo.STPIPArc WHERE AutoID = @feedback_id;
+	DELETE FROM dbo.STPrgArc WHERE AutoID=@feedback_id
 END;
 GO
 
