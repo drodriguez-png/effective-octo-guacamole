@@ -50,6 +50,7 @@ CREATE OR ALTER PROCEDURE dbo.PushSapDemand
 	@op3 VARCHAR(50) NULL,	-- secondary operation 3
 	@mark VARCHAR(50) NULL,	-- part name (Material Master with job removed)
 	@raw_mm VARCHAR(50)  NULL
+	@on_hold BIT = 0,	-- TODO: how will this be passed from SAP (DTE?)
 AS
 SET NOCOUNT ON
 BEGIN
