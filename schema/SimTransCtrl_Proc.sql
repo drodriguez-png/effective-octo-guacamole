@@ -22,9 +22,9 @@ CREATE TABLE dbo.SapInterfaceConfig (
 );
 INSERT INTO dbo.SapInterfaceConfig
 VALUES
-	('QAS', 1, '\\hssieng\SNDataDev\RemSaveOutput\DXF'),
-	('PRD', 2, '\\hssieng\SNDataPrd\RemSaveOutput\DXF'),
-	('DEV', 3, '\\hssieng\SNDataSbx\RemSaveOutput\DXF');
+	('QAS', 1, '\\hssieng\SNDataDev\RemSaveOutput\DXF\<sheet_name>.dxf'),
+	('PRD', 2, '\\hssieng\SNDataPrd\RemSaveOutput\DXF\<sheet_name>.dxf'),
+	('DEV', 3, '\\hssieng\SNDataSbx\RemSaveOutput\DXF\<sheet_name>.dxf');
 GO
 
 -- ********************************************
