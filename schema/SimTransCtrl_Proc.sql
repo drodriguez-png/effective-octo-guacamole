@@ -26,12 +26,12 @@ VALUES
 	('PRD', 2, '\\hssieng\SNDataPrd\RemSaveOutput\DXF\<sheet_name>.dxf'),
 	('DEV', 3, '\\hssieng\SNDataSbx\RemSaveOutput\DXF\<sheet_name>.dxf');
 GO
-CREATE TABLE dbo.DemandAllocation (
+CREATE TABLE dbo.RenamedDemandAllocation (
 	Id INT PRIMARY KEY,
-	Job VARCHAR(50),
-	Shipment VARCHAR(50),
 	SapPartName VARCHAR(50),
 	NewPartName VARCHAR(50),
+	Job VARCHAR(50),
+	Shipment VARCHAR(50),
 	Qty INT
 );
 GO
@@ -192,6 +192,31 @@ BEGIN
 			@sap_event_id
 		FROM _cfg
 	END;
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.PushRenamedDemand
+	@sap_system VARCHAR(3),
+	@new_part_name VARCHAR(50),
+	@sap_part_name VARCHAR(50),
+	@qty INT,
+	@job VARCHAR(50) = NULL,
+	@shipment VARCHAR(50) = NULL
+AS
+BEGIN
+	-- create allocation
+	INSERT INTO dbo.RenamedDemandAllocation
+		(NewPartName, SapPartName, Qty, Job, Shipment)
+	VALUES
+		(@new_part_name, @sap_part_name, @qty, @job, @shipment);
+
+	-- TODO: can we guarantee that a given (@part_name, @job, @shipment)
+	--	only occurs once (in a single work order)?
+	--	-> if we can, then PushSapDemand and PushRenamedDemand becomes easier
+	-- TODO: do we have separate procedure for pushing this demand
+	--	so that it can be called by PushSapDemand
+
+	-- TODO: remove/reduce on-hold (or not) demand
+	-- TODO: insert SimTransTransaction
 END;
 GO
 
