@@ -38,19 +38,19 @@ CREATE OR ALTER PROCEDURE dbo.PushSapDemand
 	@part_name VARCHAR(50),
 	@qty INT,
 	@matl VARCHAR(50),
-
-	@state VARCHAR(50) NULL,
-	@dwg VARCHAR(50) NULL,
-	@codegen VARCHAR(50) NULL,	-- autoprocess instruction
-	@job VARCHAR(50) NULL,
-	@shipment VARCHAR(50) NULL,
-	@chargeref VARCHAR(50) NULL,	-- PART hours order for shipment
-	@op1 VARCHAR(50) NULL,	-- secondary operation 1
-	@op2 VARCHAR(50) NULL,	-- secondary operation 2
-	@op3 VARCHAR(50) NULL,	-- secondary operation 3
-	@mark VARCHAR(50) NULL,	-- part name (Material Master with job removed)
-	@raw_mm VARCHAR(50)  NULL
 	@on_hold BIT = 0,	-- TODO: how will this be passed from SAP (DTE?)
+
+	@state VARCHAR(50) = NULL,
+	@dwg VARCHAR(50) = NULL,
+	@codegen VARCHAR(50) = NULL,	-- autoprocess instruction
+	@job VARCHAR(50) = NULL,
+	@shipment VARCHAR(50) = NULL,
+	@chargeref VARCHAR(50) = NULL,	-- PART hours order for shipment
+	@op1 VARCHAR(50) = NULL,	-- secondary operation 1
+	@op2 VARCHAR(50) = NULL,	-- secondary operation 2
+	@op3 VARCHAR(50) = NULL,	-- secondary operation 3
+	@mark VARCHAR(50) = NULL,	-- part name (Material Master with job removed)
+	@raw_mm VARCHAR(50) = NULL
 AS
 SET NOCOUNT ON
 BEGIN
