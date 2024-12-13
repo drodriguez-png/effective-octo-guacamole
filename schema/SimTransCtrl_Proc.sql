@@ -26,6 +26,15 @@ VALUES
 	('PRD', 2, '\\hssieng\SNDataPrd\RemSaveOutput\DXF\<sheet_name>.dxf'),
 	('DEV', 3, '\\hssieng\SNDataSbx\RemSaveOutput\DXF\<sheet_name>.dxf');
 GO
+CREATE TABLE dbo.DemandAllocation (
+	Id INT PRIMARY KEY,
+	Job VARCHAR(50),
+	Shipment VARCHAR(50),
+	SapPartName VARCHAR(50),
+	NewPartName VARCHAR(50),
+	Qty INT
+);
+GO
 
 -- ********************************************
 -- *    Interface 1: Demand                   *
