@@ -79,7 +79,8 @@ BEGIN
 	BEGIN
 		-- [1] Preemtively set all parts to be removed for the given @mm
 		-- This ensures that any demand in Sigmanest that is not in SAP is
-		--	removed since SAP will not always tell us that the demand was removed.
+		-- 	removed since SAP will not always tell us that the demand
+		-- 	was removed.
 		WITH Parts AS (
 			SELECT
 				PartName,
@@ -92,8 +93,8 @@ BEGIN
 				) AS QtyCommited
 			FROM dbo.Part AS Parts
 			WHERE PartName = @part_name
-			-- keeps transactions from being inserted if the SimTrans runs in the 
-			--	middle of a data push.
+			-- keeps transactions from being inserted if the SimTrans runs
+			--	in the middle of a data push.
 			AND Data18 != @sap_event_id
 		),
 		cfg AS (
@@ -265,8 +266,8 @@ BEGIN
 				Length
 			FROM dbo.Stock
 			WHERE dbo.Stock.PrimeCode = @mm
-			-- keeps transactions from being inserted if the SimTrans runs in the 
-			--	middle of a data push.
+			-- keeps transactions from being inserted if the SimTrans runs
+			--	in the middle of a data push.
 			AND dbo.Stock.BinNumber != @sap_event_id
 		),
 		cfg AS (
@@ -440,7 +441,8 @@ BEGIN
 		ON Programs.ProgramName = SIP.ProgramName
 		AND Programs.RepeatID = SIP.RepeatID
 	INNER JOIN Stock AS Sheets
-		-- cannot match on SheetName because when sheets are combined, they will differ
+		-- cannot match on SheetName because when sheets are combined,
+		-- 	they will differ
 		ON SIP.SheetName = Sheets.SheetName
 	WHERE Programs.TransType = @created;	-- program post
 
