@@ -80,23 +80,23 @@ BEGIN
 		-- [1] Preemtively set all parts to be removed for the given @mm
 		-- This ensures that any demand in Sigmanest that is not in SAP is
 		--	removed since SAP will not always tell us that the demand was removed.
-		WITH _parts AS (
+		WITH Parts AS (
 			SELECT
 				PartName,
 				WONumber,
 				QtyCompleted + (
 					SELECT COALESCE(SUM(QtyInProcess), 0)
-					FROM dbo.PIP AS _pip
-					WHERE _prt.PartName = _pip.PartName
-					AND   _prt.WONumber = _pip.WONumber
+					FROM dbo.PIP
+					WHERE Parts.PartName = PIP.PartName
+					AND   Parts.WONumber = PIP.WONumber
 				) AS QtyCommited
-			FROM dbo.Part AS _prt
+			FROM dbo.Part AS Parts
 			WHERE PartName = @part_name
 			-- keeps transactions from being inserted if the SimTrans runs in the 
 			--	middle of a data push.
 			AND Data18 != @sap_event_id
 		),
-		_cfg AS (
+		cfg AS (
 			SELECT SimTransDistrict
 			FROM dbo.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
@@ -112,17 +112,17 @@ BEGIN
 		)
 		SELECT
 			CASE
-				WHEN _parts.QtyCommited = 0
+				WHEN Parts.QtyCommited = 0
 					THEN 'SN82'	-- Delete part from work order
 					ELSE 'SN81'	-- Modify part in work order
 			END,
-			_cfg.SimTransDistrict,
+			cfg.SimTransDistrict,
 			@trans_id,
-			_parts.WONumber,
-			_parts.PartName,
-			_parts.QtyCommited,
+			Parts.WONumber,
+			Parts.PartName,
+			Parts.QtyCommited,
 			@sap_event_id
-		FROM _parts, _cfg;
+		FROM Parts, cfg;
 	END;
 
 	-- @qty = 0 means SAP has no demand for that material master, so all demand
@@ -140,7 +140,7 @@ BEGIN
 		AND ItemData18 = @sap_event_id;
 
 		-- [3] Add/Update demand via SimTrans
-		WITH _cfg AS (
+		WITH cfg AS (
 			SELECT SimTransDistrict
 			FROM dbo.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
@@ -169,7 +169,7 @@ BEGIN
 		)
 		SELECT
 			'SN81',
-			_cfg.SimTransDistrict,
+			cfg.SimTransDistrict,
 			@trans_id,
 
 			@work_order,
@@ -190,7 +190,7 @@ BEGIN
 			@raw_mm,
 			'HighHeatNum',
 			@sap_event_id
-		FROM _cfg
+		FROM cfg
 	END;
 END;
 GO
@@ -256,7 +256,7 @@ BEGIN
 		-- (excluding any sheets that are part of active nests). This makes
 		-- sure any sheets in Sigmanest that are not in SAP are removed since
 		-- SAP will not always tell us that those sheets were removed.
-		WITH _sheets AS (
+		WITH Sheets AS (
 			SELECT
 				SheetName,
 				Material,
@@ -269,7 +269,7 @@ BEGIN
 			--	middle of a data push.
 			AND dbo.Stock.BinNumber != @sap_event_id
 		),
-		_cfg AS (
+		cfg AS (
 			SELECT SimTransDistrict
 			FROM dbo.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
@@ -287,15 +287,15 @@ BEGIN
 		)
 		SELECT
 			'SN91A',
-			_cfg.SimTransDistrict,
+			cfg.SimTransDistrict,
 			@trans_id,
-			_sheets.SheetName,
+			Sheets.SheetName,
 			0,
-			_sheets.Material,
-			_sheets.Thickness,
-			_sheets.Length,
-			_sheets.Width
-		FROM _sheets, _cfg
+			Sheets.Material,
+			Sheets.Thickness,
+			Sheets.Length,
+			Sheets.Width
+		FROM Sheets, cfg
 	END;
 
 	-- @sheet_name is Null and @qty = 0 means SAP has no inventory for that
@@ -311,7 +311,7 @@ BEGIN
 		DELETE FROM dbo.TransAct WHERE ItemName = @sheet_name;
 
 		-- [3] Add/Update stock via SimTrans
-		WITH _cfg AS (
+		WITH cfg AS (
 			SELECT
 				RemnantDxfTemplate,
 				SimTransDistrict
@@ -342,7 +342,7 @@ BEGIN
 				WHEN 'Remnant' THEN 'SN97'
 				ELSE 'SN91A'
 			END,
-			_cfg.SimTransDistrict,
+			cfg.SimTransDistrict,
 			@trans_id,
 
 			@sheet_name,
@@ -363,10 +363,10 @@ BEGIN
 			-- sheet geometry DXF file (remnants only)
 			CASE @sheet_type
 				WHEN 'Remnant'
-					THEN REPLACE(_cfg.RemnantDxfTemplate, '<sheet_name>', @sheet_name)
+					THEN REPLACE(cfg.RemnantDxfTemplate, '<sheet_name>', @sheet_name)
 				ELSE NULL
 			END
-		FROM _cfg
+		FROM cfg
 	END;
 END;
 GO
@@ -488,14 +488,14 @@ BEGIN
 	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
 
 	-- [1] Update program
-	WITH _program AS (
+	WITH  Programs AS (
 		SELECT
 			ProgramName,
 			RepeatID
 		FROM dbo.Program
 		WHERE ArchivePacketID = @archive_packet_id
 	),
-	_cfg AS (
+	cfg AS (
 		SELECT SimTransDistrict
 		FROM dbo.SapInterfaceConfig
 		WHERE SapSystem = @sap_system
@@ -509,10 +509,10 @@ BEGIN
 	)
 	SELECT
 		'SN76',
-		_cfg.SimTransDistrict,
+		cfg.SimTransDistrict,
 		@trans_id,
-		_program.ProgramName,
-		_program.RepeatId
-	FROM _program, _cfg;
+		 Programs.ProgramName,
+		 Programs.RepeatId
+	FROM  Programs, cfg;
 END;
 GO
