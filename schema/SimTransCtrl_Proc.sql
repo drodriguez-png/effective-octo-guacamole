@@ -152,6 +152,7 @@ BEGIN
 			TransID,	-- for logging purposes
 			OrderNo,	-- work order name
 			ItemName,	-- Material Master (part name)
+			OnHold,		-- part is available for nesting
 			Qty,
 			Material,	-- {spec}-{grade}{test}
 			Customer,	-- State(occurrence)
@@ -175,6 +176,7 @@ BEGIN
 
 			@work_order,
 			@part_name,
+			@on_hold,
 			@qty,
 			@matl,
 
