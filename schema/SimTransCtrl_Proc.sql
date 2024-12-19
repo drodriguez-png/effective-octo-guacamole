@@ -348,7 +348,7 @@ CREATE OR ALTER PROCEDURE dbo.RemoveRenamedDemand
 	@id INT
 AS
 BEGIN
-	-- TODO: add on-hold demand
+	-- add on-hold demand
 	WITH cfg AS (
 			SELECT SimTransDistrict
 			FROM dbo.SapInterfaceConfig
