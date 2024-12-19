@@ -77,7 +77,7 @@ BEGIN
 	-- Pre-event processing for any group of calls for the same @sap_event_id
 	-- Because of this `IF` statement, this will only do anything on the first
 	-- 	call for a given SAP event id (which should be for one material master).
-	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM TransAct)
+	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM dbo.TransAct)
 	BEGIN
 		-- [1] Preemtively set all parts to be removed for the given @mm
 		-- This ensures that any demand in Sigmanest that is not in SAP is
@@ -128,12 +128,12 @@ BEGIN
 	END;
 
 	-- handle parts in archived work orders
-	IF @work_order not in (SELECT WoNumber FROM Wo)
+	IF @work_order not in (SELECT WoNumber FROM dbo.Wo)
 	BEGIN
 		SET @qty = @qty - (
 			SELECT TOP 1
 				SUM(QtyOrdered) AS QtyProduced
-			FROM PartArchive
+			FROM dbo.PartArchive
 			WHERE WoNumber = @work_order
 			AND PartName = @part_name
 			GROUP BY WoNumber, PartName
@@ -160,7 +160,7 @@ BEGIN
 			FROM dbo.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		)
-		INSERT INTO TransAct (
+		INSERT INTO dbo.TransAct (
 			TransType,  -- `SN81`
 			District,
 			TransID,	-- for logging purposes
@@ -245,12 +245,12 @@ BEGIN
 				WONumber,
 				PartName,
 				QtyOrdered - @qty AS Qty
-			FROM Part
+			FROM dbo.Part
 			WHERE PartName = @sap_part_name
 			AND Data1 = @job
 			AND Data2 = @shipment
 		)
-		INSERT INTO TransAct(
+		INSERT INTO dbo.TransAct(
 			TransType,  -- `SN81`
 			District,
 			OrderNo,	-- work order name
@@ -292,12 +292,12 @@ BEGIN
 				Data9 AS Mark,
 				Data10 AS RawMaterialMaster,
 				Data14 AS HeatSwapKeyword
-			FROM Part
+			FROM dbo.Part
 			WHERE PartName = @sap_part_name
 			AND Data1 = @job
 			AND Data2 = @shipment
 		)
-	INSERT INTO TransAct (
+	INSERT INTO dbo.TransAct (
 			TransType,  -- `SN81`
 			District,
 			OrderNo,	-- work order name
@@ -378,14 +378,14 @@ BEGIN
 				Data9 AS Mark,
 				Data10 AS RawMaterialMaster,
 				Data14 AS HeatSwapKeyword
-			FROM Part
+			FROM dbo.Part
 			INNER JOIN RenamedDemandAllocation AS Alloc
 				ON Part.PartName = Alloc.NewPartName
 				AND Part.Data1 = Alloc.Job
 				AND Part.Data2 = Alloc.Shipment
 			WHERE Alloc.Id = @id
 		)
-	INSERT INTO TransAct (
+	INSERT INTO dbo.TransAct (
 			TransType,  -- `SN81`
 			District,
 			OrderNo,	-- work order name
@@ -440,12 +440,12 @@ BEGIN
 			SELECT
 				WONumber,
 				NewPartName
-			FROM RenamedDemandAllocation
+			FROM dbo.RenamedDemandAllocation
 			INNER JOIN Part
 				ON Part.PartName = RenamedDemandAllocation.NewPartName
 			WHERE Id = @id
 		)
-		INSERT INTO TransAct(
+		INSERT INTO dbo.TransAct(
 			TransType,  -- `SN81`
 			District,
 			OrderNo,	-- work order name
@@ -459,7 +459,7 @@ BEGIN
 			Parts.WONumber,
 			Parts.NewPartName
 		FROM Parts, cfg;
-	DELETE FROM RenamedDemandAllocation WHERE Id = @id;
+	DELETE FROM dbo.RenamedDemandAllocation WHERE Id = @id;
 
 END;
 GO
@@ -494,7 +494,7 @@ BEGIN
 	-- Pre-event processing for any group of calls for the same @sap_event_id
 	-- Because of this `IF` statement, this will only do anything on the first
 	-- 	call for a given SAP event id (which should be for one material master).
-	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM TransAct)
+	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM dbo.TransAct)
 	BEGIN
 		-- [1] Preemtively set all sheets to be removed for the given @mm
 		-- (excluding any sheets that are part of active nests). This makes
@@ -607,11 +607,11 @@ BEGIN
 	DECLARE @deleted VARCHAR(50) = 'SN101';
 
 	-- remove reposts (SN100 and SN101 exist for the same ArchivePacketID)
-	DELETE FROM STPrgArc
+	DELETE FROM dbo.STPrgArc
 	WHERE ArchivePacketID IN (
-		SELECT ArchivePacketID FROM STPrgArc WHERE TransType = @created
+		SELECT ArchivePacketID FROM dbo.STPrgArc WHERE TransType = @created
 		INTERSECT
-		SELECT ArchivePacketID FROM STPrgArc WHERE TransType = @deleted
+		SELECT ArchivePacketID FROM dbo.STPrgArc WHERE TransType = @deleted
 	);
 
 	-- clear unused feedback
@@ -646,7 +646,7 @@ BEGIN
 		PartData.Data2 AS Shipment,
 		Parts.TrueArea,
 		Parts.NestedArea
-	FROM STPrgArc AS Programs
+	FROM dbo.STPrgArc AS Programs
 	INNER JOIN dbo.PIP AS Parts
 		ON  Programs.ProgramName = Parts.ProgramName
 		AND Programs.RepeatID    = Parts.RepeatID
@@ -661,7 +661,7 @@ BEGIN
 		1 AS SheetIndex,	-- TODO: implement for slabs
 		Sheets.SheetName,
 		Sheets.PrimeCode AS MaterialMaster
-	FROM STPrgArc AS Programs
+	FROM dbo.STPrgArc AS Programs
 	INNER JOIN SIP
 		ON Programs.ProgramName = SIP.ProgramName
 		AND Programs.RepeatID = SIP.RepeatID
@@ -677,7 +677,7 @@ BEGIN
 		1 AS SheetIndex,	-- TODO: implement for slabs
 		Remnants.RemnantName,
 		Remnants.Area
-	FROM STPrgArc AS Programs
+	FROM dbo.STPrgArc AS Programs
 	INNER JOIN Remnant AS Remnants
 		ON  Programs.ProgramName = Remnants.ProgramName
 		AND Programs.RepeatID    = Remnants.RepeatID
@@ -727,7 +727,7 @@ BEGIN
 		FROM dbo.SapInterfaceConfig
 		WHERE SapSystem = @sap_system
 	)
-	INSERT INTO TransAct (
+	INSERT INTO dbo.TransAct (
 		TransType,		-- `SN76`
 		District,
 		TransID,		-- for logging purposes
