@@ -8,6 +8,8 @@ USE SNDBaseISap;
 -- 	- dbo.GetFeedback
 -- 	- dbo.DeleteFeedback
 -- 	- dbo.UpdateProgram
+--	- dbo.PushRenamedDemand
+--	- dbo.RemoveRenamedDemand
 
 CREATE TABLE dbo.SapInterfaceConfig (
 	-- Name of SAP system (PRD, QAS, etc.)
