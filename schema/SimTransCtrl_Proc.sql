@@ -490,11 +490,7 @@ BEGIN
 		-- SAP will not always tell us that those sheets were removed.
 		WITH Sheets AS (
 			SELECT
-				SheetName,
-				Material,
-				Thickness,
-				Width,
-				Length
+				SheetName
 			FROM dbo.Stock
 			WHERE dbo.Stock.PrimeCode = @mm
 			-- keeps transactions from being inserted if the SimTrans runs
@@ -510,23 +506,13 @@ BEGIN
 			TransType,
 			District,
 			TransID,	-- for logging purposes
-			ItemName,
-			Qty,
-			Material,	-- required by SimTrans for SN91A
-			Thickness,	-- required by SimTrans for SN91A
-			Length,		-- required by SimTrans for SN91A
-			Width		-- required by SimTrans for SN91A
+			ItemName
 		)
 		SELECT
-			'SN91A',
+			'SN92',
 			cfg.SimTransDistrict,
 			@trans_id,
-			Sheets.SheetName,
-			0,
-			Sheets.Material,
-			Sheets.Thickness,
-			Sheets.Length,
-			Sheets.Width
+			Sheets.SheetName
 		FROM Sheets, cfg
 	END;
 
