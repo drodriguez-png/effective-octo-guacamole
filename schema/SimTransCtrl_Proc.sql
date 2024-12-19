@@ -162,6 +162,7 @@ BEGIN
 			Remark,		-- autoprocess instruction
 			ItemData1,	-- Job(project)
 			ItemData2,	-- Shipment
+			ItemData3,	-- SAP Part Name (for when PartName needs changed)
 			ItemData5,	-- PART hours order for shipment
 			ItemData6,	-- secondary operation 1
 			ItemData7,	-- secondary operation 2
@@ -187,6 +188,7 @@ BEGIN
 			@codegen,	-- autoprocess instruction
 			@job,
 			@shipment,
+			@part_name,
 			@chargeref,	-- PART hours order for shipment
 			@op1,	-- secondary operation 1
 			@op2,	-- secondary operation 2
@@ -640,10 +642,7 @@ BEGIN
 	SELECT
 		Programs.ArchivePacketID,
 		1 AS SheetIndex,	-- TODO: implement for slabs
-		CASE ISNULL(PartData.Data3, '')
-			WHEN '' THEN Parts.PartName
-			ELSE PartData.Data3
-		END AS PartName,
+		PartData.Data3 AS PartName,
 		Parts.QtyInProcess AS PartQty,
 		PartData.Data1 AS Job,
 		PartData.Data2 AS Shipment,
