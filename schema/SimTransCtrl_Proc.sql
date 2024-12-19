@@ -417,7 +417,10 @@ BEGIN
 	SELECT
 		Programs.ArchivePacketID,
 		1 AS SheetIndex,	-- TODO: implement for slabs
-		Parts.PartName,
+		CASE WHEN ISNULL(PartData.Data3, '') = ''
+			THEN Parts.PartName
+			ELSE PartData.Data3
+		END AS PartName,
 		Parts.QtyInProcess AS PartQty,
 		PartData.Data1 AS Job,
 		PartData.Data2 AS Shipment,
