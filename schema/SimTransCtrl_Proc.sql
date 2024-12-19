@@ -95,8 +95,8 @@ BEGIN
 				) AS QtyCommited
 			FROM dbo.Part AS Parts
 			WHERE PartName = @part_name
-			-- keeps transactions from being inserted if the SimTrans runs
-			--	in the middle of a data push.
+			-- keeps additional removal transactions from being inserted if the
+			--	SimTrans runs in the middle of a data push.
 			AND Data18 != @sap_event_id
 		),
 		cfg AS (
