@@ -49,7 +49,7 @@ CREATE OR ALTER PROCEDURE dbo.PushSapDemand
 	@part_name VARCHAR(50),
 	@qty INT,
 	@matl VARCHAR(50),
-	@on_hold BIT = 0,	-- TODO: how will this be passed from SAP (DTE?)
+	@process VARCHAR(64) = NULL,	-- assembly process (DTE, RA, etc.)
 
 	@state VARCHAR(50) = NULL,
 	@dwg VARCHAR(50) = NULL,
@@ -191,7 +191,10 @@ BEGIN
 
 			@work_order,
 			@part_name,
-			@on_hold,
+			CASE @process	-- OnHold
+				WHEN 'DTE' THEN 1	-- scan plates
+				ELSE 0
+			END,
 			@qty,
 			@matl,
 
