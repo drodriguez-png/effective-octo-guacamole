@@ -114,10 +114,9 @@ BEGIN
 			ItemData18
 		)
 		SELECT
-			CASE
-				WHEN Parts.QtyCommited = 0
-					THEN 'SN82'	-- Delete part from work order
-					ELSE 'SN81'	-- Modify part in work order
+			CASE Parts.QtyCommited
+				WHEN 0 THEN 'SN82'	-- Delete part from work order
+				ELSE 'SN81'			-- Modify part in work order
 			END,
 			cfg.SimTransDistrict,
 			@trans_id,
@@ -645,8 +644,8 @@ BEGIN
 	SELECT
 		Programs.ArchivePacketID,
 		1 AS SheetIndex,	-- TODO: implement for slabs
-		CASE WHEN ISNULL(PartData.Data3, '') = ''
-			THEN Parts.PartName
+		CASE ISNULL(PartData.Data3, '')
+			WHEN '' THEN Parts.PartName
 			ELSE PartData.Data3
 		END AS PartName,
 		Parts.QtyInProcess AS PartQty,
