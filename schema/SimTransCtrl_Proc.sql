@@ -143,6 +143,7 @@ BEGIN
 		AND ItemData18 = @sap_event_id;
 
 		-- [3] Add/Update demand via SimTrans
+		-- TODO: handle parts in archived work orders
 		WITH cfg AS (
 			SELECT SimTransDistrict
 			FROM dbo.SapInterfaceConfig
