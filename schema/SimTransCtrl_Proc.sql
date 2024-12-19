@@ -215,14 +215,239 @@ BEGIN
 	VALUES
 		(@new_part_name, @sap_part_name, @qty, @job, @shipment);
 
-	-- TODO: can we guarantee that a given (@part_name, @job, @shipment)
-	--	only occurs once (in a single work order)?
-	--	-> if we can, then PushSapDemand and PushRenamedDemand becomes easier
-	-- TODO: do we have separate procedure for pushing this demand
-	--	so that it can be called by PushSapDemand
+	-- [CRITICAL] We must guarantee that a given (@part_name, @job, @shipment)
+	--	only occurs once (in a single work order). If the system is changed
+	--	where this guarantee does not hold, we must change stored procedures:
+	--		- PushSapDemand
+	--		- PushRenamedDemand (this procedure)
 
-	-- TODO: remove/reduce on-hold (or not) demand
-	-- TODO: insert SimTransTransaction
+	-- Remove/reduce on-hold demand
+	WITH cfg AS (
+			SELECT SimTransDistrict
+			FROM dbo.SapInterfaceConfig
+			WHERE SapSystem = @sap_system
+		),
+		Parts AS (
+			SELECT TOP 1
+				WONumber,
+				PartName,
+				QtyOrdered - @qty AS Qty
+			FROM Part
+			WHERE PartName = @sap_part_name
+			AND Data1 = @job
+			AND Data2 = @shipment
+		)
+		INSERT INTO TransAct(
+			TransType,  -- `SN81`
+			District,
+			OrderNo,	-- work order name
+			ItemName,	-- Material Master (part name)
+			Qty
+		)
+		SELECT
+			CASE Qty
+				WHEN 0 THEN 'SN82'	-- Delete from work order
+				ELSE 'SN81'			-- Update qty
+			END,
+			cfg.SimTransDistrict,
+			
+			Parts.WONumber,
+			@sap_part_name,
+			Parts.Qty	-- Ignored for SN82 items
+		FROM Parts, cfg;
+
+
+	-- insert SimTrans Transaction
+	WITH cfg AS (
+			SELECT SimTransDistrict
+			FROM dbo.SapInterfaceConfig
+			WHERE SapSystem = @sap_system
+		),
+		Parts AS (
+			SELECT TOP 1
+				WONumber,
+				PartName,
+				Material,
+				DrawingNumber,
+				Data1 AS Job,
+				Data2 AS Shipment,
+				Remark,
+				Data5 AS ChargeRefNumber,
+				Data6 AS Operation1,
+				Data7 AS Operation2,
+				Data8 AS Operation3,
+				Data9 AS Mark,
+				Data10 AS RawMaterialMaster,
+				Data14 AS HeatSwapKeyword
+			FROM Part
+			WHERE PartName = @sap_part_name
+			AND Data1 = @job
+			AND Data2 = @shipment
+		)
+	INSERT INTO TransAct (
+			TransType,  -- `SN81`
+			District,
+			OrderNo,	-- work order name
+			ItemName,	-- Material Master (part name)
+			Qty,
+			Material,	-- {spec}-{grade}{test}
+			-- Customer(State) removed because it is not in the Part table and should
+			--	be already set at the work order level
+			DwgNumber,	-- Drawing name
+			Remark,		-- autoprocess instruction
+			ItemData1,	-- Job(project)
+			ItemData2,	-- Shipment
+			ItemData3,	-- SAP part name
+			ItemData5,	-- PART hours order for shipment
+			ItemData6,	-- secondary operation 1
+			ItemData7,	-- secondary operation 2
+			ItemData8,	-- secondary operation 3
+			ItemData9,	-- part name (Material Master with job removed)
+			ItemData10,	-- Raw material master (from BOM, if exists)
+			ItemData14	-- `HighHeatNum`
+		)
+		SELECT
+			'SN81',
+			cfg.SimTransDistrict,
+			
+			Parts.WONumber,
+			@new_part_name,
+			@qty,
+			Parts.Material,
+
+			Parts.DrawingNumber,
+			Parts.Remark,	-- autoprocess instruction
+			Parts.Job,
+			Parts.Shipment,
+			@sap_part_name,
+			Parts.ChargeRefNumber,	-- PART hours order for shipment
+			Parts.Operation1,	-- secondary operation 1
+			Parts.Operation2,	-- secondary operation 2
+			Parts.Operation3,	-- secondary operation 3
+			Parts.Mark,	-- part name (Material Master with job removed)
+			Parts.RawMaterialMaster,
+			Parts.HeatSwapKeyword
+		FROM Parts, cfg
+END;
+GO
+CREATE OR ALTER PROCEDURE dbo.RemoveRenamedDemand
+	@sap_system VARCHAR(3),
+	@id INT
+AS
+BEGIN
+	-- TODO: add on-hold demand
+	WITH cfg AS (
+			SELECT SimTransDistrict
+			FROM dbo.SapInterfaceConfig
+			WHERE SapSystem = @sap_system
+		),
+		Parts AS (
+			SELECT TOP 1
+				WONumber,
+				PartName,
+				QtyOrdered + (
+					SELECT COALESCE(SUM(QtyOrdered), 0)
+					FROM dbo.Part AS OnHoldParts
+					WHERE OnHoldParts.PartName = Part.Data3
+					AND OnHoldParts.Data1 = Part.Data1
+					AND OnHoldParts.Data2 = Part.Data2
+				) AS Qty,
+				Material,
+				DrawingNumber,
+				Data1 AS Job,
+				Data2 AS Shipment,
+				Remark,
+				Data3 AS SapPartName,
+				Data5 AS ChargeRefNumber,
+				Data6 AS Operation1,
+				Data7 AS Operation2,
+				Data8 AS Operation3,
+				Data9 AS Mark,
+				Data10 AS RawMaterialMaster,
+				Data14 AS HeatSwapKeyword
+			FROM Part
+			INNER JOIN RenamedDemandAllocation AS Alloc
+				ON Part.PartName = Alloc.NewPartName
+				AND Part.Data1 = Alloc.Job
+				AND Part.Data2 = Alloc.Shipment
+			WHERE Alloc.Id = @id
+		)
+	INSERT INTO TransAct (
+			TransType,  -- `SN81`
+			District,
+			OrderNo,	-- work order name
+			ItemName,	-- Material Master (part name)
+			Qty,
+			Material,	-- {spec}-{grade}{test}
+			-- Customer(State) removed because it is not in the Part table and should
+			--	be already set at the work order level
+			DwgNumber,	-- Drawing name
+			Remark,		-- autoprocess instruction
+			ItemData1,	-- Job(project)
+			ItemData2,	-- Shipment
+			ItemData3,	-- SAP part name
+			ItemData5,	-- PART hours order for shipment
+			ItemData6,	-- secondary operation 1
+			ItemData7,	-- secondary operation 2
+			ItemData8,	-- secondary operation 3
+			ItemData9,	-- part name (Material Master with job removed)
+			ItemData10,	-- Raw material master (from BOM, if exists)
+			ItemData14	-- `HighHeatNum`
+		)
+		SELECT
+			'SN81',
+			cfg.SimTransDistrict,
+			
+			Parts.WONumber,
+			Parts.SapPartName,
+			Parts.Qty,
+			Parts.Material,
+
+			Parts.DrawingNumber,
+			Parts.Remark,	-- autoprocess instruction
+			Parts.Job,
+			Parts.Shipment,
+			Parts.SapPartName,
+			Parts.ChargeRefNumber,	-- PART hours order for shipment
+			Parts.Operation1,	-- secondary operation 1
+			Parts.Operation2,	-- secondary operation 2
+			Parts.Operation3,	-- secondary operation 3
+			Parts.Mark,	-- part name (Material Master with job removed)
+			Parts.RawMaterialMaster,
+			Parts.HeatSwapKeyword
+		FROM Parts, cfg;
+
+	-- remove renamed demand
+	WITH cfg AS (
+			SELECT SimTransDistrict
+			FROM dbo.SapInterfaceConfig
+			WHERE SapSystem = @sap_system
+		),
+		Parts AS (
+			SELECT
+				WONumber,
+				NewPartName
+			FROM RenamedDemandAllocation
+			INNER JOIN Part
+				ON Part.PartName = RenamedDemandAllocation.NewPartName
+			WHERE Id = @id
+		)
+		INSERT INTO TransAct(
+			TransType,  -- `SN81`
+			District,
+			OrderNo,	-- work order name
+			ItemName,	-- Material Master (part name)
+			Qty
+		)
+		SELECT
+			'SN82',	-- Delete from work order
+			cfg.SimTransDistrict,
+			
+			Parts.WONumber,
+			Parts.NewPartName
+		FROM Parts, cfg;
+	DELETE FROM RenamedDemandAllocation WHERE Id = @id;
+
 END;
 GO
 
