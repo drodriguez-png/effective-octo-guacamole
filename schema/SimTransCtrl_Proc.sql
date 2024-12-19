@@ -249,7 +249,7 @@ BEGIN
 				ELSE 'SN81'			-- Update qty
 			END,
 			cfg.SimTransDistrict,
-			
+
 			Parts.WONumber,
 			@sap_part_name,
 			Parts.Qty	-- Ignored for SN82 items
@@ -308,7 +308,7 @@ BEGIN
 		SELECT
 			'SN81',
 			cfg.SimTransDistrict,
-			
+
 			Parts.WONumber,
 			@new_part_name,
 			@qty,
@@ -396,7 +396,7 @@ BEGIN
 		SELECT
 			'SN81',
 			cfg.SimTransDistrict,
-			
+
 			Parts.WONumber,
 			Parts.SapPartName,
 			Parts.Qty,
@@ -441,7 +441,6 @@ BEGIN
 		SELECT
 			'SN82',	-- Delete from work order
 			cfg.SimTransDistrict,
-			
 			Parts.WONumber,
 			Parts.NewPartName
 		FROM Parts, cfg;
@@ -591,11 +590,7 @@ BEGIN
 			@notes4,
 
 			-- sheet geometry DXF file (remnants only)
-			CASE @sheet_type
-				WHEN 'Remnant'
-					THEN REPLACE(cfg.RemnantDxfTemplate, '<sheet_name>', @sheet_name)
-				ELSE NULL
-			END
+			REPLACE(cfg.RemnantDxfTemplate, '<sheet_name>', @sheet_name)
 		FROM cfg
 	END;
 END;
