@@ -127,6 +127,19 @@ BEGIN
 		FROM Parts, cfg;
 	END;
 
+	-- handle parts in archived work orders
+	IF @work_order not in (SELECT WoNumber FROM Wo)
+	BEGIN
+		SET @qty = @qty - (
+			SELECT TOP 1
+				SUM(QtyOrdered) AS QtyProduced
+			FROM PartArchive
+			WHERE WoNumber = @work_order
+			AND PartName = @part_name
+			GROUP BY WoNumber, PartName
+		);
+	END;
+
 	-- @qty = 0 means SAP has no demand for that material master, so all demand
 	-- 	with the same @part_name needs to be removed from Sigmanest.
 	-- 	-> handled by [1]
@@ -142,7 +155,6 @@ BEGIN
 		AND ItemData18 = @sap_event_id;
 
 		-- [3] Add/Update demand via SimTrans
-		-- TODO: handle parts in archived work orders
 		WITH cfg AS (
 			SELECT SimTransDistrict
 			FROM dbo.SapInterfaceConfig
