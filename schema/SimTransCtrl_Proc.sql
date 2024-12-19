@@ -746,8 +746,8 @@ BEGIN
 		'SN76',
 		cfg.SimTransDistrict,
 		@trans_id,
-		 Programs.ProgramName,
-		 Programs.RepeatId
+		Programs.ProgramName,
+		Programs.RepeatId
 	FROM  Programs, cfg;
 END;
 GO
