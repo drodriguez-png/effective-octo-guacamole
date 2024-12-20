@@ -631,6 +631,7 @@ BEGIN
 		AutoID AS FeedbackId,
 		ArchivePacketID,
 		CASE TransType
+			-- TODO: released (needs check or not)
 			WHEN @created THEN 'Created'
 			WHEN @deleted THEN 'Deleted'
 		END AS Status,
