@@ -1,4 +1,4 @@
-set shell := ["nu.exe", '-c']
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 demo := "scripts/demo"
 
 [private]
