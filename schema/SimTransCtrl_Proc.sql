@@ -3,6 +3,15 @@ USE SNDBaseISap;
 GO
 
 -- we are going to assume that the `integration` schema exists
+IF EXISTS (SELECT 1 FROM sys.schemas WHERE name = N'integration')
+BEGIN
+	RAISERROR (
+		'Schema `integration` does not exist.',
+		25,	-- severity
+		1	-- state
+	);
+END;
+
 --CREATE SCHEMA integration AUTHORIZATION dbo;
 
 BEGIN TRY
@@ -25,7 +34,7 @@ BEGIN CATCH
 	RAISERROR (
 		'Table SapInterfaceConfig exists. Any schema changes must manually be made.',
 		10,	-- severity
-		1	-- state
+		2	-- state
 	);
 END CATCH
 BEGIN TRY
@@ -42,7 +51,7 @@ BEGIN CATCH
 	RAISERROR (
 		'Table RenamedDemandAllocation exists. Any schema changes must manually be made.',
 		10,	-- severity
-		1	-- state
+		2	-- state
 	);
 END CATCH
 GO
