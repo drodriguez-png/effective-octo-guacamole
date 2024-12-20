@@ -7,30 +7,46 @@ GO
 
 -- TODO: each district could point to a different SQL server for queries
 
+BEGIN TRY
+	CREATE TABLE integration.SapInterfaceConfig (
+		-- Name of SAP system (PRD, QAS, etc.)
+		SapSystem VARCHAR(3) PRIMARY KEY,
 
-CREATE TABLE integration.SapInterfaceConfig (
-	-- Name of SAP system (PRD, QAS, etc.)
-	SapSystem VARCHAR(3) PRIMARY KEY,
+		-- SimTrans district (Sigmanest system) involved with SAP system
+		SimTransDistrict INT NOT NULL,
 
-	-- SimTrans district (Sigmanest system) involved with SAP system
-	SimTransDistrict INT NOT NULL,
-
-	-- Path format template string to build DXF file
-	-- Must include the substring '<sheet_name>' for sheet_name replacement
-	RemnantDxfTemplate VARCHAR(255)
-);
-INSERT INTO integration.SapInterfaceConfig
-VALUES
-	('QAS', 1, '\\hssieng\SNDataQas\RemSaveOutput\DXF\<sheet_name>.dxf');
-GO
-CREATE TABLE integration.RenamedDemandAllocation (
-	Id INT PRIMARY KEY,
-	SapPartName VARCHAR(50),
-	NewPartName VARCHAR(50),
-	Job VARCHAR(50),
-	Shipment VARCHAR(50),
-	Qty INT
-);
+		-- Path format template string to build DXF file
+		-- Must include the substring '<sheet_name>' for sheet_name replacement
+		RemnantDxfTemplate VARCHAR(255)
+	);
+	INSERT INTO integration.SapInterfaceConfig
+	VALUES
+		('QAS', 1, '\\hssieng\SNDataQas\RemSaveOutput\DXF\<sheet_name>.dxf');
+END TRY
+BEGIN CATCH
+	RAISERROR (
+		'Table SapInterfaceConfig exists. Any schema changes must manually be made.',
+		10,	-- severity
+		1	-- state
+	);
+END CATCH
+BEGIN TRY
+	CREATE TABLE integration.RenamedDemandAllocation (
+		Id INT PRIMARY KEY,
+		SapPartName VARCHAR(50),
+		NewPartName VARCHAR(50),
+		Job VARCHAR(50),
+		Shipment VARCHAR(50),
+		Qty INT
+	);
+END TRY
+BEGIN CATCH
+	RAISERROR (
+		'Table RenamedDemandAllocation exists. Any schema changes must manually be made.',
+		10,	-- severity
+		1	-- state
+	);
+END CATCH
 GO
 
 -- ********************************************
