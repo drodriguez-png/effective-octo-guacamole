@@ -21,9 +21,7 @@ CREATE TABLE integration.SapInterfaceConfig (
 );
 INSERT INTO integration.SapInterfaceConfig
 VALUES
-	('QAS', 1, '\\hssieng\SNDataDev\RemSaveOutput\DXF\<sheet_name>.dxf'),
-	('PRD', 2, '\\hssieng\SNDataPrd\RemSaveOutput\DXF\<sheet_name>.dxf'),
-	('DEV', 3, '\\hssieng\SNDataSbx\RemSaveOutput\DXF\<sheet_name>.dxf');
+	('QAS', 1, '\\hssieng\SNDataQas\RemSaveOutput\DXF\<sheet_name>.dxf');
 GO
 CREATE TABLE integration.RenamedDemandAllocation (
 	Id INT PRIMARY KEY,
