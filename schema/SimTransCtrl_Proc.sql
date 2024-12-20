@@ -1,17 +1,14 @@
 -- Purpose: Create stored procedures for interfacing SAP with Sigmanest
 USE SNDBaseISap;
+GO
+
+-- we are going to assume that the `integration` schema exists
+--CREATE SCHEMA integration AUTHORIZATION dbo;
 
 -- TODO: each district could point to a different SQL server for queries
--- TODO: move the following to `integration` schema
--- 	- dbo.PushSapDemand
--- 	- dbo.PushSapInventory
--- 	- dbo.GetFeedback
--- 	- dbo.DeleteFeedback
--- 	- dbo.UpdateProgram
---	- dbo.PushRenamedDemand
---	- dbo.RemoveRenamedDemand
 
-CREATE TABLE dbo.SapInterfaceConfig (
+
+CREATE TABLE integration.SapInterfaceConfig (
 	-- Name of SAP system (PRD, QAS, etc.)
 	SapSystem VARCHAR(3) PRIMARY KEY,
 
@@ -22,13 +19,13 @@ CREATE TABLE dbo.SapInterfaceConfig (
 	-- Must include the substring '<sheet_name>' for sheet_name replacement
 	RemnantDxfTemplate VARCHAR(255)
 );
-INSERT INTO dbo.SapInterfaceConfig
+INSERT INTO integration.SapInterfaceConfig
 VALUES
 	('QAS', 1, '\\hssieng\SNDataDev\RemSaveOutput\DXF\<sheet_name>.dxf'),
 	('PRD', 2, '\\hssieng\SNDataPrd\RemSaveOutput\DXF\<sheet_name>.dxf'),
 	('DEV', 3, '\\hssieng\SNDataSbx\RemSaveOutput\DXF\<sheet_name>.dxf');
 GO
-CREATE TABLE dbo.RenamedDemandAllocation (
+CREATE TABLE integration.RenamedDemandAllocation (
 	Id INT PRIMARY KEY,
 	SapPartName VARCHAR(50),
 	NewPartName VARCHAR(50),
@@ -41,7 +38,7 @@ GO
 -- ********************************************
 -- *    Interface 1: Demand                   *
 -- ********************************************
-CREATE OR ALTER PROCEDURE dbo.PushSapDemand
+CREATE OR ALTER PROCEDURE integration.PushSapDemand
 	@sap_system VARCHAR(3),
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
@@ -96,12 +93,12 @@ BEGIN
 			FROM dbo.Part AS Parts
 			WHERE PartName = @part_name
 			-- keeps additional removal transactions from being inserted if the
-			--	SimTrans runs in the middle of a data push.
+			--	SimTrans runs in the middle of a data push.187
 			AND Data18 != @sap_event_id
 		),
 		cfg AS (
 			SELECT SimTransDistrict
-			FROM dbo.SapInterfaceConfig
+			FROM integration.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		)
 		INSERT INTO dbo.TransAct (
@@ -157,7 +154,7 @@ BEGIN
 		-- [3] Add/Update demand via SimTrans
 		WITH cfg AS (
 			SELECT SimTransDistrict
-			FROM dbo.SapInterfaceConfig
+			FROM integration.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		)
 		INSERT INTO dbo.TransAct (
@@ -216,7 +213,7 @@ BEGIN
 	END;
 END;
 GO
-CREATE OR ALTER PROCEDURE dbo.PushRenamedDemand
+CREATE OR ALTER PROCEDURE integration.PushRenamedDemand
 	@sap_system VARCHAR(3),
 	@new_part_name VARCHAR(50),
 	@sap_part_name VARCHAR(50),
@@ -226,7 +223,7 @@ CREATE OR ALTER PROCEDURE dbo.PushRenamedDemand
 AS
 BEGIN
 	-- create allocation
-	INSERT INTO dbo.RenamedDemandAllocation
+	INSERT INTO integration.RenamedDemandAllocation
 		(NewPartName, SapPartName, Qty, Job, Shipment)
 	VALUES
 		(@new_part_name, @sap_part_name, @qty, @job, @shipment);
@@ -240,7 +237,7 @@ BEGIN
 	-- Remove/reduce on-hold demand
 	WITH cfg AS (
 			SELECT SimTransDistrict
-			FROM dbo.SapInterfaceConfig
+			FROM integration.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		),
 		Parts AS (
@@ -276,7 +273,7 @@ BEGIN
 	-- insert SimTrans Transaction
 	WITH cfg AS (
 			SELECT SimTransDistrict
-			FROM dbo.SapInterfaceConfig
+			FROM integration.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		),
 		Parts AS (
@@ -346,7 +343,7 @@ BEGIN
 		FROM Parts, cfg
 END;
 GO
-CREATE OR ALTER PROCEDURE dbo.RemoveRenamedDemand
+CREATE OR ALTER PROCEDURE integration.RemoveRenamedDemand
 	@sap_system VARCHAR(3),
 	@id INT
 AS
@@ -354,7 +351,7 @@ BEGIN
 	-- add on-hold demand
 	WITH cfg AS (
 			SELECT SimTransDistrict
-			FROM dbo.SapInterfaceConfig
+			FROM integration.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		),
 		Parts AS (
@@ -436,14 +433,14 @@ BEGIN
 	-- remove renamed demand
 	WITH cfg AS (
 			SELECT SimTransDistrict
-			FROM dbo.SapInterfaceConfig
+			FROM integration.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		),
 		Parts AS (
 			SELECT
 				WONumber,
 				NewPartName
-			FROM dbo.RenamedDemandAllocation
+			FROM integration.RenamedDemandAllocation
 			INNER JOIN Part
 				ON Part.PartName = RenamedDemandAllocation.NewPartName
 			WHERE Id = @id
@@ -462,7 +459,7 @@ BEGIN
 			Parts.WONumber,
 			Parts.NewPartName
 		FROM Parts, cfg;
-	DELETE FROM dbo.RenamedDemandAllocation WHERE Id = @id;
+	DELETE FROM integration.RenamedDemandAllocation WHERE Id = @id;
 
 END;
 GO
@@ -470,7 +467,7 @@ GO
 -- ********************************************
 -- *    Interface 2: Inventory                *
 -- ********************************************
-CREATE OR ALTER PROCEDURE dbo.PushSapInventory
+CREATE OR ALTER PROCEDURE integration.PushSapInventory
 	@sap_system VARCHAR(3),
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
@@ -514,7 +511,7 @@ BEGIN
 		),
 		cfg AS (
 			SELECT SimTransDistrict
-			FROM dbo.SapInterfaceConfig
+			FROM integration.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		)
 		INSERT INTO dbo.TransAct (
@@ -548,7 +545,7 @@ BEGIN
 			SELECT
 				RemnantDxfTemplate,
 				SimTransDistrict
-			FROM dbo.SapInterfaceConfig
+			FROM integration.SapInterfaceConfig
 			WHERE SapSystem = @sap_system
 		)
 		INSERT INTO dbo.TransAct (
@@ -603,7 +600,7 @@ GO
 -- ********************************************
 -- *    Interface 3: Create/Delete Nest       *
 -- ********************************************
-CREATE OR ALTER PROCEDURE GetFeedback
+CREATE OR ALTER PROCEDURE integration.GetFeedback
 AS
 BEGIN
 	DECLARE @created VARCHAR(50) = 'SN100';
@@ -689,7 +686,7 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE DeleteFeedback
+CREATE OR ALTER PROCEDURE integration.DeleteFeedback
 	@feedback_id INT
 AS
 BEGIN
@@ -700,7 +697,7 @@ GO
 -- ********************************************
 -- *    Interface 4: Update Program           *
 -- ********************************************
-CREATE OR ALTER PROCEDURE dbo.UpdateProgram
+CREATE OR ALTER PROCEDURE integration.UpdateProgram
 	@sap_system VARCHAR(3),
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
@@ -728,7 +725,7 @@ BEGIN
 	),
 	cfg AS (
 		SELECT SimTransDistrict
-		FROM dbo.SapInterfaceConfig
+		FROM integration.SapInterfaceConfig
 		WHERE SapSystem = @sap_system
 	)
 	INSERT INTO dbo.TransAct (
