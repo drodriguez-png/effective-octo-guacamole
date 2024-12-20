@@ -12,31 +12,26 @@ BEGIN
 	);
 END;
 
---CREATE SCHEMA integration AUTHORIZATION dbo;
+IF OBJECT_ID(N'integration.SapInterfaceConfig', N'U') IS NOT NULL
+BEGIN
+	DROP TABLE integration.SapInterfaceConfig;
+END;
 
-BEGIN TRY
-	CREATE TABLE integration.SapInterfaceConfig (
-		-- Name of SAP system (PRD, QAS, etc.)
-		SapSystem VARCHAR(3) PRIMARY KEY,
+CREATE TABLE integration.SapInterfaceConfig (
+	-- Name of SAP system (PRD, QAS, etc.)
+	SapSystem VARCHAR(3) PRIMARY KEY,
 
-		-- SimTrans district (Sigmanest system) involved with SAP system
-		SimTransDistrict INT NOT NULL,
+	-- SimTrans district (Sigmanest system) involved with SAP system
+	SimTransDistrict INT NOT NULL,
 
-		-- Path format template string to build DXF file
-		-- Must include the substring '<sheet_name>' for sheet_name replacement
-		RemnantDxfTemplate VARCHAR(255)
-	);
-	INSERT INTO integration.SapInterfaceConfig
-	VALUES
-		('QAS', 1, '\\hssieng\SNDataQas\RemSaveOutput\DXF\<sheet_name>.dxf');
-END TRY
-BEGIN CATCH
-	RAISERROR (
-		'Table SapInterfaceConfig exists. Any schema changes must manually be made.',
-		10,	-- severity
-		2	-- state
-	);
-END CATCH
+	-- Path format template string to build DXF file
+	-- Must include the substring '<sheet_name>' for sheet_name replacement
+	RemnantDxfTemplate VARCHAR(255)
+);
+INSERT INTO integration.SapInterfaceConfig
+VALUES
+	('QAS', 1, '\\hssieng\SNDataQas\RemSaveOutput\DXF\<sheet_name>.dxf');
+
 BEGIN TRY
 	CREATE TABLE integration.RenamedDemandAllocation (
 		Id INT PRIMARY KEY,
@@ -48,6 +43,7 @@ BEGIN TRY
 	);
 END TRY
 BEGIN CATCH
+	-- We do not want to drop and recreate this table, since it may have data
 	RAISERROR (
 		'Table RenamedDemandAllocation exists. Any schema changes must manually be made.',
 		10,	-- severity
@@ -284,7 +280,7 @@ BEGIN
 				ELSE 'SN81'			-- Update qty
 			END,
 			cfg.SimTransDistrict,
-			
+
 			Parts.WONumber,
 			@sap_part_name,
 			Parts.Qty	-- Ignored for SN82 items
@@ -343,7 +339,7 @@ BEGIN
 		SELECT
 			'SN81',
 			cfg.SimTransDistrict,
-			
+
 			Parts.WONumber,
 			@new_part_name,
 			@qty,
@@ -431,7 +427,7 @@ BEGIN
 		SELECT
 			'SN81',
 			cfg.SimTransDistrict,
-			
+
 			Parts.WONumber,
 			Parts.SapPartName,
 			Parts.Qty,
