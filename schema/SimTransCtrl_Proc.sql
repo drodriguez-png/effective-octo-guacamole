@@ -5,8 +5,6 @@ GO
 -- we are going to assume that the `integration` schema exists
 --CREATE SCHEMA integration AUTHORIZATION dbo;
 
--- TODO: each district could point to a different SQL server for queries
-
 BEGIN TRY
 	CREATE TABLE integration.SapInterfaceConfig (
 		-- Name of SAP system (PRD, QAS, etc.)
