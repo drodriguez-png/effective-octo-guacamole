@@ -18,6 +18,11 @@ BEGIN
 END;
 
 CREATE TABLE integration.SapInterfaceConfig (
+	-- All queries of this configuration table use `SELECT TOP 1` to ensure that
+	--	that the transaction happens against 1 district. It could be catastrophic
+	--	to post transactions against multiple Sigmanest databases, since each SAP
+	--	system will have 1 Sigmanest database synced with it.
+
 	-- Name of SAP system (PRD, QAS, etc.)
 	SapSystem VARCHAR(3) PRIMARY KEY,
 
@@ -79,6 +84,13 @@ CREATE OR ALTER PROCEDURE integration.PushSapDemand
 AS
 SET NOCOUNT ON
 BEGIN
+	-- load SimTrans district from configuration
+	DECLARE @simtrans_district INT = (
+		SELECT TOP 1 SimTransDistrict
+		FROM integration.SapInterfaceConfig
+		WHERE SapSystem = @sap_system
+	);
+
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
 	-- 	so truncating it to the 10 least significant digits is OK.
@@ -112,11 +124,6 @@ BEGIN
 			-- keeps additional removal transactions from being inserted if the
 			--	SimTrans runs in the middle of a data push.187
 			AND Data18 != @sap_event_id
-		),
-		cfg AS (
-			SELECT SimTransDistrict
-			FROM integration.SapInterfaceConfig
-			WHERE SapSystem = @sap_system
 		)
 		INSERT INTO SNDbaseDev.dbo.TransAct (
 			TransType,
@@ -132,13 +139,13 @@ BEGIN
 				WHEN 0 THEN 'SN82'	-- Delete part from work order
 				ELSE 'SN81'			-- Modify part in work order
 			END,
-			cfg.SimTransDistrict,
+			@simtrans_district,
 			@trans_id,
 			Parts.WONumber,
 			Parts.PartName,
 			Parts.QtyCommited,
 			@sap_event_id
-		FROM Parts, cfg;
+		FROM Parts;
 	END;
 
 	-- handle parts in archived work orders
@@ -169,11 +176,6 @@ BEGIN
 		AND ItemData18 = @sap_event_id;
 
 		-- [3] Add/Update demand via SimTrans
-		WITH cfg AS (
-			SELECT SimTransDistrict
-			FROM integration.SapInterfaceConfig
-			WHERE SapSystem = @sap_system
-		)
 		INSERT INTO SNDbaseDev.dbo.TransAct (
 			TransType,  -- `SN81`
 			District,
@@ -198,9 +200,9 @@ BEGIN
 			ItemData14,	-- `HighHeatNum`
 			ItemData18	-- SAP event id
 		)
-		SELECT
+		VALUES (
 			'SN81',
-			cfg.SimTransDistrict,
+			@simtrans_district,
 			@trans_id,
 
 			@work_order,
@@ -226,7 +228,7 @@ BEGIN
 			@raw_mm,
 			'HighHeatNum',
 			@sap_event_id
-		FROM cfg
+		);
 	END;
 END;
 GO
@@ -239,6 +241,13 @@ CREATE OR ALTER PROCEDURE integration.PushRenamedDemand
 	@shipment VARCHAR(50) = NULL
 AS
 BEGIN
+	-- load SimTrans district from configuration
+	DECLARE @simtrans_district INT = (
+		SELECT TOP 1 SimTransDistrict
+		FROM integration.SapInterfaceConfig
+		WHERE SapSystem = @sap_system
+	);
+
 	-- create allocation
 	INSERT INTO integration.RenamedDemandAllocation
 		(NewPartName, SapPartName, Qty, Job, Shipment)
@@ -252,112 +261,84 @@ BEGIN
 	--		- PushRenamedDemand (this procedure)
 
 	-- Remove/reduce on-hold demand
-	WITH cfg AS (
-			SELECT SimTransDistrict
-			FROM integration.SapInterfaceConfig
-			WHERE SapSystem = @sap_system
-		),
-		Parts AS (
-			SELECT TOP 1
-				WONumber,
-				PartName,
-				QtyOrdered - @qty AS Qty
-			FROM dbo.Part
-			WHERE PartName = @sap_part_name
-			AND Data1 = @job
-			AND Data2 = @shipment
-		)
-		INSERT INTO SNDbaseDev.dbo.TransAct(
-			TransType,  -- `SN81`
-			District,
-			OrderNo,	-- work order name
-			ItemName,	-- Material Master (part name)
-			Qty
-		)
-		SELECT
-			CASE Qty
-				WHEN 0 THEN 'SN82'	-- Delete from work order
-				ELSE 'SN81'			-- Update qty
-			END,
-			cfg.SimTransDistrict,
+	WITH Parts AS (
+		SELECT TOP 1
+			WONumber,
+			PartName,
+			QtyOrdered - @qty AS Qty
+		FROM dbo.Part
+		WHERE PartName = @sap_part_name
+		AND Data1 = @job
+		AND Data2 = @shipment
+	)
+	INSERT INTO SNDbaseDev.dbo.TransAct(
+		TransType,  -- `SN81`
+		District,
+		OrderNo,	-- work order name
+		ItemName,	-- Material Master (part name)
+		Qty
+	)
+	SELECT
+		CASE Qty
+			WHEN 0 THEN 'SN82'	-- Delete from work order
+			ELSE 'SN81'			-- Update qty
+		END,
+		@simtrans_district,
 
-			Parts.WONumber,
-			@sap_part_name,
-			Parts.Qty	-- Ignored for SN82 items
-		FROM Parts, cfg;
+		Parts.WONumber,
+		@sap_part_name,
+		Parts.Qty	-- Ignored for SN82 items
+	FROM Parts;
 
 
 	-- insert SimTrans Transaction
-	WITH cfg AS (
-			SELECT SimTransDistrict
-			FROM integration.SapInterfaceConfig
-			WHERE SapSystem = @sap_system
-		),
-		Parts AS (
-			SELECT TOP 1
-				WONumber,
-				PartName,
-				Material,
-				DrawingNumber,
-				Data1 AS Job,
-				Data2 AS Shipment,
-				Remark,
-				Data5 AS ChargeRefNumber,
-				Data6 AS Operation1,
-				Data7 AS Operation2,
-				Data8 AS Operation3,
-				Data9 AS Mark,
-				Data10 AS RawMaterialMaster,
-				Data14 AS HeatSwapKeyword
-			FROM dbo.Part
-			WHERE PartName = @sap_part_name
-			AND Data1 = @job
-			AND Data2 = @shipment
-		)
 	INSERT INTO SNDbaseDev.dbo.TransAct (
-			TransType,  -- `SN81`
-			District,
-			OrderNo,	-- work order name
-			ItemName,	-- Material Master (part name)
-			Qty,
-			Material,	-- {spec}-{grade}{test}
-			-- Customer(State) removed because it is not in the Part table and should
-			--	be already set at the work order level
-			DwgNumber,	-- Drawing name
-			Remark,		-- autoprocess instruction
-			ItemData1,	-- Job(project)
-			ItemData2,	-- Shipment
-			ItemData3,	-- SAP part name
-			ItemData5,	-- PART hours order for shipment
-			ItemData6,	-- secondary operation 1
-			ItemData7,	-- secondary operation 2
-			ItemData8,	-- secondary operation 3
-			ItemData9,	-- part name (Material Master with job removed)
-			ItemData10,	-- Raw material master (from BOM, if exists)
-			ItemData14	-- `HighHeatNum`
-		)
-		SELECT
-			'SN81',
-			cfg.SimTransDistrict,
+		TransType,  -- `SN81`
+		District,
+		OrderNo,	-- work order name
+		ItemName,	-- Material Master (part name)
+		Qty,
+		Material,	-- {spec}-{grade}{test}
+		-- Customer(State) removed because it is not in the Part table and should
+		--	be already set at the work order level
+		DwgNumber,	-- Drawing name
+		Remark,		-- autoprocess instruction
+		ItemData1,	-- Job(project)
+		ItemData2,	-- Shipment
+		ItemData3,	-- SAP part name
+		ItemData5,	-- PART hours order for shipment
+		ItemData6,	-- secondary operation 1
+		ItemData7,	-- secondary operation 2
+		ItemData8,	-- secondary operation 3
+		ItemData9,	-- part name (Material Master with job removed)
+		ItemData10,	-- Raw material master (from BOM, if exists)
+		ItemData14	-- `HighHeatNum`
+	)
+	SELECT TOP 1
+		'SN81',
+		@simtrans_district,
 
-			Parts.WONumber,
-			@new_part_name,
-			@qty,
-			Parts.Material,
+		WONumber,
+		@new_part_name,
+		@qty,
+		Material,
 
-			Parts.DrawingNumber,
-			Parts.Remark,	-- autoprocess instruction
-			Parts.Job,
-			Parts.Shipment,
-			@sap_part_name,
-			Parts.ChargeRefNumber,	-- PART hours order for shipment
-			Parts.Operation1,	-- secondary operation 1
-			Parts.Operation2,	-- secondary operation 2
-			Parts.Operation3,	-- secondary operation 3
-			Parts.Mark,	-- part name (Material Master with job removed)
-			Parts.RawMaterialMaster,
-			Parts.HeatSwapKeyword
-		FROM Parts, cfg
+		DrawingNumber,
+		Remark,	-- autoprocess instruction
+		Data1,	-- Job
+		Data2,	-- Shipment
+		@sap_part_name,
+		Data5,	-- PART hours order for shipment
+		Data6,	-- secondary operation 1
+		Data7,	-- secondary operation 2
+		Data8,	-- secondary operation 3
+		Data9,	-- part name (Material Master with job removed)
+		Data10,	-- Raw material master
+		Data14	-- heatswap keyword
+	FROM dbo.Part
+	WHERE PartName = @sap_part_name
+	AND Data1 = @job
+	AND Data2 = @shipment
 END;
 GO
 CREATE OR ALTER PROCEDURE integration.RemoveRenamedDemand
@@ -365,117 +346,90 @@ CREATE OR ALTER PROCEDURE integration.RemoveRenamedDemand
 	@id INT
 AS
 BEGIN
+	-- load SimTrans district from configuration
+	DECLARE @simtrans_district INT = (
+		SELECT TOP 1 SimTransDistrict
+		FROM integration.SapInterfaceConfig
+		WHERE SapSystem = @sap_system
+	);
+
 	-- add on-hold demand
-	WITH cfg AS (
-			SELECT SimTransDistrict
-			FROM integration.SapInterfaceConfig
-			WHERE SapSystem = @sap_system
-		),
-		Parts AS (
-			SELECT TOP 1
-				WONumber,
-				PartName,
-				QtyOrdered + (
-					SELECT COALESCE(SUM(QtyOrdered), 0)
-					FROM dbo.Part AS OnHoldParts
-					WHERE OnHoldParts.PartName = Part.Data3
-					AND OnHoldParts.Data1 = Part.Data1
-					AND OnHoldParts.Data2 = Part.Data2
-				) AS Qty,
-				Material,
-				DrawingNumber,
-				Data1 AS Job,
-				Data2 AS Shipment,
-				Remark,
-				Data3 AS SapPartName,
-				Data5 AS ChargeRefNumber,
-				Data6 AS Operation1,
-				Data7 AS Operation2,
-				Data8 AS Operation3,
-				Data9 AS Mark,
-				Data10 AS RawMaterialMaster,
-				Data14 AS HeatSwapKeyword
-			FROM dbo.Part
-			INNER JOIN RenamedDemandAllocation AS Alloc
-				ON Part.PartName = Alloc.NewPartName
-				AND Part.Data1 = Alloc.Job
-				AND Part.Data2 = Alloc.Shipment
-			WHERE Alloc.Id = @id
-		)
 	INSERT INTO SNDbaseDev.dbo.TransAct (
-			TransType,  -- `SN81`
-			District,
-			OrderNo,	-- work order name
-			ItemName,	-- Material Master (part name)
-			Qty,
-			Material,	-- {spec}-{grade}{test}
-			-- Customer(State) removed because it is not in the Part table and should
-			--	be already set at the work order level
-			DwgNumber,	-- Drawing name
-			Remark,		-- autoprocess instruction
-			ItemData1,	-- Job(project)
-			ItemData2,	-- Shipment
-			ItemData3,	-- SAP part name
-			ItemData5,	-- PART hours order for shipment
-			ItemData6,	-- secondary operation 1
-			ItemData7,	-- secondary operation 2
-			ItemData8,	-- secondary operation 3
-			ItemData9,	-- part name (Material Master with job removed)
-			ItemData10,	-- Raw material master (from BOM, if exists)
-			ItemData14	-- `HighHeatNum`
-		)
-		SELECT
-			'SN81',
-			cfg.SimTransDistrict,
+		TransType,  -- `SN81`
+		District,
+		OrderNo,	-- work order name
+		ItemName,	-- Material Master (part name)
+		Qty,
+		Material,	-- {spec}-{grade}{test}
+		-- Customer(State) removed because it is not in the Part table and should
+		--	be already set at the work order level
+		DwgNumber,	-- Drawing name
+		Remark,		-- autoprocess instruction
+		ItemData1,	-- Job(project)
+		ItemData2,	-- Shipment
+		ItemData3,	-- SAP part name
+		ItemData5,	-- PART hours order for shipment
+		ItemData6,	-- secondary operation 1
+		ItemData7,	-- secondary operation 2
+		ItemData8,	-- secondary operation 3
+		ItemData9,	-- part name (Material Master with job removed)
+		ItemData10,	-- Raw material master (from BOM, if exists)
+		ItemData14	-- `HighHeatNum`
+	)
+	SELECT
+		'SN81',
+		@simtrans_district,
 
-			Parts.WONumber,
-			Parts.SapPartName,
-			Parts.Qty,
-			Parts.Material,
+		WONumber,
+		PartName,
+		QtyOrdered + (
+			SELECT COALESCE(SUM(QtyOrdered), 0)
+			FROM dbo.Part AS OnHoldParts
+			WHERE OnHoldParts.PartName = Part.Data3
+			AND OnHoldParts.Data1 = Part.Data1
+			AND OnHoldParts.Data2 = Part.Data2
+		),
+		Material,
 
-			Parts.DrawingNumber,
-			Parts.Remark,	-- autoprocess instruction
-			Parts.Job,
-			Parts.Shipment,
-			Parts.SapPartName,
-			Parts.ChargeRefNumber,	-- PART hours order for shipment
-			Parts.Operation1,	-- secondary operation 1
-			Parts.Operation2,	-- secondary operation 2
-			Parts.Operation3,	-- secondary operation 3
-			Parts.Mark,	-- part name (Material Master with job removed)
-			Parts.RawMaterialMaster,
-			Parts.HeatSwapKeyword
-		FROM Parts, cfg;
+		DrawingNumber,
+		Remark,	-- autoprocess instruction
+		Data1,	-- Job
+		Data2,	-- Shipment
+		Data3,	-- SAP part name
+		Data5,	-- PART hours order for shipment
+		Data6,	-- secondary operation 1
+		Data7,	-- secondary operation 2
+		Data8,	-- secondary operation 3
+		Data9,	-- part name (Material Master with job removed)
+		Data10,	-- Raw material master
+		Data14	-- heatswap keyword
+	FROM dbo.Part
+	INNER JOIN RenamedDemandAllocation AS Alloc
+		ON Part.PartName = Alloc.NewPartName
+		AND Part.Data1 = Alloc.Job
+		AND Part.Data2 = Alloc.Shipment
+	WHERE Alloc.Id = @id;
 
 	-- remove renamed demand
-	WITH cfg AS (
-			SELECT SimTransDistrict
-			FROM integration.SapInterfaceConfig
-			WHERE SapSystem = @sap_system
-		),
-		Parts AS (
-			SELECT
-				WONumber,
-				NewPartName
-			FROM integration.RenamedDemandAllocation
-			INNER JOIN Part
-				ON Part.PartName = RenamedDemandAllocation.NewPartName
-			WHERE Id = @id
-		)
-		INSERT INTO SNDbaseDev.dbo.TransAct(
-			TransType,  -- `SN81`
-			District,
-			OrderNo,	-- work order name
-			ItemName,	-- Material Master (part name)
-			Qty
-		)
-		SELECT
-			'SN82',	-- Delete from work order
-			cfg.SimTransDistrict,
+	INSERT INTO SNDbaseDev.dbo.TransAct(
+		TransType,  -- `SN81`
+		District,
+		OrderNo,	-- work order name
+		ItemName,	-- Material Master (part name)
+		Qty
+	)
+	SELECT
+		'SN82',	-- Delete from work order
+		@simtrans_district,
 			
-			Parts.WONumber,
-			Parts.NewPartName
-		FROM Parts, cfg;
+		WONumber,
+		NewPartName
+	FROM integration.RenamedDemandAllocation
+		INNER JOIN Part
+			ON Part.PartName = RenamedDemandAllocation.NewPartName
+		WHERE Id = @id;
+
+	-- delete allocation
 	DELETE FROM integration.RenamedDemandAllocation WHERE Id = @id;
 
 END;
@@ -503,6 +457,21 @@ CREATE OR ALTER PROCEDURE integration.PushSapInventory
 AS
 SET NOCOUNT ON
 BEGIN
+	-- load SimTrans district from configuration
+	DECLARE @simtrans_district INT = (
+		SELECT TOP 1 SimTransDistrict
+		FROM integration.SapInterfaceConfig
+		WHERE SapSystem = @sap_system
+	);
+	-- load dxf path template from configuration and interpolate @sheet_name
+	DECLARE @dxf_file INT = (
+		SELECT TOP 1
+			REPLACE(RemnantDxfTemplate, '<sheet_name>', @sheet_name)
+		FROM integration.SapInterfaceConfig
+		WHERE SapSystem = @sap_system
+	);
+
+
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
 	-- 	so truncating it to the 10 least significant digits is OK.
@@ -517,20 +486,6 @@ BEGIN
 		-- (excluding any sheets that are part of active nests). This makes
 		-- sure any sheets in Sigmanest that are not in SAP are removed since
 		-- SAP will not always tell us that those sheets were removed.
-		WITH Sheets AS (
-			SELECT
-				SheetName
-			FROM dbo.Stock
-			WHERE dbo.Stock.PrimeCode = @mm
-			-- keeps transactions from being inserted if the SimTrans runs
-			--	in the middle of a data push.
-			AND dbo.Stock.BinNumber != @sap_event_id
-		),
-		cfg AS (
-			SELECT SimTransDistrict
-			FROM integration.SapInterfaceConfig
-			WHERE SapSystem = @sap_system
-		)
 		INSERT INTO SNDbaseDev.dbo.TransAct (
 			TransType,
 			District,
@@ -539,10 +494,14 @@ BEGIN
 		)
 		SELECT
 			'SN92',
-			cfg.SimTransDistrict,
+			@simtrans_district,
 			@trans_id,
-			Sheets.SheetName
-		FROM Sheets, cfg
+			SheetName
+		FROM dbo.Stock
+		WHERE dbo.Stock.PrimeCode = @mm
+		-- keeps transactions from being inserted if the SimTrans runs
+		--	in the middle of a data push.
+		AND dbo.Stock.BinNumber != @sap_event_id
 	END;
 
 	-- @sheet_name is Null and @qty = 0 means SAP has no inventory for that
@@ -558,13 +517,6 @@ BEGIN
 		DELETE FROM SNDbaseDev.dbo.TransAct WHERE ItemName = @sheet_name;
 
 		-- [3] Add/Update stock via SimTrans
-		WITH cfg AS (
-			SELECT
-				RemnantDxfTemplate,
-				SimTransDistrict
-			FROM integration.SapInterfaceConfig
-			WHERE SapSystem = @sap_system
-		)
 		INSERT INTO SNDbaseDev.dbo.TransAct (
 			TransType,	-- `SN91A or SN97`
 			District,
@@ -583,13 +535,13 @@ BEGIN
 			ItemData4,	-- Notes line 4
 			FileName	-- {remnant geometry folder}\{SheetName}.dxf
 		)
-		SELECT
+		VALUES (
 			-- SimTrans transaction
 			CASE @sheet_type
 				WHEN 'Remnant' THEN 'SN97'
 				ELSE 'SN91A'
 			END,
-			cfg.SimTransDistrict,
+			@simtrans_district,
 			@trans_id,
 
 			@sheet_name,
@@ -608,8 +560,8 @@ BEGIN
 			@notes4,
 
 			-- sheet geometry DXF file (remnants only)
-			REPLACE(cfg.RemnantDxfTemplate, '<sheet_name>', @sheet_name)
-		FROM cfg
+			@dxf_file
+		);
 	END;
 END;
 GO
@@ -622,7 +574,6 @@ AS
 BEGIN
 	DECLARE @created VARCHAR(50) = 'SN100';
 	DECLARE @deleted VARCHAR(50) = 'SN101';
-
 	-- remove reposts (SN100 and SN101 exist for the same ArchivePacketID)
 	DELETE FROM dbo.STPrgArc
 	WHERE ArchivePacketID IN (
@@ -731,6 +682,13 @@ BEGIN
 	-- 	It is expected that the program with the given ArchivePacketID exists.
 	-- 	If program update in Sigmanest is disabled and all Interface 3
 	-- 		transactionshave posted, then this should hold
+	
+	-- load SimTrans district from configuration
+	DECLARE @simtrans_district INT = (
+		SELECT TOP 1 SimTransDistrict
+		FROM integration.SapInterfaceConfig
+		WHERE SapSystem = @sap_system
+	);
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
@@ -738,18 +696,6 @@ BEGIN
 	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
 
 	-- [1] Update program
-	WITH  Programs AS (
-		SELECT
-			ProgramName,
-			RepeatID
-		FROM dbo.Program
-		WHERE ArchivePacketID = @archive_packet_id
-	),
-	cfg AS (
-		SELECT SimTransDistrict
-		FROM integration.SapInterfaceConfig
-		WHERE SapSystem = @sap_system
-	)
 	INSERT INTO SNDbaseDev.dbo.TransAct (
 		TransType,		-- `SN76`
 		District,
@@ -759,10 +705,11 @@ BEGIN
 	)
 	SELECT
 		'SN76',
-		cfg.SimTransDistrict,
+		@simtrans_district,
 		@trans_id,
-		Programs.ProgramName,
-		Programs.RepeatId
-	FROM  Programs, cfg;
+		ProgramName,
+		RepeatId
+	FROM dbo.Program
+	WHERE ArchivePacketID = @archive_packet_id;
 END;
 GO
