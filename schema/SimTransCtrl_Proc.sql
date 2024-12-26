@@ -19,12 +19,19 @@ END;
 
 CREATE TABLE integration.SapInterfaceConfig (
 	-- All queries of this configuration table use `SELECT TOP 1` to ensure that
-	--	that the transaction happens against 1 district. It could be catastrophic
-	--	to post transactions against multiple Sigmanest databases, since each SAP
-	--	system will have 1 Sigmanest database synced with it.
+	-- 	that the transaction happens against 1 district. It could be catastrophic
+	-- 	to post transactions against multiple Sigmanest databases, since each SAP
+	-- 	system will have 1 Sigmanest database synced with it.
+	-- Essentially, this table should only have 1 entry. Lock ensures that:
+	--	https://stackoverflow.com/a/3971669
+	Lock char(1) NOT NULL DEFAULT 'X',
+	CONSTRAINT PK_CONFIG PRIMARY KEY (Lock),
+	CONSTRAINT CK_CONFIG_LOCKED CHECK (Lock='X'),
+
+	
 
 	-- Name of SAP system (PRD, QAS, etc.)
-	SapSystem VARCHAR(3) PRIMARY KEY,
+	SapSystem VARCHAR(3),
 
 	-- SimTrans district (Sigmanest system) involved with SAP system
 	SimTransDistrict INT NOT NULL,
