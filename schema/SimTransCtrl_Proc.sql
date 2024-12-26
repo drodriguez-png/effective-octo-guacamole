@@ -31,11 +31,20 @@ CREATE TABLE integration.SapInterfaceConfig (
 
 	-- Path format template string to build DXF file
 	-- Must include the substring '<sheet_name>' for sheet_name replacement
-	RemnantDxfTemplate VARCHAR(255)
+	RemnantDxfTemplate VARCHAR(255),
+
+	-- Placehold word used heat swap
+	-- This might be hardcoded in the post, so check before changing
+	-- Changing this also requires changing the HeatSwap configuration
+	-- Upon changing this, run
+	-- 	`UPDATE Part SET Data14=(
+	-- 		SELECT TOP 1 HeatSwapKeyword FROM integration.SapInterfaceConfig
+	-- 	)`
+	HeatSwapKeyword VARCHAR(64)
 );
 INSERT INTO integration.SapInterfaceConfig
 VALUES
-	('QAS', 1, '\\hssieng\SNDataQas\RemSaveOutput\DXF\<sheet_name>.dxf');
+	('QAS', 1, '\\hssieng\SNDataQas\RemSaveOutput\DXF\<sheet_name>.dxf', 'HighHeatNum');
 
 BEGIN TRY
 	CREATE TABLE integration.RenamedDemandAllocation (
@@ -87,6 +96,13 @@ BEGIN
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
+		FROM integration.SapInterfaceConfig
+		WHERE SapSystem = @sap_system
+	);
+
+	-- load SimTrans district from configuration
+	DECLARE @heatswap_keyword INT = (
+		SELECT TOP 1 HeatSwapKeyword
 		FROM integration.SapInterfaceConfig
 		WHERE SapSystem = @sap_system
 	);
@@ -197,7 +213,7 @@ BEGIN
 			ItemData8,	-- secondary operation 3
 			ItemData9,	-- part name (Material Master with job removed)
 			ItemData10,	-- Raw material master (from BOM, if exists)
-			ItemData14,	-- `HighHeatNum`
+			ItemData14,	-- HeatSwap keyword
 			ItemData18	-- SAP event id
 		)
 		VALUES (
@@ -226,7 +242,7 @@ BEGIN
 			@op3,	-- secondary operation 3
 			@mark,	-- part name (Material Master with job removed)
 			@raw_mm,
-			'HighHeatNum',
+			@heatswap_keyword,
 			@sap_event_id
 		);
 	END;
@@ -312,7 +328,7 @@ BEGIN
 		ItemData8,	-- secondary operation 3
 		ItemData9,	-- part name (Material Master with job removed)
 		ItemData10,	-- Raw material master (from BOM, if exists)
-		ItemData14	-- `HighHeatNum`
+		ItemData14	-- HeatSwap keyword
 	)
 	SELECT TOP 1
 		'SN81',
@@ -334,7 +350,7 @@ BEGIN
 		Data8,	-- secondary operation 3
 		Data9,	-- part name (Material Master with job removed)
 		Data10,	-- Raw material master
-		Data14	-- heatswap keyword
+		Data14	-- HeatSwap keyword
 	FROM dbo.Part
 	WHERE PartName = @sap_part_name
 	AND Data1 = @job
@@ -374,7 +390,7 @@ BEGIN
 		ItemData8,	-- secondary operation 3
 		ItemData9,	-- part name (Material Master with job removed)
 		ItemData10,	-- Raw material master (from BOM, if exists)
-		ItemData14	-- `HighHeatNum`
+		ItemData14	-- HeatSwap keyword
 	)
 	SELECT
 		'SN81',
@@ -402,7 +418,7 @@ BEGIN
 		Data8,	-- secondary operation 3
 		Data9,	-- part name (Material Master with job removed)
 		Data10,	-- Raw material master
-		Data14	-- heatswap keyword
+		Data14	-- HeatSwap keyword
 	FROM dbo.Part
 	INNER JOIN RenamedDemandAllocation AS Alloc
 		ON Part.PartName = Alloc.NewPartName
