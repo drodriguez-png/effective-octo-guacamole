@@ -694,7 +694,12 @@ BEGIN
 		Programs.ArchivePacketID,
 		1 AS SheetIndex,	-- TODO: implement for slabs
 		Remnants.RemnantName,
-		Remnants.Area
+		Remnants.Area,
+		IIF(
+			ABS(Remnants.Area - Remnants.Length * Remnants.Width) > 1,
+			'N',
+			'Y'		-- Area is close to Length*Width, likely rectangular
+		) AS IsRectangular
 	FROM dbo.STPrgArc AS Programs
 	INNER JOIN Remnant AS Remnants
 		ON  Programs.ProgramName = Remnants.ProgramName
