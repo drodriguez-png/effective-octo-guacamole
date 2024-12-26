@@ -28,8 +28,6 @@ CREATE TABLE integration.SapInterfaceConfig (
 	CONSTRAINT PK_CONFIG PRIMARY KEY (Lock),
 	CONSTRAINT CK_CONFIG_LOCKED CHECK (Lock='X'),
 
-	
-
 	-- Name of SAP system (PRD, QAS, etc.)
 	SapSystem VARCHAR(3),
 
