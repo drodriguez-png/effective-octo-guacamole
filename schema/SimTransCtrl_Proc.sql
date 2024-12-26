@@ -437,7 +437,7 @@ BEGIN
 	SELECT
 		'SN82',	-- Delete from work order
 		@simtrans_district,
-			
+
 		WONumber,
 		NewPartName
 	FROM integration.RenamedDemandAllocation
@@ -698,7 +698,7 @@ BEGIN
 	-- 	It is expected that the program with the given ArchivePacketID exists.
 	-- 	If program update in Sigmanest is disabled and all Interface 3
 	-- 		transactionshave posted, then this should hold
-	
+
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
