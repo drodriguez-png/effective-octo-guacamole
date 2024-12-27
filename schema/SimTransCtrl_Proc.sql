@@ -41,15 +41,27 @@ CREATE TABLE integration.SapInterfaceConfig (
 	-- Placehold word used heat swap
 	-- This might be hardcoded in the post, so check before changing
 	-- Changing this also requires changing the HeatSwap configuration
-	-- Upon changing this, run
-	-- 	`UPDATE Part SET Data14=(
-	-- 		SELECT TOP 1 HeatSwapKeyword FROM integration.SapInterfaceConfig
-	-- 	)`
 	HeatSwapKeyword VARCHAR(64)
 );
 INSERT INTO integration.SapInterfaceConfig
 VALUES
 	('QAS', 1, '\\hssieng\SNDataQas\RemSaveOutput\DXF\<sheet_name>.dxf', 'HighHeatNum');
+GO
+
+CREATE OR ALTER TRIGGER integration.PostConfigUpdate
+ON integration.SapInterfaceConfig
+AFTER UPDATE
+NOT FOR REPLICATION
+AS
+BEGIN
+	IF UPDATE(HeatSwapKeyword)
+		-- update the HeatSwapKeyword for all current work orders
+		-- ensures that Data14 matches the configured keyword
+		UPDATE dbo.Part 
+		SET Part.Data14=inserted.HeatSwapKeyword
+		FROM inserted;
+END;
+GO
 
 BEGIN TRY
 	CREATE TABLE integration.RenamedDemandAllocation (
