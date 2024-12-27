@@ -24,9 +24,9 @@ CREATE TABLE integration.SapInterfaceConfig (
 	-- 	system will have 1 Sigmanest database synced with it.
 	-- Essentially, this table should only have 1 entry. Lock ensures that:
 	--	https://stackoverflow.com/a/3971669
-	Lock char(1) NOT NULL DEFAULT 'X',
+	Lock TINYINT NOT NULL DEFAULT 1,
 	CONSTRAINT PK_CONFIG PRIMARY KEY (Lock),
-	CONSTRAINT CK_CONFIG_LOCKED CHECK (Lock='X'),
+	CONSTRAINT CK_CONFIG_LOCKED CHECK (Lock=1),
 
 	-- Name of SAP system (PRD, QAS, etc.)
 	SapSystem VARCHAR(3),
