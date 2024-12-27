@@ -3,7 +3,7 @@ USE SNDBaseISap;
 GO
 
 -- we are going to assume that the `integration` schema exists
-IF EXISTS (SELECT 1 FROM sys.schemas WHERE name = N'integration')
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = N'integration')
 BEGIN
 	RAISERROR (
 		'Schema `integration` does not exist.',
