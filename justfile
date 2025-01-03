@@ -19,3 +19,6 @@ demo target *args:
 gensql:
     rm SimTransCtrl_Proc_*.sql
     python schema/gen_proc.py
+
+slab:
+    uv run schema/gen_slab.py
