@@ -4,7 +4,7 @@ import re
 USE_DB = re.compile("USE SNDBaseISap;")
 SIMTRANS_DB = re.compile(r"(FROM|INTO) SNDBaseDev(\.\w+\.\w+)")
 CONFIG = re.compile(
-    r"\('[A-Z]{3}', \d+, '(\\\\hssieng\\)\w+([\\a-zA-Z]+<\w+>.dxf)'([^\n]*)\)"
+    r"\('[A-Z]{3}', \d+, '(\\\\\w+\\)\w+([\\a-zA-Z]+<\w+>.dxf)'([^\n]*)\)"
 )
 
 template_file = path.join(path.dirname(__file__), "SimTransCtrl_Proc.sql")
