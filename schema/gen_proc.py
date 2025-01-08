@@ -35,7 +35,7 @@ def generate(env, db, district, simtransdb):
 
 def main():
     for db, env in dbs.items():
-        generate(*env, simtransdb)
+        generate(*env, db)
 
 
 if __name__ == "__main__":
