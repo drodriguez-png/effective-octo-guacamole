@@ -29,6 +29,7 @@ CREATE TABLE integration.SapInterfaceConfig (
 	CONSTRAINT CK_CONFIG_LOCKED CHECK (Lock=1),
 
 	-- Name of SAP system (PRD, QAS, etc.)
+	-- TODO: can we remove this
 	SapSystem VARCHAR(3),
 
 	-- SimTrans district (Sigmanest system) involved with SAP system
@@ -36,6 +37,9 @@ CREATE TABLE integration.SapInterfaceConfig (
 
 	-- Path format template string to build DXF file
 	-- Must include the substring '<sheet_name>' for sheet_name replacement
+	-- TODO: should this be moved to a path so that OYS can query it instead
+	--	of it being configured? Would require the extension to be configured
+	--	or hardcoded.
 	RemnantDxfTemplate VARCHAR(255),
 
 	-- Placehold word used heat swap
