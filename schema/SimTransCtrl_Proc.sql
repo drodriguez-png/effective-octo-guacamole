@@ -136,7 +136,7 @@ BEGIN
 	-- Pre-event processing for any group of calls for the same @sap_event_id
 	-- Because of this `IF` statement, this will only do anything on the first
 	-- 	call for a given SAP event id (which should be for one material master).
-	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM SNDbaseDev.dbo.TransAct)
+	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM SNDBaseDev.dbo.TransAct)
 	BEGIN
 		-- [1] Preemtively set all parts to be removed for the given @mm
 		-- This ensures that any demand in Sigmanest that is not in SAP is
@@ -158,7 +158,7 @@ BEGIN
 			--	SimTrans runs in the middle of a data push.187
 			AND Data18 != @sap_event_id
 		)
-		INSERT INTO SNDbaseDev.dbo.TransAct (
+		INSERT INTO SNDBaseDev.dbo.TransAct (
 			TransType,
 			District,
 			TransID,	-- for logging purposes
@@ -203,13 +203,13 @@ BEGIN
 		-- 	delete this demand before it is added/updated.
 		-- This removes transactions added in [1] that are not necessary.
 		-- This step is optional, but it helps the performance of the SimTrans.
-		DELETE FROM SNDbaseDev.dbo.TransAct
+		DELETE FROM SNDBaseDev.dbo.TransAct
 		WHERE OrderNo = @work_order
 		AND ItemName = @part_name
 		AND ItemData18 = @sap_event_id;
 
 		-- [3] Add/Update demand via SimTrans
-		INSERT INTO SNDbaseDev.dbo.TransAct (
+		INSERT INTO SNDBaseDev.dbo.TransAct (
 			TransType,  -- `SN81`
 			District,
 			TransID,	-- for logging purposes
@@ -304,7 +304,7 @@ BEGIN
 		AND Data1 = @job
 		AND Data2 = @shipment
 	)
-	INSERT INTO SNDbaseDev.dbo.TransAct(
+	INSERT INTO SNDBaseDev.dbo.TransAct(
 		TransType,  -- `SN81`
 		District,
 		OrderNo,	-- work order name
@@ -325,7 +325,7 @@ BEGIN
 
 
 	-- insert SimTrans Transaction
-	INSERT INTO SNDbaseDev.dbo.TransAct (
+	INSERT INTO SNDBaseDev.dbo.TransAct (
 		TransType,  -- `SN81`
 		District,
 		OrderNo,	-- work order name
@@ -387,7 +387,7 @@ BEGIN
 	);
 
 	-- add on-hold demand
-	INSERT INTO SNDbaseDev.dbo.TransAct (
+	INSERT INTO SNDBaseDev.dbo.TransAct (
 		TransType,  -- `SN81`
 		District,
 		OrderNo,	-- work order name
@@ -444,7 +444,7 @@ BEGIN
 	WHERE Alloc.Id = @id;
 
 	-- remove renamed demand
-	INSERT INTO SNDbaseDev.dbo.TransAct(
+	INSERT INTO SNDBaseDev.dbo.TransAct(
 		TransType,  -- `SN81`
 		District,
 		OrderNo,	-- work order name
@@ -513,13 +513,13 @@ BEGIN
 	-- Pre-event processing for any group of calls for the same @sap_event_id
 	-- Because of this `IF` statement, this will only do anything on the first
 	-- 	call for a given SAP event id (which should be for one material master).
-	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM SNDbaseDev.dbo.TransAct)
+	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM SNDBaseDev.dbo.TransAct)
 	BEGIN
 		-- [1] Preemtively set all sheets to be removed for the given @mm
 		-- (excluding any sheets that are part of active nests). This makes
 		-- sure any sheets in Sigmanest that are not in SAP are removed since
 		-- SAP will not always tell us that those sheets were removed.
-		INSERT INTO SNDbaseDev.dbo.TransAct (
+		INSERT INTO SNDBaseDev.dbo.TransAct (
 			TransType,
 			District,
 			TransID,	-- for logging purposes
@@ -547,10 +547,10 @@ BEGIN
 		-- this sheet before it is added/updated.
 		-- This removes transactions added in [1] that are not necessary.
 		-- This step is optional, but it helps the performance of the SimTrans.
-		DELETE FROM SNDbaseDev.dbo.TransAct WHERE ItemName = @sheet_name;
+		DELETE FROM SNDBaseDev.dbo.TransAct WHERE ItemName = @sheet_name;
 
 		-- [3] Add/Update stock via SimTrans
-		INSERT INTO SNDbaseDev.dbo.TransAct (
+		INSERT INTO SNDBaseDev.dbo.TransAct (
 			TransType,	-- `SN91A or SN97`
 			District,
 			TransID,	-- for logging purposes
@@ -729,7 +729,7 @@ BEGIN
 	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
 
 	-- [1] Update program
-	INSERT INTO SNDbaseDev.dbo.TransAct (
+	INSERT INTO SNDBaseDev.dbo.TransAct (
 		TransType,		-- `SN76`
 		District,
 		TransID,		-- for logging purposes
