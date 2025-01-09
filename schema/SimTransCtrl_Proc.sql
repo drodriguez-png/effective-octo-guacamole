@@ -28,10 +28,6 @@ CREATE TABLE integration.SapInterfaceConfig (
 	CONSTRAINT PK_CONFIG PRIMARY KEY (Lock),
 	CONSTRAINT CK_CONFIG_LOCKED CHECK (Lock=1),
 
-	-- Name of SAP system (PRD, QAS, etc.)
-	-- TODO: can we remove this
-	SapSystem VARCHAR(3),
-
 	-- SimTrans district (Sigmanest system) involved with SAP system
 	SimTransDistrict INT NOT NULL,
 
@@ -91,7 +87,6 @@ GO
 -- *    Interface 1: Demand                   *
 -- ********************************************
 CREATE OR ALTER PROCEDURE integration.PushSapDemand
-	@sap_system VARCHAR(3),
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	@work_order VARCHAR(50),
@@ -118,14 +113,12 @@ BEGIN
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
 		FROM integration.SapInterfaceConfig
-		WHERE SapSystem = @sap_system
 	);
 
 	-- load SimTrans district from configuration
 	DECLARE @heatswap_keyword INT = (
 		SELECT TOP 1 HeatSwapKeyword
 		FROM integration.SapInterfaceConfig
-		WHERE SapSystem = @sap_system
 	);
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
@@ -270,7 +263,6 @@ BEGIN
 END;
 GO
 CREATE OR ALTER PROCEDURE integration.PushRenamedDemand
-	@sap_system VARCHAR(3),
 	@new_part_name VARCHAR(50),
 	@sap_part_name VARCHAR(50),
 	@qty INT,
@@ -282,7 +274,6 @@ BEGIN
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
 		FROM integration.SapInterfaceConfig
-		WHERE SapSystem = @sap_system
 	);
 
 	-- create allocation
@@ -379,7 +370,6 @@ BEGIN
 END;
 GO
 CREATE OR ALTER PROCEDURE integration.RemoveRenamedDemand
-	@sap_system VARCHAR(3),
 	@id INT
 AS
 BEGIN
@@ -387,7 +377,6 @@ BEGIN
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
 		FROM integration.SapInterfaceConfig
-		WHERE SapSystem = @sap_system
 	);
 
 	-- add on-hold demand
@@ -476,7 +465,6 @@ GO
 -- *    Interface 2: Inventory                *
 -- ********************************************
 CREATE OR ALTER PROCEDURE integration.PushSapInventory
-	@sap_system VARCHAR(3),
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	@sheet_name VARCHAR(50),
@@ -498,14 +486,12 @@ BEGIN
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
 		FROM integration.SapInterfaceConfig
-		WHERE SapSystem = @sap_system
 	);
 	-- load dxf path template from configuration and interpolate @sheet_name
 	DECLARE @dxf_file INT = (
 		SELECT TOP 1
 			REPLACE(RemnantDxfTemplate, '<sheet_name>', @sheet_name)
 		FROM integration.SapInterfaceConfig
-		WHERE SapSystem = @sap_system
 	);
 
 
@@ -708,7 +694,6 @@ GO
 -- *    Interface 4: Update Program           *
 -- ********************************************
 CREATE OR ALTER PROCEDURE integration.UpdateProgram
-	@sap_system VARCHAR(3),
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	@archive_packet_id INT
@@ -724,7 +709,6 @@ BEGIN
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
 		FROM integration.SapInterfaceConfig
-		WHERE SapSystem = @sap_system
 	);
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
