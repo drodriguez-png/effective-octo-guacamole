@@ -3,6 +3,8 @@ USE SNDBaseISap;
 GO
 
 -- we are going to assume that the `integration` schema exists
+-- TODO: should we change the schema name?
+--	(Sigmanest already has an `integration` schema)
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = N'integration')
 BEGIN
 	RAISERROR (
