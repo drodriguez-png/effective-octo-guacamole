@@ -32,11 +32,9 @@ CREATE TABLE integration.SapInterfaceConfig (
 	SimTransDistrict INT NOT NULL,
 
 	-- Path format template string to build DXF file
-	-- Must include the substring '<sheet_name>' for sheet_name replacement
-	-- TODO: should this be moved to a path so that OYS can query it instead
-	--	of it being configured? Would require the extension to be configured
-	--	or hardcoded.
-	RemnantDxfTemplate VARCHAR(255),
+	RemnantDxfPath VARCHAR(255),
+	-- Path should be to a windows file system folder without trailing \
+	CONSTRAINT CK_RemnantDxfPath CHECK (RemnantDxfPath NOT LIKE '%[\/:*?"<>|]'),
 
 	-- Placehold word used heat swap
 	-- This might be hardcoded in the post, so check before changing
@@ -45,7 +43,7 @@ CREATE TABLE integration.SapInterfaceConfig (
 );
 INSERT INTO integration.SapInterfaceConfig
 VALUES
-	('QAS', 1, '\\hssieng\SNDataQas\RemSaveOutput\DXF\<sheet_name>.dxf', 'HighHeatNum');
+	('QAS', 1, '\\hssieng\SNDataQas\RemSaveOutput\DXF', 'HighHeatNum');
 GO
 
 CREATE OR ALTER TRIGGER integration.PostConfigUpdate
@@ -490,7 +488,7 @@ BEGIN
 	-- load dxf path template from configuration and interpolate @sheet_name
 	DECLARE @dxf_file INT = (
 		SELECT TOP 1
-			REPLACE(RemnantDxfTemplate, '<sheet_name>', @sheet_name)
+			CONCAT(RemnantDxfPath, '\', @sheet_name, '.dxf')
 		FROM integration.SapInterfaceConfig
 	);
 
