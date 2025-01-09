@@ -34,6 +34,7 @@ CREATE TABLE integration.SapInterfaceConfig (
 	-- Path format template string to build DXF file
 	RemnantDxfPath VARCHAR(255),
 	-- Path should be to a windows file system folder without trailing \
+	--	(as well as other invalid windows folder name characters)
 	CONSTRAINT CK_RemnantDxfPath CHECK (RemnantDxfPath NOT LIKE '%[\/:*?"<>|]'),
 
 	-- Placehold word used heat swap
