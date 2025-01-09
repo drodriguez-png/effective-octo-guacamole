@@ -46,7 +46,7 @@ CREATE TABLE integration.SapInterfaceConfig (
 );
 INSERT INTO integration.SapInterfaceConfig
 VALUES
-	('QAS', 1, '\\hssieng\SNDataQas\RemSaveOutput\DXF', 'HighHeatNum');
+	(1, '\\hssieng\SNDataQas\RemSaveOutput\DXF', 'HighHeatNum');
 GO
 
 CREATE OR ALTER TRIGGER integration.PostConfigUpdate
