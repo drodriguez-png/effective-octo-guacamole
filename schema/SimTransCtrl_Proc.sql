@@ -2,9 +2,6 @@
 USE SNDBaseDev;
 GO
 
-CREATE SCHEMA sap;
-GO
-
 -- we are going to assume that the `sap` schema exists
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = N'sap')
 BEGIN
