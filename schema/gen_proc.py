@@ -1,10 +1,10 @@
 from os import path
 import re
 
-USE_DB = re.compile("USE SNDBaseISap;")
+USE_DB = re.compile("USE SNDBaseDev;")
 SIMTRANS_DB = re.compile(r"(FROM|INTO) SNDBaseDev(\.\w+\.\w+)")
 CONFIG = re.compile(
-    # i.e. ('QAS', 1, '\\hssieng\SNDataQas\', ...)
+    # i.e. (1, '\\hssieng\SNDataQas\', ...)
     r"\(\d+, '(\\\\\w+\\SNData)\w+([\\a-zA-Z]+)'([^\n]*)\)"
 )
 
