@@ -45,7 +45,7 @@ CREATE TABLE sap.InterfaceConfig (
 	-- Changing this also requires changing the HeatSwap configuration
 	HeatSwapKeyword VARCHAR(64)
 );
-INSERT INTO sap.InterfaceConfig
+INSERT INTO sap.InterfaceConfig (SimTransDistrict, RemnantDxfPath, HeatSwapKeyword)
 VALUES
 	(1, '\\hssieng\SNDataQas\RemSaveOutput\DXF', 'HighHeatNum');
 GO
