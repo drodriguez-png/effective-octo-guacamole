@@ -1,5 +1,5 @@
 -- Purpose: OYS posting plugin schema for Interface 3
-USE SNDBaseISap;
+USE SNDBaseDev;
 GO
 
 CREATE SCHEMA oys;
