@@ -7,39 +7,38 @@ GO
 
 CREATE TABLE oys.Program (
 	AutoId INT IDENTITY(1,1),
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
 	ProgramGUID UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
 	ProgramName VARCHAR(50),
-	RepeatID INT,
 	MachineName VARCHAR(50),
 	CuttingTime FLOAT,
 	TaskName VARCHAR(50),
-	NestType VARCHAR(64),	-- 'Slab' or 'NormalNest'
-	Status VARCHAR(64),	-- 'Created', 'Released', or 'Deleted'
-	WSName NVARCHAR(300),
-	EntryDateTime DateTime
+	NestType VARCHAR(64),	-- 'Slab', 'Standard' or 'Split'
+	WSName NVARCHAR(300)
 );
 CREATE TABLE oys.ParentPlate(
 	AutoId INT IDENTITY(1,1),
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
 	ProgramGUID UNIQUEIDENTIFIER
 		FOREIGN KEY REFERENCES oys.Program(ProgramGUID) ON DELETE CASCADE,
 	ParentPlateGUID UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-	PlateName VARCHAR(50),	-- TODO: If using Layout, do we need this?
+	PlateName VARCHAR(50),
 	Material VARCHAR(50),
 	Thickness FLOAT
 );
 CREATE TABLE oys.ParentPart(
 	AutoId INT IDENTITY(1,1) PRIMARY KEY,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
 	ProgramGUID UNIQUEIDENTIFIER
 		FOREIGN KEY REFERENCES oys.Program(ProgramGUID) ON DELETE CASCADE,
-	PartName VARCHAR(100),	-- from Data3 (SAP part name), not PartName
-	PartQty INT,			-- QtyProgram
-	Job VARCHAR(50),		-- Data1, TODO: do we need this?
-	Shipment VARCHAR(50),	-- Data2, TODO: do we need this?
-	TrueArea FLOAT,			-- TODO: do we need this?
-	NestedArea FLOAT		-- TODO: do we need this?
+	SNPartName VARCHAR(100),
+	QtyProgram INT,
+	TrueArea FLOAT,
+	NestedArea FLOAT
 );
 CREATE TABLE oys.ChildPlate (
 	AutoId INT IDENTITY(1,1),
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
 	ProgramGUID UNIQUEIDENTIFIER
 		FOREIGN KEY REFERENCES oys.Program(ProgramGUID) ON DELETE CASCADE,
 	ChildPlateGUID UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
@@ -59,10 +58,12 @@ CREATE TABLE oys.ChildPlate (
 );
 CREATE TABLE oys.ChildPart (
 	AutoId INT IDENTITY(1,1) PRIMARY KEY,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
 	ChildPlateGUID UNIQUEIDENTIFIER
 		FOREIGN KEY REFERENCES oys.ChildPlate(ChildPlateGUID) ON DELETE CASCADE,
-	PartName VARCHAR(100),	-- from Data3 (SAP part name), not PartName
-	PartQty INT,			-- QtyProgram
+	SNPartName VARCHAR(100),	-- PartName
+	SAPPartName VARCHAR(100),	-- from Data3 (SAP part name)
+	QtyProgram INT,
 	Job VARCHAR(50),		-- Data1
 	Shipment VARCHAR(50),	-- Data2
 	TrueArea FLOAT,
@@ -70,6 +71,7 @@ CREATE TABLE oys.ChildPart (
 );
 CREATE TABLE oys.Remnant (
 	AutoId INT IDENTITY(1,1) PRIMARY KEY,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
 	ChildPlateGUID UNIQUEIDENTIFIER
 		FOREIGN KEY REFERENCES oys.ChildPlate(ChildPlateGUID) ON DELETE CASCADE,
 	RemnantName VARCHAR(50),
@@ -77,12 +79,15 @@ CREATE TABLE oys.Remnant (
 
 	-- For visibility in SAP of whether or not a sheet geometry can be understood
 	--	as Length * Width or if inquiry in Sigmanest is required
-	IsRectangular BIT
+	IsRectangular BIT,
+	RectWidth FLOAT,
+	RectLength FLOAT
 );
 
 -- Program state feedback
-CREATE TABLE oys.Feedback (
+CREATE TABLE oys.Status (
 	AutoId INT IDENTITY(1,1) PRIMARY KEY,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
 	ProgramGUID UNIQUEIDENTIFIER
 		FOREIGN KEY REFERENCES oys.Program(ProgramGUID) ON DELETE CASCADE,
 
