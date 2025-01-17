@@ -2,24 +2,22 @@
 USE SNDBaseISap;
 GO
 
--- we are going to assume that the `integration` schema exists
--- TODO: should we change the schema name?
---	(Sigmanest already has an `integration` schema)
-IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = N'integration')
+-- we are going to assume that the `sap` schema exists
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = N'sap')
 BEGIN
 	RAISERROR (
-		'Schema `integration` does not exist.',
+		'Schema `sap` does not exist.',
 		25,	-- severity
 		1	-- state
 	);
 END;
 
-IF OBJECT_ID(N'integration.SapInterfaceConfig', N'U') IS NOT NULL
+IF OBJECT_ID(N'sap.InterfaceConfig', N'U') IS NOT NULL
 BEGIN
-	DROP TABLE integration.SapInterfaceConfig;
+	DROP TABLE sap.InterfaceConfig;
 END;
 
-CREATE TABLE integration.SapInterfaceConfig (
+CREATE TABLE sap.InterfaceConfig (
 	-- All queries of this configuration table use `SELECT TOP 1` to ensure that
 	-- 	that the transaction happens against 1 district. It could be catastrophic
 	-- 	to post transactions against multiple Sigmanest databases, since each SAP
@@ -44,13 +42,13 @@ CREATE TABLE integration.SapInterfaceConfig (
 	-- Changing this also requires changing the HeatSwap configuration
 	HeatSwapKeyword VARCHAR(64)
 );
-INSERT INTO integration.SapInterfaceConfig
+INSERT INTO sap.InterfaceConfig
 VALUES
 	(1, '\\hssieng\SNDataQas\RemSaveOutput\DXF', 'HighHeatNum');
 GO
 
-CREATE OR ALTER TRIGGER integration.PostConfigUpdate
-ON integration.SapInterfaceConfig
+CREATE OR ALTER TRIGGER sap.PostConfigUpdate
+ON sap.InterfaceConfig
 AFTER UPDATE
 NOT FOR REPLICATION
 AS
@@ -65,7 +63,7 @@ END;
 GO
 
 BEGIN TRY
-	CREATE TABLE integration.RenamedDemandAllocation (
+	CREATE TABLE sap.RenamedDemandAllocation (
 		Id INT PRIMARY KEY,
 		SapPartName VARCHAR(50),
 		NewPartName VARCHAR(50),
@@ -87,7 +85,7 @@ GO
 -- ********************************************
 -- *    Interface 1: Demand                   *
 -- ********************************************
-CREATE OR ALTER PROCEDURE integration.PushSapDemand
+CREATE OR ALTER PROCEDURE sap.PushSapDemand
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	@work_order VARCHAR(50),
@@ -113,13 +111,13 @@ BEGIN
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
-		FROM integration.SapInterfaceConfig
+		FROM sap.InterfaceConfig
 	);
 
 	-- load SimTrans district from configuration
 	DECLARE @heatswap_keyword INT = (
 		SELECT TOP 1 HeatSwapKeyword
-		FROM integration.SapInterfaceConfig
+		FROM sap.InterfaceConfig
 	);
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
@@ -263,7 +261,7 @@ BEGIN
 	END;
 END;
 GO
-CREATE OR ALTER PROCEDURE integration.PushRenamedDemand
+CREATE OR ALTER PROCEDURE sap.PushRenamedDemand
 	@new_part_name VARCHAR(50),
 	@sap_part_name VARCHAR(50),
 	@qty INT,
@@ -274,11 +272,11 @@ BEGIN
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
-		FROM integration.SapInterfaceConfig
+		FROM sap.InterfaceConfig
 	);
 
 	-- create allocation
-	INSERT INTO integration.RenamedDemandAllocation
+	INSERT INTO sap.RenamedDemandAllocation
 		(NewPartName, SapPartName, Qty, Job, Shipment)
 	VALUES
 		(@new_part_name, @sap_part_name, @qty, @job, @shipment);
@@ -370,14 +368,14 @@ BEGIN
 	AND Data2 = @shipment
 END;
 GO
-CREATE OR ALTER PROCEDURE integration.RemoveRenamedDemand
+CREATE OR ALTER PROCEDURE sap.RemoveRenamedDemand
 	@id INT
 AS
 BEGIN
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
-		FROM integration.SapInterfaceConfig
+		FROM sap.InterfaceConfig
 	);
 
 	-- add on-hold demand
@@ -451,13 +449,13 @@ BEGIN
 
 		WONumber,
 		NewPartName
-	FROM integration.RenamedDemandAllocation
+	FROM sap.RenamedDemandAllocation
 		INNER JOIN Part
 			ON Part.PartName = RenamedDemandAllocation.NewPartName
 		WHERE Id = @id;
 
 	-- delete allocation
-	DELETE FROM integration.RenamedDemandAllocation WHERE Id = @id;
+	DELETE FROM sap.RenamedDemandAllocation WHERE Id = @id;
 
 END;
 GO
@@ -465,7 +463,7 @@ GO
 -- ********************************************
 -- *    Interface 2: Inventory                *
 -- ********************************************
-CREATE OR ALTER PROCEDURE integration.PushSapInventory
+CREATE OR ALTER PROCEDURE sap.PushSapInventory
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	@sheet_name VARCHAR(50),
@@ -486,13 +484,13 @@ BEGIN
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
-		FROM integration.SapInterfaceConfig
+		FROM sap.InterfaceConfig
 	);
 	-- load dxf path template from configuration and interpolate @sheet_name
 	DECLARE @dxf_file INT = (
 		SELECT TOP 1
 			CONCAT(RemnantDxfPath, '\', @sheet_name, '.dxf')
-		FROM integration.SapInterfaceConfig
+		FROM sap.InterfaceConfig
 	);
 
 
@@ -593,7 +591,7 @@ GO
 -- ********************************************
 -- *    Interface 3: Create/Delete Nest       *
 -- ********************************************
-CREATE OR ALTER PROCEDURE integration.GetFeedback
+CREATE OR ALTER PROCEDURE sap.GetFeedback
 AS
 BEGIN
 	DECLARE @created VARCHAR(50) = 'SN100';
@@ -683,7 +681,7 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE integration.DeleteFeedback
+CREATE OR ALTER PROCEDURE sap.DeleteFeedback
 	@feedback_id INT
 AS
 BEGIN
@@ -694,7 +692,7 @@ GO
 -- ********************************************
 -- *    Interface 4: Update Program           *
 -- ********************************************
-CREATE OR ALTER PROCEDURE integration.UpdateProgram
+CREATE OR ALTER PROCEDURE sap.UpdateProgram
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	@archive_packet_id INT
@@ -709,7 +707,7 @@ BEGIN
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
-		FROM integration.SapInterfaceConfig
+		FROM sap.InterfaceConfig
 	);
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
