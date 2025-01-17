@@ -100,7 +100,15 @@ CREATE TABLE oys.Status (
 	-- For tracking status of data pushed to SAP
 	--	- Initially this should be null
 	--	- Boomi and the procedures Boomi calls will update this column
-	--	- TODO[High]: do we set a 'Complete' status or delete feedback
 	SapStatus VARCHAR(64) NULL	-- 'Sent' or some Boomi status
+);
+CREATE TABLE oys.StatusArchive (
+	AutoId INT IDENTITY(1,1) PRIMARY KEY,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
+	ProgramGUID UNIQUEIDENTIFIER
+		FOREIGN KEY REFERENCES oys.Program(ProgramGUID),
+	SigmanestStatus VARCHAR(64),	-- 'Created', 'Released', or 'Deleted'
+	SapStatus VARCHAR(64) NULL,	-- 'Sent' or some Boomi status
+	ArchiveDateTime DATETIME DEFAULT GETDATE(),
 );
 GO
