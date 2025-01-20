@@ -594,90 +594,85 @@ GO
 CREATE OR ALTER PROCEDURE sap.GetFeedback
 AS
 BEGIN
-	DECLARE @created VARCHAR(50) = 'SN100';
-	DECLARE @deleted VARCHAR(50) = 'SN101';
-	-- remove reposts (SN100 and SN101 exist for the same ArchivePacketID)
-	DELETE FROM dbo.STPrgArc
-	WHERE ArchivePacketID IN (
-		SELECT ArchivePacketID FROM dbo.STPrgArc WHERE TransType = @created
+	-- remove(defer) reposts
+	UPDATE oys.Status SET SapStatus = 'Deferred'
+	WHERE ProgramGUID IN (
+		SELECT ProgramGUID FROM oys.Status WHERE SigmanestStatus = 'Created'
 		INTERSECT
-		SELECT ArchivePacketID FROM dbo.STPrgArc WHERE TransType = @deleted
+		SELECT ProgramGUID FROM oys.Status WHERE SigmanestStatus = 'Deleted'
 	);
 
-	-- clear unused feedback
-	DELETE FROM dbo.STPrgArc
-		WHERE TransType NOT IN (@deleted, @created);	-- discard updates
-	DELETE FROM dbo.STPIPArc;
-	DELETE FROM dbo.STPrtArc;
-	DELETE FROM dbo.STRemArc;
-	DELETE FROM dbo.STShtArc;
-	DELETE FROM dbo.STWOArc;
+	-- set feedback to processing
+	UPDATE oys.Status SET SapStatus = 'Processing'
+	WHERE SapStatus IS NULL;	-- TODO: skip or handle 'Sent' feedback
 
 	-- programs
 	SELECT
-		AutoID AS FeedbackId,
-		ArchivePacketID,
-		CASE TransType
-			-- TODO: released (needs check or not)
-			WHEN @created THEN 'Created'
-			WHEN @deleted THEN 'Deleted'
-		END AS Status,
+		Status.AutoID AS FeedbackId,
+		Program.AutoID,
+		SigmanestStatus AS Status,
 		ProgramName,
 		MachineName,
 		CuttingTime
-	FROM dbo.STPrgArc
+	FROM oys.Status
+	INNER JOIN oys.Program
+		ON Status.ProgramGUID = Program.ProgramGUID
+	WHERE Status.SapStatus = 'Processing'
 
 	-- parts
 	SELECT
-		Programs.ArchivePacketID,
-		1 AS SheetIndex,	-- TODO: implement for slabs
-		PartData.Data3 AS PartName,
-		Parts.QtyInProcess AS PartQty,
-		PartData.Data1 AS Job,
-		PartData.Data2 AS Shipment,
-		Parts.TrueArea,
-		Parts.NestedArea
-	FROM dbo.STPrgArc AS Programs
-	INNER JOIN dbo.PIP AS Parts
-		ON  Programs.ProgramName = Parts.ProgramName
-		AND Programs.RepeatID    = Parts.RepeatID
-	INNER JOIN dbo.Part AS PartData
-		ON  Parts.PartName = PartData.PartName
-		AND Parts.WONumber = PartData.WONumber
-	WHERE Programs.TransType = @created;	-- program post
+		Program.AutoId,
+		ChildPlate.PlateIndex AS SheetIndex,
+		ChildPart.SAPPartName AS PartName,
+		ChildPart.QtyProgram AS PartQty,
+		ChildPart.Job,
+		ChildPart.Shipment,
+		ChildPart.TrueArea,
+		ChildPart.NestedArea
+	FROM oys.ChildPart
+	INNER JOIN oys.ChildPlate
+		ON ChildPlate.ChildPlateGUID=ChildPart.ChildPlateGUID
+	INNER JOIN oys.Program
+		ON Program.ProgramGUID=ChildPlate.ProgramGUID
+	INNER JOIN oys.Status
+		ON Status.ProgramGUID=Program.ProgramGUID
+	WHERE Status.SapStatus = 'Processing'
+	AND SigmanestStatus = 'Created';
 
 	-- sheet(s)
 	SELECT
-		Programs.ArchivePacketID,
-		1 AS SheetIndex,	-- TODO: implement for slabs
-		Sheets.SheetName,
-		Sheets.PrimeCode AS MaterialMaster
-	FROM dbo.STPrgArc AS Programs
-	INNER JOIN SIP
-		ON Programs.ProgramName = SIP.ProgramName
-		AND Programs.RepeatID = SIP.RepeatID
-	INNER JOIN Stock AS Sheets
-		-- cannot match on SheetName because when sheets are combined,
-		-- 	they will differ
-		ON SIP.SheetName = Sheets.SheetName
-	WHERE Programs.TransType = @created;	-- program post
+		Program.AutoId,
+		ChildPlate.PlateIndex AS SheetIndex,
+		ChildPlate.PlateName AS SheetName,
+		ChildPlate.MaterialMaster
+	FROM oys.ChildPlate
+	INNER JOIN oys.Program
+		ON Program.ProgramGUID=ChildPlate.ProgramGUID
+	INNER JOIN oys.Status
+		ON Status.ProgramGUID=Program.ProgramGUID
+	WHERE Status.SapStatus = 'Processing'
+	AND SigmanestStatus = 'Created';
 
 	-- remnant(s)
 	SELECT
-		Programs.ArchivePacketID,
-		1 AS SheetIndex,	-- TODO: implement for slabs
-		Remnants.RemnantName,
-		Remnants.Area,
-		IIF(
-			ABS(Remnants.Area - Remnants.Length * Remnants.Width) > 1,
-			'N',
-			'Y'		-- Area is close to Length*Width, likely rectangular
-		) AS IsRectangular
-	FROM dbo.STPrgArc AS Programs
-	INNER JOIN Remnant AS Remnants
-		ON  Programs.ProgramName = Remnants.ProgramName
-		AND Programs.RepeatID    = Remnants.RepeatID
-	WHERE Programs.TransType = @created;	-- program post
+		Program.AutoId,
+		ChildPlate.PlateIndex AS SheetIndex,
+		Remnant.RemnantName,
+		Remnant.Area,
+		Remnant.IsRectangular
+	FROM oys.Remnant
+	INNER JOIN oys.ChildPlate
+		ON ChildPlate.ChildPlateGUID=Remnant.ChildPlateGUID
+	INNER JOIN oys.Program
+		ON Program.ProgramGUID=ChildPlate.ProgramGUID
+	INNER JOIN oys.Status
+		ON Status.ProgramGUID=Program.ProgramGUID
+	WHERE Status.SapStatus = 'Processing'
+	AND SigmanestStatus = 'Created';
+
+	-- update oys.Status.SapStatus = 'Sent'
+	UPDATE oys.Status SET SapStatus = 'Sent'
+	WHERE SapStatus = 'Processing';
 END;
 GO
 
@@ -685,7 +680,34 @@ CREATE OR ALTER PROCEDURE sap.DeleteFeedback
 	@feedback_id INT
 AS
 BEGIN
-	DELETE FROM dbo.STPrgArc WHERE AutoID=@feedback_id
+	-- This will trigger PostFeedbackUpdate
+	UPDATE oys.Status SET SapStatus = 'Complete' WHERE AutoID=@feedback_id;
+END;
+GO
+
+CREATE OR ALTER TRIGGER sap.PostFeedbackUpdate
+ON sap.InterfaceConfig
+AFTER UPDATE
+NOT FOR REPLICATION
+AS
+BEGIN
+	IF UPDATE(SapStatus)
+		-- Move 'Complete' and 'Deferred' items to archive
+		DELETE FROM oys.Status
+		OUTPUT
+			deleted.AutoId,
+			deleted.DBEntryDateTime,
+			deleted.ProgramGUID,
+			deleted.SigmanestStatus,
+			deleted.SapStatus
+		INTO oys.StatusArchive (
+			AutoId,
+			DBEntryDateTime,
+			ProgramGUID,
+			SigmanestStatus,
+			SapStatus
+		)
+		WHERE SapStatus IN ('Complete', 'Deferred');
 END;
 GO
 
@@ -695,14 +717,16 @@ GO
 CREATE OR ALTER PROCEDURE sap.UpdateProgram
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
-	@archive_packet_id INT
+	@auto_id INT
 AS
 SET NOCOUNT ON
 BEGIN
 	-- Expected Condition:
-	-- 	It is expected that the program with the given ArchivePacketID exists.
+	-- 	It is expected that the program with the given AutoID exists.
 	-- 	If program update in Sigmanest is disabled and all Interface 3
-	-- 		transactionshave posted, then this should hold
+	-- 		transactions have posted, then this should hold
+	--	For a slab nest, we only have to update the child nests, because the slab
+	--		nest has no work order parts and therefore was not written to the database
 
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
@@ -727,9 +751,11 @@ BEGIN
 		'SN76',
 		@simtrans_district,
 		@trans_id,
-		ProgramName,
-		RepeatId
-	FROM dbo.Program
-	WHERE ArchivePacketID = @archive_packet_id;
+		ChildNestProgramName,
+		ChildNestRepeatID
+	FROM oys.Program
+	INNER JOIN oys.ChildPlate	
+		ON Program.ProgramGUID=ChildPlate.ProgramGUID
+	WHERE Program.AutoId = @auto_id;
 END;
 GO
