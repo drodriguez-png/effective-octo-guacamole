@@ -4,13 +4,11 @@ GO
 
 -- we are going to assume that the `sap` schema exists
 IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = N'sap')
-BEGIN
 	RAISERROR (
 		'Schema `sap` does not exist.',
-		25,	-- severity
+		25,	-- severity (this should stop execution)
 		1	-- state
 	);
-END;
 
 IF OBJECT_ID(N'sap.InterfaceConfig', N'U') IS NOT NULL
 BEGIN
