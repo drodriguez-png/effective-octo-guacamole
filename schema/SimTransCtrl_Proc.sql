@@ -37,9 +37,9 @@ CREATE TABLE sap.InterfaceConfig (
 	--	(as well as other invalid windows folder name characters)
 	CONSTRAINT CK_RemnantDxfPath CHECK (RemnantDxfPath NOT LIKE '%[\/:*?"<>|]'),
 
-	-- Placehold word used heat swap
-	-- This might be hardcoded in the post, so check before changing
-	-- Changing this also requires changing the HeatSwap configuration
+	-- Placehold word used heat swap (inserted into Data14 in interface 1).
+	-- This might be hardcoded in the Sigmanest post, so check before changing.
+	-- Changing this also requires changing the HeatSwap configuration.
 	HeatSwapKeyword VARCHAR(64)
 );
 INSERT INTO sap.InterfaceConfig (SimTransDistrict, RemnantDxfPath, HeatSwapKeyword)
@@ -114,7 +114,7 @@ BEGIN
 		FROM sap.InterfaceConfig
 	);
 
-	-- load SimTrans district from configuration
+	-- load SimTrans heatswap keyword from configuration
 	DECLARE @heatswap_keyword INT = (
 		SELECT TOP 1 HeatSwapKeyword
 		FROM sap.InterfaceConfig
@@ -603,6 +603,9 @@ BEGIN
 	);
 
 	-- set feedback to processing
+	-- This ensures that if feedback items are added in the middle of processing,
+	--	partial data sets do not get  uploaded to SAP
+	--	(i.e. Parts list, but not Program header)
 	UPDATE oys.Status SET SapStatus = 'Processing'
 	WHERE SapStatus IS NULL;	-- TODO: skip or handle 'Sent' feedback
 
@@ -680,8 +683,11 @@ CREATE OR ALTER PROCEDURE sap.DeleteFeedback
 	@feedback_id INT
 AS
 BEGIN
-	-- This will trigger PostFeedbackUpdate
-	UPDATE oys.Status SET SapStatus = 'Complete' WHERE AutoID=@feedback_id;
+	-- Marks feedback items as successfully uploaded to SAP.
+	-- Feedback items marked as 'Sent' will continue to send to SAP
+
+	-- This will trigger sap.PostFeedbackUpdate
+	UPDATE oys.Status SET SapStatus = 'Complete' WHERE AutoId=@feedback_id;
 END;
 GO
 
