@@ -608,7 +608,8 @@ BEGIN
 	--	partial data sets do not get  uploaded to SAP
 	--	(i.e. Parts list, but not Program header)
 	UPDATE oys.Status SET SapStatus = 'Processing'
-	WHERE SapStatus IS NULL;	-- TODO: skip or handle 'Sent' feedback
+	WHERE SapStatus IS NULL
+	OR SapStatus = 'Sent';	-- resend 'Sent' feedback (i.e. failed on last push)
 
 	-- programs
 	SELECT
