@@ -681,7 +681,7 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE sap.DeleteFeedback
+CREATE OR ALTER PROCEDURE sap.MarkFeedbackSapUploadComplete
 	@feedback_id INT
 AS
 BEGIN
