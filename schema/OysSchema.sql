@@ -42,7 +42,7 @@ CREATE TABLE oys.ChildPlate (
 	ProgramGUID UNIQUEIDENTIFIER
 		FOREIGN KEY REFERENCES oys.Program(ProgramGUID) ON DELETE CASCADE,
 	ChildPlateGUID UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-	
+
 	PlateName VARCHAR(50),
 	-- For tracking the order of sheets in a slab
 	--	- Indexes start at 1
@@ -100,15 +100,17 @@ CREATE TABLE oys.Status (
 	-- For tracking status of data pushed to SAP
 	--	- Initially this should be null
 	--	- Boomi and the procedures Boomi calls will update this column
-	SapStatus VARCHAR(64) NULL	-- 'Sent' or some Boomi status
+	SapStatus VARCHAR(64) NULL
 );
 CREATE TABLE oys.StatusArchive (
-	AutoId INT IDENTITY(1,1) PRIMARY KEY,
+	-- This table is a "dumb" copy of what was in oys.Status
+	-- All foreign keys have been removed to avoid any cascading effects
+
+	AutoId INT PRIMARY KEY,
 	DBEntryDateTime DATETIME DEFAULT GETDATE(),
-	ProgramGUID UNIQUEIDENTIFIER
-		FOREIGN KEY REFERENCES oys.Program(ProgramGUID),
-	SigmanestStatus VARCHAR(64),	-- 'Created', 'Released', or 'Deleted'
-	SapStatus VARCHAR(64) NULL,	-- 'Sent' or some Boomi status
+	ProgramGUID UNIQUEIDENTIFIER,	-- was a foreign key to oys.Program(ProgramGUID)
+	SigmanestStatus VARCHAR(64),
+	SapStatus VARCHAR(64) NULL,
 	ArchiveDateTime DATETIME DEFAULT GETDATE(),
 );
 GO
