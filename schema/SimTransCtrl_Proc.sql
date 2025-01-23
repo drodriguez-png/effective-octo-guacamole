@@ -608,8 +608,8 @@ BEGIN
 
 	-- programs
 	SELECT
-		Status.AutoID AS FeedbackId,
-		Program.AutoID,
+		Status.AutoId AS FeedbackId,
+		Program.AutoId AS ArchivePacketId,
 		SigmanestStatus AS Status,
 		ProgramName,
 		MachineName,
@@ -621,7 +621,7 @@ BEGIN
 
 	-- parts
 	SELECT
-		Program.AutoId,
+		Program.AutoId AS ArchivePacketId,
 		ChildPlate.PlateIndex AS SheetIndex,
 		ChildPart.SAPPartName AS PartName,
 		ChildPart.QtyProgram AS PartQty,
@@ -641,7 +641,7 @@ BEGIN
 
 	-- sheet(s)
 	SELECT
-		Program.AutoId,
+		Program.AutoId AS ArchivePacketId,
 		ChildPlate.PlateIndex AS SheetIndex,
 		ChildPlate.PlateName AS SheetName,
 		ChildPlate.MaterialMaster
@@ -655,7 +655,7 @@ BEGIN
 
 	-- remnant(s)
 	SELECT
-		Program.AutoId,
+		Program.AutoId AS ArchivePacketId,
 		ChildPlate.PlateIndex AS SheetIndex,
 		Remnant.RemnantName,
 		Remnant.Area,
@@ -717,12 +717,12 @@ GO
 CREATE OR ALTER PROCEDURE sap.UpdateProgram
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
-	@auto_id INT
+	@archive_packet_id INT
 AS
 SET NOCOUNT ON
 BEGIN
 	-- Expected Condition:
-	-- 	It is expected that the program with the given AutoID exists.
+	-- 	It is expected that the program with the given AutoId exists.
 	-- 	If program update in Sigmanest is disabled and all Interface 3
 	-- 		transactions have posted, then this should hold
 	--	For a slab nest, we only have to update the child nests, because the slab
@@ -756,6 +756,6 @@ BEGIN
 	FROM oys.Program
 	INNER JOIN oys.ChildPlate	
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
-	WHERE Program.AutoId = @auto_id;
+	WHERE Program.AutoId = @archive_packet_id;
 END;
 GO
