@@ -315,7 +315,6 @@ BEGIN
 		Parts.Qty	-- Ignored for SN82 items
 	FROM Parts;
 
-
 	-- insert SimTrans Transaction
 	INSERT INTO SNDBaseDev.dbo.TransAct (
 		TransType,  -- `SN81`
@@ -490,7 +489,6 @@ BEGIN
 			CONCAT(RemnantDxfPath, '\', @sheet_name, '.dxf')
 		FROM sap.InterfaceConfig
 	);
-
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
@@ -760,7 +758,7 @@ BEGIN
 		ChildNestProgramName,
 		ChildNestRepeatID
 	FROM oys.Program
-	INNER JOIN oys.ChildPlate	
+	INNER JOIN oys.ChildPlate
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	WHERE Program.AutoId = @archive_packet_id;
 END;
