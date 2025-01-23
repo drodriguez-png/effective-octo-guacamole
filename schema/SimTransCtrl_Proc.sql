@@ -622,7 +622,21 @@ BEGIN
 		ON Status.ProgramGUID = Program.ProgramGUID
 	WHERE Status.SapStatus = 'Processing'
 
-	-- parts
+	-- sheet(s)
+	SELECT
+		Program.AutoId AS ArchivePacketId,
+		ChildPlate.PlateIndex AS SheetIndex,
+		ChildPlate.PlateName AS SheetName,
+		ChildPlate.MaterialMaster
+	FROM oys.ChildPlate
+	INNER JOIN oys.Program
+		ON Program.ProgramGUID=ChildPlate.ProgramGUID
+	INNER JOIN oys.Status
+		ON Status.ProgramGUID=Program.ProgramGUID
+	WHERE Status.SapStatus = 'Processing'
+	AND SigmanestStatus = 'Created';
+
+	-- part(s)
 	SELECT
 		Program.AutoId AS ArchivePacketId,
 		ChildPlate.PlateIndex AS SheetIndex,
@@ -635,20 +649,6 @@ BEGIN
 	FROM oys.ChildPart
 	INNER JOIN oys.ChildPlate
 		ON ChildPlate.ChildPlateGUID=ChildPart.ChildPlateGUID
-	INNER JOIN oys.Program
-		ON Program.ProgramGUID=ChildPlate.ProgramGUID
-	INNER JOIN oys.Status
-		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = 'Processing'
-	AND SigmanestStatus = 'Created';
-
-	-- sheet(s)
-	SELECT
-		Program.AutoId AS ArchivePacketId,
-		ChildPlate.PlateIndex AS SheetIndex,
-		ChildPlate.PlateName AS SheetName,
-		ChildPlate.MaterialMaster
-	FROM oys.ChildPlate
 	INNER JOIN oys.Program
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
