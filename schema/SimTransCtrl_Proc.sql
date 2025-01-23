@@ -595,7 +595,8 @@ CREATE OR ALTER PROCEDURE sap.GetFeedback
 AS
 BEGIN
 	-- remove(defer) reposts
-	UPDATE oys.Status SET SapStatus = 'Deferred'
+	-- trigger sap.PostFeedbackUpdate will archive these records
+	UPDATE oys.Status SET SapStatus = 'Skipped'
 	WHERE ProgramGUID IN (
 		SELECT ProgramGUID FROM oys.Status WHERE SigmanestStatus = 'Created'
 		INTERSECT
@@ -698,7 +699,7 @@ NOT FOR REPLICATION
 AS
 BEGIN
 	IF UPDATE(SapStatus)
-		-- Move 'Complete' and 'Deferred' items to archive
+		-- Move 'Complete' and 'Skipped' items to archive
 		DELETE FROM oys.Status
 		OUTPUT
 			deleted.AutoId,
@@ -713,7 +714,7 @@ BEGIN
 			SigmanestStatus,
 			SapStatus
 		)
-		WHERE SapStatus IN ('Complete', 'Deferred');
+		WHERE SapStatus IN ('Complete', 'Skipped');
 END;
 GO
 
