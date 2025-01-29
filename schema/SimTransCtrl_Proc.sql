@@ -613,6 +613,16 @@ BEGIN
 		Program.AutoId AS ArchivePacketId,
 		SigmanestStatus AS Status,
 		ProgramName,
+		CASE Program.NestType
+			-- ChildPlate.ChildNestRepeatID, for Regular nests, 1 for slabs
+			WHEN 'Standard' THEN (
+				SELECT TOP 1 ChildNestRepeatID
+				FROM oys.ChildPlate
+				WHERE ChildPlate.ProgramGUID=Program.ProgramGUID
+			)
+			ELSE 1
+		END AS RepeatId,
+		1 AS RepeatId,
 		MachineName,
 		CuttingTime
 	FROM oys.Status
