@@ -602,7 +602,6 @@ BEGIN
 			)
 			ELSE 1
 		END AS RepeatId,
-		1 AS RepeatId,
 		MachineName,
 		CuttingTime
 	FROM oys.Status
@@ -679,8 +678,8 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER TRIGGER sap.PostFeedbackUpdate
-ON sap.InterfaceConfig
+CREATE OR ALTER TRIGGER oys.PostFeedbackUpdate
+ON oys.Status
 AFTER UPDATE
 NOT FOR REPLICATION
 AS
