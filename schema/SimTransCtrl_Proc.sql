@@ -2,18 +2,8 @@
 USE SNDBaseDev;
 GO
 
--- we are going to assume that the `sap` schema exists
-IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = N'sap')
-	RAISERROR (
-		'Schema `sap` does not exist.',
-		25,	-- severity (this should stop execution)
-		1	-- state
-	);
-
-IF OBJECT_ID(N'sap.InterfaceConfig', N'U') IS NOT NULL
-BEGIN
-	DROP TABLE sap.InterfaceConfig;
-END;
+CREATE SCHEMA sap;
+GO
 
 CREATE TABLE sap.InterfaceConfig (
 	-- All queries of this configuration table use `SELECT TOP 1` to ensure that
@@ -60,24 +50,14 @@ BEGIN
 END;
 GO
 
-BEGIN TRY
-	CREATE TABLE sap.RenamedDemandAllocation (
-		Id INT PRIMARY KEY,
-		SapPartName VARCHAR(50),
-		NewPartName VARCHAR(50),
-		Job VARCHAR(50),
-		Shipment VARCHAR(50),
-		Qty INT
-	);
-END TRY
-BEGIN CATCH
-	-- We do not want to drop and recreate this table, since it may have data
-	RAISERROR (
-		'Table RenamedDemandAllocation exists. Any schema changes must manually be made.',
-		10,	-- severity
-		2	-- state
-	);
-END CATCH
+CREATE TABLE sap.RenamedDemandAllocation (
+	Id INT PRIMARY KEY,
+	SapPartName VARCHAR(50),
+	NewPartName VARCHAR(50),
+	Job VARCHAR(50),
+	Shipment VARCHAR(50),
+	Qty INT
+);
 GO
 
 -- ********************************************
