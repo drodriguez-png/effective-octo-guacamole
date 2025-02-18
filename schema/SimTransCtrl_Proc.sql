@@ -45,7 +45,7 @@ BEGIN
 		-- update the HeatSwapKeyword for all current work orders
 		-- ensures that Data14 matches the configured keyword
 		UPDATE dbo.Part 
-		SET Part.Data14=inserted.HeatSwapKeyword
+		SET Part.Data10=inserted.HeatSwapKeyword
 		FROM inserted;
 END;
 GO
@@ -197,15 +197,45 @@ BEGIN
 			Remark,		-- autoprocess instruction
 			ItemData1,	-- Job(project)
 			ItemData2,	-- Shipment
-			ItemData3,	-- SAP Part Name (for when PartName needs changed)
-			ItemData5,	-- PART hours order for shipment
-			ItemData6,	-- secondary operation 1
-			ItemData7,	-- secondary operation 2
-			ItemData8,	-- secondary operation 3
+			ItemData3,	-- Raw material master (from BOM, if exists)
+			ItemData4,	-- secondary operation 1
+			ItemData5,	-- secondary operation 2
+			ItemData6,	-- secondary operation 3
 			ItemData9,	-- part name (Material Master with job removed)
-			ItemData10,	-- Raw material master (from BOM, if exists)
-			ItemData14,	-- HeatSwap keyword
+			ItemData10,	-- HeatSwap keyword
+			ItemData16,	-- PART hours order for shipment
+			ItemData17,	-- SAP Part Name (for when PartName needs changed)
 			ItemData18	-- SAP event id
+
+			-- Part Data schema:
+			--	- Data1-9: Primary nesting processes data
+			--	- Data10-15: Secondary nesting data (automation required)
+			--	- Data16-18: SAP/Ops required metadata
+			--	Data1 : Job
+			--	Data2 : Shipment
+			--	Data3 : Raw material master (from BOM, if exists)
+			--	Data4 : Secondary operation 1
+			--	Data5 : Secondary operation 2
+			--	Data6 : Secondary operation 3
+			--	Data7 : 
+			--	Data8 : 
+			--	Data9 : Part name (Material Master with job removed)
+			--	Data10: HeatSwap keyword
+			--	Data11: Part requires secondary check (carried from parts list)
+			--	Data12: ChildPart relationship (for slabs)
+			--	Data13: ChildPart relationship (continued)
+			--	Data14: 
+			--	Data15: 
+			--	Data16: PART hours order for shipment
+			--	Data17: SAP Part Name
+			--	Data18: SAP event id
+
+			-- Data{19,20} limitations:
+			--	- exist in database
+			--	- cannot be interacted with using SimTrans or the Sigmanest GUI
+			--	- cannot be added as auto text on nests
+			--	Data19: 
+			--	Data20: 
 		)
 		VALUES (
 			'SN81',
@@ -226,14 +256,14 @@ BEGIN
 			@codegen,	-- autoprocess instruction
 			@job,
 			@shipment,
-			@part_name,
-			@chargeref,	-- PART hours order for shipment
+			@raw_mm,
 			@op1,	-- secondary operation 1
 			@op2,	-- secondary operation 2
 			@op3,	-- secondary operation 3
 			@mark,	-- part name (Material Master with job removed)
-			@raw_mm,
 			@heatswap_keyword,
+			@chargeref,	-- PART hours order for shipment
+			@part_name,
 			@sap_event_id
 		);
 	END;
@@ -309,14 +339,15 @@ BEGIN
 		Remark,		-- autoprocess instruction
 		ItemData1,	-- Job(project)
 		ItemData2,	-- Shipment
-		ItemData3,	-- SAP part name
-		ItemData5,	-- PART hours order for shipment
-		ItemData6,	-- secondary operation 1
-		ItemData7,	-- secondary operation 2
-		ItemData8,	-- secondary operation 3
+		ItemData3,	-- Raw material master (from BOM, if exists)
+		ItemData4,	-- secondary operation 1
+		ItemData5,	-- secondary operation 2
+		ItemData6,	-- secondary operation 3
 		ItemData9,	-- part name (Material Master with job removed)
-		ItemData10,	-- Raw material master (from BOM, if exists)
-		ItemData14	-- HeatSwap keyword
+		ItemData10,	-- HeatSwap keyword
+		ItemData16,	-- PART hours order for shipment
+		ItemData17,	-- SAP Part Name (for when PartName needs changed)
+		ItemData18	-- SAP event id
 	)
 	SELECT TOP 1
 		'SN81',
@@ -329,16 +360,17 @@ BEGIN
 
 		DrawingNumber,
 		Remark,	-- autoprocess instruction
-		Data1,	-- Job
+		Data1,	-- Job(project)
 		Data2,	-- Shipment
-		@sap_part_name,
-		Data5,	-- PART hours order for shipment
-		Data6,	-- secondary operation 1
-		Data7,	-- secondary operation 2
-		Data8,	-- secondary operation 3
+		Data3,	-- Raw material master (from BOM, if exists)
+		Data4,	-- secondary operation 1
+		Data5,	-- secondary operation 2
+		Data6,	-- secondary operation 3
 		Data9,	-- part name (Material Master with job removed)
-		Data10,	-- Raw material master
-		Data14	-- HeatSwap keyword
+		Data10,	-- HeatSwap keyword
+		Data16,	-- PART hours order for shipment
+		@sap_part_name,
+		Data18	-- SAP event id
 	FROM dbo.Part
 	WHERE PartName = @sap_part_name
 	AND Data1 = @job
@@ -369,14 +401,15 @@ BEGIN
 		Remark,		-- autoprocess instruction
 		ItemData1,	-- Job(project)
 		ItemData2,	-- Shipment
-		ItemData3,	-- SAP part name
-		ItemData5,	-- PART hours order for shipment
-		ItemData6,	-- secondary operation 1
-		ItemData7,	-- secondary operation 2
-		ItemData8,	-- secondary operation 3
+		ItemData3,	-- Raw material master (from BOM, if exists)
+		ItemData4,	-- secondary operation 1
+		ItemData5,	-- secondary operation 2
+		ItemData6,	-- secondary operation 3
 		ItemData9,	-- part name (Material Master with job removed)
-		ItemData10,	-- Raw material master (from BOM, if exists)
-		ItemData14	-- HeatSwap keyword
+		ItemData10,	-- HeatSwap keyword
+		ItemData16,	-- PART hours order for shipment
+		ItemData17,	-- SAP Part Name (for when PartName needs changed)
+		ItemData18	-- SAP event id
 	)
 	SELECT
 		'SN81',
@@ -395,16 +428,17 @@ BEGIN
 
 		DrawingNumber,
 		Remark,	-- autoprocess instruction
-		Data1,	-- Job
+		Data1,	-- Job(project)
 		Data2,	-- Shipment
-		Data3,	-- SAP part name
-		Data5,	-- PART hours order for shipment
-		Data6,	-- secondary operation 1
-		Data7,	-- secondary operation 2
-		Data8,	-- secondary operation 3
+		Data3,	-- Raw material master (from BOM, if exists)
+		Data4,	-- secondary operation 1
+		Data5,	-- secondary operation 2
+		Data6,	-- secondary operation 3
 		Data9,	-- part name (Material Master with job removed)
-		Data10,	-- Raw material master
-		Data14	-- HeatSwap keyword
+		Data10,	-- HeatSwap keyword
+		Data16,	-- PART hours order for shipment
+		Data17,	-- SAP part name
+		Data18	-- SAP event id
 	FROM dbo.Part
 	INNER JOIN RenamedDemandAllocation AS Alloc
 		ON Part.PartName = Alloc.NewPartName
@@ -414,11 +448,10 @@ BEGIN
 
 	-- remove renamed demand
 	INSERT INTO SNDBaseDev.dbo.TransAct(
-		TransType,  -- `SN81`
+		TransType,  -- `SN82`
 		District,
 		OrderNo,	-- work order name
-		ItemName,	-- Material Master (part name)
-		Qty
+		ItemName	-- Material Master (part name)
 	)
 	SELECT
 		'SN82',	-- Delete from work order
