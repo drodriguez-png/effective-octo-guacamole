@@ -751,5 +751,8 @@ BEGIN
 	INNER JOIN oys.ChildPlate
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	WHERE Program.AutoId = @archive_packet_id;
+
+	-- TODO: Push a new entry into oys.Status
+	--	with SigmanestStatus = 'Updated' for burned programs
 END;
 GO
