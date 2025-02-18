@@ -14,16 +14,16 @@ GO
 
 USE SNInterDev
 CREATE TABLE oys.Program (
-    AutoId BIGINT IDENTITY(1,1) NOT NULL,
-    DBEntryDateTime DATETIME DEFAULT GETDATE(),
-    ProgramGUID UNIQUEIDENTIFIER NOT NULL,
-    ProgramName VARCHAR(50),
-    LayoutNumber INT,
-    MachineName VARCHAR(50),
-    CuttingTime FLOAT,
-    TaskName VARCHAR(50),
-    NestType VARCHAR(64),	-- 'Slab', 'Standard' or 'Split'
-    WSName NVARCHAR(300)
+	AutoId BIGINT IDENTITY(1,1) NOT NULL,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
+	ProgramGUID UNIQUEIDENTIFIER NOT NULL,
+	ProgramName VARCHAR(50),
+	LayoutNumber INT,
+	MachineName VARCHAR(50),
+	CuttingTime FLOAT,
+	TaskName VARCHAR(50),
+	NestType VARCHAR(64),	-- 'Slab', 'Standard' or 'Split'
+	WSName NVARCHAR(300)
 );
 GO
 ALTER TABLE oys.Program
@@ -34,13 +34,13 @@ GO
 USE SNInterDev
 CREATE TABLE oys.ParentPlate
 (
-    AutoId BIGINT IDENTITY(1,1) NOT NULL,
-    DBEntryDateTime DATETIME DEFAULT GETDATE(),
-    ProgramGUID UNIQUEIDENTIFIER NOT NULL,
-    PlateName VARCHAR(50),
-    Material VARCHAR(50),
-    Thickness FLOAT,
-    Area FLOAT
+	AutoId BIGINT IDENTITY(1,1) NOT NULL,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
+	ProgramGUID UNIQUEIDENTIFIER NOT NULL,
+	PlateName VARCHAR(50),
+	Material VARCHAR(50),
+	Thickness FLOAT,
+	Area FLOAT
 );
 GO
 ALTER TABLE oys.ParentPlate
@@ -53,14 +53,14 @@ GO
 
 USE SNInterDev
 CREATE TABLE oys.ParentPart(
-    AutoId BIGINT IDENTITY(1,1) NOT NULL,
-    DBEntryDateTime DATETIME DEFAULT GETDATE(),
-    ProgramGUID UNIQUEIDENTIFIER NOT NULL,
-    ParentPartGUID UNIQUEIDENTIFIER NOT NULL,
-    SNPartName VARCHAR(100),
-    QtyProgram INT,
-    TrueArea FLOAT,
-    NestedArea FLOAT
+	AutoId BIGINT IDENTITY(1,1) NOT NULL,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
+	ProgramGUID UNIQUEIDENTIFIER NOT NULL,
+	ParentPartGUID UNIQUEIDENTIFIER NOT NULL,
+	SNPartName VARCHAR(100),
+	QtyProgram INT,
+	TrueArea FLOAT,
+	NestedArea FLOAT
 );
 GO
 ALTER TABLE oys.ParentPart
@@ -73,19 +73,19 @@ GO
 
 USE SNInterDev
 CREATE TABLE oys.ChildPlate (
-    AutoId BIGINT IDENTITY(1,1) NOT NULL,
-    DBEntryDateTime DATETIME DEFAULT GETDATE(),
-    ProgramGUID UNIQUEIDENTIFIER NOT NULL,
-    ChildPlateGUID UNIQUEIDENTIFIER NOT NULL,
-    PlateName VARCHAR(50),
-    PlateNumber INT NOT NULL DEFAULT 1,
-    MaterialMaster VARCHAR(50),
-    Material VARCHAR(50),
-    Thickness FLOAT,
-    ChildNestTaskName VARCHAR(50),
-    ChildNestProgramName VARCHAR(50),
-    ChildNestRepeatID INT,
-    Area FLOAT
+	AutoId BIGINT IDENTITY(1,1) NOT NULL,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
+	ProgramGUID UNIQUEIDENTIFIER NOT NULL,
+	ChildPlateGUID UNIQUEIDENTIFIER NOT NULL,
+	PlateName VARCHAR(50),
+	PlateNumber INT NOT NULL DEFAULT 1,
+	MaterialMaster VARCHAR(50),
+	Material VARCHAR(50),
+	Thickness FLOAT,
+	ChildNestTaskName VARCHAR(50),
+	ChildNestProgramName VARCHAR(50),
+	ChildNestRepeatID INT,
+	Area FLOAT
 );
 GO
 ALTER TABLE oys.ChildPlate
@@ -100,18 +100,18 @@ GO
 
 USE SNInterDev
 CREATE TABLE oys.ChildPart (
-    AutoId BIGINT IDENTITY(1,1) NOT NULL,
-    DBEntryDateTime DATETIME DEFAULT GETDATE(),
-    ChildPlateGUID UNIQUEIDENTIFIER NOT NULL,
-    ChildPartGUID UNIQUEIDENTIFIER NOT NULL,
-    ParentPartGUID UNIQUEIDENTIFIER NOT NULL,
-    SNPartName VARCHAR(100),
-    SAPPartName VARCHAR(100),
-    QtyProgram INT,
-    Job VARCHAR(50),
-    Shipment VARCHAR(50),
-    TrueArea FLOAT,
-    NestedArea FLOAT
+	AutoId BIGINT IDENTITY(1,1) NOT NULL,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
+	ChildPlateGUID UNIQUEIDENTIFIER NOT NULL,
+	ChildPartGUID UNIQUEIDENTIFIER NOT NULL,
+	ParentPartGUID UNIQUEIDENTIFIER NOT NULL,
+	SNPartName VARCHAR(100),
+	SAPPartName VARCHAR(100),
+	QtyProgram INT,
+	Job VARCHAR(50),
+	Shipment VARCHAR(50),
+	TrueArea FLOAT,
+	NestedArea FLOAT
 );
 GO
 ALTER TABLE oys.ChildPart
@@ -124,15 +124,15 @@ GO
 
 USE SNInterDev
 CREATE TABLE oys.Remnant (
-    AutoId BIGINT IDENTITY(1,1) NOT NULL,
-    DBEntryDateTime DATETIME DEFAULT GETDATE(),
-    ChildPlateGUID UNIQUEIDENTIFIER NOT NULL,
-    RemnantGUID UNIQUEIDENTIFIER NOT NULL,
-    RemnantName VARCHAR(50),
-    Area FLOAT,
-    IsRectangular BIT,
-    RectWidth FLOAT,
-    RectLength FLOAT
+	AutoId BIGINT IDENTITY(1,1) NOT NULL,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
+	ChildPlateGUID UNIQUEIDENTIFIER NOT NULL,
+	RemnantGUID UNIQUEIDENTIFIER NOT NULL,
+	RemnantName VARCHAR(50),
+	Area FLOAT,
+	IsRectangular BIT,
+	RectWidth FLOAT,
+	RectLength FLOAT
 );
 GO
 ALTER TABLE oys.Remnant
@@ -145,12 +145,12 @@ GO
 
 USE SNInterDev
 CREATE TABLE oys.Status (
-    AutoId BIGINT IDENTITY(1,1) NOT NULL,
-    DBEntryDateTime DATETIME DEFAULT GETDATE(),
-    ProgramGUID UNIQUEIDENTIFIER NOT NULL,
-    StatusGUID UNIQUEIDENTIFIER NOT NULL,
-    SigmanestStatus VARCHAR(64), -- 'Created', 'Released', or 'Deleted'
-    SAPStatus VARCHAR(64)
+	AutoId BIGINT IDENTITY(1,1) NOT NULL,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
+	ProgramGUID UNIQUEIDENTIFIER NOT NULL,
+	StatusGUID UNIQUEIDENTIFIER NOT NULL,
+	SigmanestStatus VARCHAR(64), -- 'Created', 'Released', or 'Deleted'
+	SAPStatus VARCHAR(64)
 );
 GO
 ALTER TABLE oys.Status
@@ -163,13 +163,13 @@ GO
 
 USE SNInterDev
 CREATE TABLE oys.StatusArchive (
-    AutoId BIGINT NOT NULL,
-    DBEntryDateTime DATETIME DEFAULT GETDATE(),
-    ProgramGUID UNIQUEIDENTIFIER,
-    StatusGUID UNIQUEIDENTIFIER,
-    SigmanestStatus VARCHAR(64),
-    SAPStatus VARCHAR(64),
-    ArchiveDateTime DATETIME DEFAULT GETDATE()
+	AutoId BIGINT NOT NULL,
+	DBEntryDateTime DATETIME DEFAULT GETDATE(),
+	ProgramGUID UNIQUEIDENTIFIER,
+	StatusGUID UNIQUEIDENTIFIER,
+	SigmanestStatus VARCHAR(64),
+	SAPStatus VARCHAR(64),
+	ArchiveDateTime DATETIME DEFAULT GETDATE()
 );
 GO
 
