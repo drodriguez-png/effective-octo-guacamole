@@ -1,16 +1,10 @@
 from os import path
 import re
 
-USE_DB = re.compile("USE SNDBaseDev;")
-SIMTRANS_DB = re.compile(r"(FROM|INTO) SNDBaseDev(\.\w+\.\w+)")
-CONFIG = re.compile(
-    # i.e. (1, '\\hssieng\SNDataQas\', ...)
-    r"\(\d+, '(\\\\\w+\\SNData)\w+([\\a-zA-Z]+)'([^\n]*)\)"
-)
-
-template_file = path.join(path.dirname(__file__), "SimTransCtrl_Proc.sql")
-dbs = {
+ENV_CONFIG = {
     # "SimTrans Env": [("Sigmanest Env", "District")],
+    # SimTrans/Sigmanest Env maps to which database said Env is on
+    #   for example, "Dev" maps to SNDBaseDev
     "Prd": [
         ("Prd", 1),
     ],
@@ -19,6 +13,15 @@ dbs = {
         ("Dev", 3),
     ],
 }
+
+USE_DB = re.compile("USE SNDBaseDev;")
+SIMTRANS_DB = re.compile(r"(FROM|INTO) SNDBaseDev(\.\w+\.\w+)")
+CONFIG = re.compile(
+    # i.e. (1, '\\hssieng\SNDataQas\', ...)
+    r"\(\d+, '(\\\\\w+\\SNData)\w+([\\a-zA-Z]+)'([^\n]*)\)"
+)
+
+template_file = path.join(path.dirname(__file__), "SimTransCtrl_Proc.sql")
 
 with open(template_file) as sql:
     template = sql.read()
@@ -34,12 +37,9 @@ def generate(env, district, simtrans):
 
 
 def main():
-    for simtrans, env in dbs.items():
+    for simtrans, env in ENV_CONFIG.items():
         generate(*env, simtrans)
 
 
 if __name__ == "__main__":
     main()
-
-    # testing
-    # generate(*dbs["Dev"][2], "Dev")
