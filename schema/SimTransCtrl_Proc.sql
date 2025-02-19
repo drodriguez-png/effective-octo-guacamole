@@ -645,7 +645,7 @@ BEGIN
 	-- sheet(s)
 	SELECT
 		Program.AutoId AS ArchivePacketId,
-		ChildPlate.PlateIndex AS SheetIndex,
+		ChildPlate.PlateNumber AS SheetIndex,
 		ChildPlate.PlateName AS SheetName,
 		ChildPlate.MaterialMaster
 	FROM oys.ChildPlate
@@ -659,7 +659,7 @@ BEGIN
 	-- part(s)
 	SELECT
 		Program.AutoId AS ArchivePacketId,
-		ChildPlate.PlateIndex AS SheetIndex,
+		ChildPlate.PlateNumber AS SheetIndex,
 		ChildPart.SAPPartName AS PartName,
 		ChildPart.QtyProgram AS PartQty,
 		ChildPart.Job,
@@ -679,7 +679,7 @@ BEGIN
 	-- remnant(s)
 	SELECT
 		Program.AutoId AS ArchivePacketId,
-		ChildPlate.PlateIndex AS SheetIndex,
+		ChildPlate.PlateNumber AS SheetIndex,
 		Remnant.RemnantName,
 		Remnant.Area,
 		Remnant.IsRectangular
