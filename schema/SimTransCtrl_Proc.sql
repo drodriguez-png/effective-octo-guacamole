@@ -1,5 +1,5 @@
 -- Purpose: Create stored procedures for interfacing SAP with Sigmanest
-USE SNDBaseDev;
+USE SNInterDev;
 GO
 
 CREATE SCHEMA sap;
