@@ -44,7 +44,7 @@ BEGIN
 	IF UPDATE(HeatSwapKeyword)
 		-- update the HeatSwapKeyword for all current work orders
 		-- ensures that Data14 matches the configured keyword
-		UPDATE dbo.Part 
+		UPDATE SNDBaseDev.dbo.Part 
 		SET Part.Data10=inserted.HeatSwapKeyword
 		FROM inserted;
 END;
@@ -122,11 +122,11 @@ BEGIN
 				WONumber,
 				QtyCompleted + (
 					SELECT COALESCE(SUM(QtyInProcess), 0)
-					FROM dbo.PIP
+					FROM SNDBaseDev.dbo.PIP
 					WHERE Parts.PartName = PIP.PartName
 					AND   Parts.WONumber = PIP.WONumber
 				) AS QtyCommited
-			FROM dbo.Part AS Parts
+			FROM SNDBaseDev.dbo.Part AS Parts
 			WHERE PartName = @part_name
 			-- keeps additional removal transactions from being inserted if the
 			--	SimTrans runs in the middle of a data push.187
@@ -156,12 +156,12 @@ BEGIN
 	END;
 
 	-- handle parts in archived work orders
-	IF @work_order not in (SELECT WoNumber FROM dbo.Wo)
+	IF @work_order not in (SELECT WoNumber FROM SNDBaseDev.dbo.Wo)
 	BEGIN
 		SET @qty = @qty - (
 			SELECT TOP 1
 				SUM(QtyOrdered) AS QtyProduced
-			FROM dbo.PartArchive
+			FROM SNDBaseDev.dbo.PartArchive
 			WHERE WoNumber = @work_order
 			AND PartName = @part_name
 			GROUP BY WoNumber, PartName
@@ -301,7 +301,7 @@ BEGIN
 			WONumber,
 			PartName,
 			QtyOrdered - @qty AS Qty
-		FROM dbo.Part
+		FROM SNDBaseDev.dbo.Part
 		WHERE PartName = @sap_part_name
 		AND Data1 = @job
 		AND Data2 = @shipment
@@ -371,7 +371,7 @@ BEGIN
 		Data16,	-- PART hours order for shipment
 		@sap_part_name,
 		Data18	-- SAP event id
-	FROM dbo.Part
+	FROM SNDBaseDev.dbo.Part
 	WHERE PartName = @sap_part_name
 	AND Data1 = @job
 	AND Data2 = @shipment
@@ -419,7 +419,7 @@ BEGIN
 		PartName,
 		QtyOrdered + (
 			SELECT COALESCE(SUM(QtyOrdered), 0)
-			FROM dbo.Part AS OnHoldParts
+			FROM SNDBaseDev.dbo.Part AS OnHoldParts
 			WHERE OnHoldParts.PartName = Part.Data3
 			AND OnHoldParts.Data1 = Part.Data1
 			AND OnHoldParts.Data2 = Part.Data2
@@ -439,7 +439,7 @@ BEGIN
 		Data16,	-- PART hours order for shipment
 		Data17,	-- SAP part name
 		Data18	-- SAP event id
-	FROM dbo.Part
+	FROM SNDBaseDev.dbo.Part
 	INNER JOIN RenamedDemandAllocation AS Alloc
 		ON Part.PartName = Alloc.NewPartName
 		AND Part.Data1 = Alloc.Job
@@ -460,7 +460,7 @@ BEGIN
 		WONumber,
 		NewPartName
 	FROM sap.RenamedDemandAllocation
-		INNER JOIN Part
+		INNER JOIN SNDBaseDev.dbo.Part
 			ON Part.PartName = RenamedDemandAllocation.NewPartName
 		WHERE Id = @id;
 
@@ -528,11 +528,11 @@ BEGIN
 			@simtrans_district,
 			@trans_id,
 			SheetName
-		FROM dbo.Stock
-		WHERE dbo.Stock.PrimeCode = @mm
+		FROM SNDBaseDev.dbo.Stock
+		WHERE SNDBaseDev.dbo.Stock.PrimeCode = @mm
 		-- keeps transactions from being inserted if the SimTrans runs
 		--	in the middle of a data push.
-		AND dbo.Stock.BinNumber != @sap_event_id
+		AND SNDBaseDev.dbo.Stock.BinNumber != @sap_event_id
 	END;
 
 	-- @sheet_name is Null and @qty = 0 means SAP has no inventory for that
