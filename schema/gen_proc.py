@@ -6,10 +6,10 @@ ENV_CONFIG = {
     # SimTrans/Sigmanest Env maps to which database said Env is on
     #   for example, "Dev" maps to SNDBaseDev
     "Prd": [
-        ("Prd", 1),
+        ("Prd", 2),
     ],
     "Dev": [
-        ("Qas", 2),
+        ("Qas", 4),
         ("Dev", 3),
     ],
 }
