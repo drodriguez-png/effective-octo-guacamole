@@ -709,37 +709,10 @@ AS
 BEGIN
 	-- Marks feedback items as successfully uploaded to SAP.
 	-- Feedback items marked as 'Sent' will continue to send to SAP
-
-	-- This will trigger sap.PostFeedbackUpdate
 	UPDATE oys.Status SET SapStatus = 'Complete' WHERE AutoId=@feedback_id;
 END;
 GO
 
-CREATE OR ALTER TRIGGER oys.PostFeedbackUpdate
-ON oys.Status
-AFTER UPDATE
-NOT FOR REPLICATION
-AS
-BEGIN
-	IF UPDATE(SapStatus)
-		-- Move 'Complete' and 'Skipped' items to archive
-		DELETE FROM oys.Status
-		OUTPUT
-			deleted.AutoId,
-			deleted.DBEntryDateTime,
-			deleted.ProgramGUID,
-			deleted.SigmanestStatus,
-			deleted.SapStatus
-		INTO oys.StatusArchive (
-			AutoId,
-			DBEntryDateTime,
-			ProgramGUID,
-			SigmanestStatus,
-			SapStatus
-		)
-		WHERE SapStatus IN ('Complete', 'Skipped');
-END;
-GO
 
 -- ********************************************
 -- *    Interface 4: Update Program           *
