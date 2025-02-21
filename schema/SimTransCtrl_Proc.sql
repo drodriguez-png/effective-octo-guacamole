@@ -787,7 +787,20 @@ BEGIN
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	WHERE Program.AutoId = @archive_packet_id;
 
-	-- TODO: Push a new entry into oys.Status
-	--	with SigmanestStatus = 'Updated' for burned programs
+	-- Push a new entry into oys.Status with SigmanestStatus = 'Updated'
+	--	to simulate a program update
+	INSERT INTO oys.Status (
+		DBEntryDateTime,
+		ProgramGUID,
+		StatusGUID,
+		SigmanestStatus
+	)
+	SELECT
+		GETDATE(),
+		ProgramGUID,
+		NEWID(),
+		'Updated'
+	FROM oys.Program
+	WHERE Program.AutoId = @archive_packet_id;
 END;
 GO
