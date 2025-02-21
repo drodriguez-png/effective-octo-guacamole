@@ -603,8 +603,11 @@ GO
 CREATE OR ALTER PROCEDURE sap.GetFeedback
 AS
 BEGIN
+	-- status constants
+	DECLARE @ExportStatus VARCHAR(16) = 'Processing'
+	DECLARE @FullPayloadStatus VARCHAR(16) = 'Created'
+
 	-- remove(defer) reposts
-	-- trigger sap.PostFeedbackUpdate will archive these records
 	UPDATE oys.Status SET SapStatus = 'Skipped'
 	WHERE ProgramGUID IN (
 		SELECT ProgramGUID FROM oys.Status WHERE SigmanestStatus = 'Created'
@@ -616,7 +619,7 @@ BEGIN
 	-- This ensures that if feedback items are added in the middle of processing,
 	--	partial data sets do not get  uploaded to SAP
 	--	(i.e. Parts list, but not Program header)
-	UPDATE oys.Status SET SapStatus = 'Processing'
+	UPDATE oys.Status SET SapStatus = @ExportStatus
 	WHERE SapStatus IS NULL
 	OR SapStatus = 'Sent';	-- resend 'Sent' feedback (i.e. failed on last push)
 
@@ -640,7 +643,7 @@ BEGIN
 	FROM oys.Status
 	INNER JOIN oys.Program
 		ON Status.ProgramGUID = Program.ProgramGUID
-	WHERE Status.SapStatus = 'Processing'
+	WHERE Status.SapStatus = @ExportStatus
 
 	-- sheet(s)
 	SELECT
@@ -653,8 +656,8 @@ BEGIN
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = 'Processing'
-	AND SigmanestStatus = 'Created';
+	WHERE Status.SapStatus = @ExportStatus
+	AND SigmanestStatus = @FullPayloadStatus;
 
 	-- part(s)
 	SELECT
@@ -673,8 +676,8 @@ BEGIN
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = 'Processing'
-	AND SigmanestStatus = 'Created';
+	WHERE Status.SapStatus = @ExportStatus
+	AND SigmanestStatus = @FullPayloadStatus;
 
 	-- remnant(s)
 	SELECT
@@ -690,12 +693,12 @@ BEGIN
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = 'Processing'
-	AND SigmanestStatus = 'Created';
+	WHERE Status.SapStatus = @ExportStatus
+	AND SigmanestStatus = @FullPayloadStatus;
 
 	-- update oys.Status.SapStatus = 'Sent'
 	UPDATE oys.Status SET SapStatus = 'Sent'
-	WHERE SapStatus = 'Processing';
+	WHERE SapStatus = @ExportStatus;
 END;
 GO
 
