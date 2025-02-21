@@ -207,7 +207,7 @@ BEGIN
 			ItemData17,	-- SAP Part Name (for when PartName needs changed)
 			ItemData18	-- SAP event id
 
-			-- Part Data schema:
+			-- Part Data schema
 			--	- Data1-9: Primary nesting processes data
 			--	- Data10-15: Secondary nesting data (automation required)
 			--	- Data16-18: SAP/Ops required metadata
@@ -217,25 +217,25 @@ BEGIN
 			--	Data4 : Secondary operation 1
 			--	Data5 : Secondary operation 2
 			--	Data6 : Secondary operation 3
-			--	Data7 : 
-			--	Data8 : 
+			--	Data7 : <unused>
+			--	Data8 : <unused>
 			--	Data9 : Part name (Material Master with job removed)
 			--	Data10: HeatSwap keyword
 			--	Data11: Part requires secondary check (carried from parts list)
 			--	Data12: ChildPart relationship (for slabs)
 			--	Data13: ChildPart relationship (continued)
-			--	Data14: 
-			--	Data15: 
+			--	Data14: <unused>
+			--	Data15: <unused>
 			--	Data16: PART hours order for shipment
 			--	Data17: SAP Part Name
 			--	Data18: SAP event id
 
-			-- Data{19,20} limitations:
+			-- Data{19,20} limitations (as of Sigmanest/SimTrans 24.4)
 			--	- exist in database
 			--	- cannot be interacted with using SimTrans or the Sigmanest GUI
 			--	- cannot be added as auto text on nests
-			--	Data19: 
-			--	Data20: 
+			--	Data19: <unused>
+			--	Data20: <unused>
 		)
 		VALUES (
 			'SN81',
