@@ -65,9 +65,12 @@ GO
 -- ********************************************
 CREATE OR ALTER PROCEDURE sap.PushSapDemand
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
+	
+	-- TODO: impl SAP MM usage to escape truncation due to character limit
+	@sap_part_name VARCHAR(18) = NULL,
 
 	@work_order VARCHAR(50),
-	@part_name VARCHAR(50),
+	@part_name VARCHAR(100),
 	@qty INT,
 	@matl VARCHAR(50),
 	@process VARCHAR(64) = NULL,	-- assembly process (DTE, RA, etc.)
@@ -742,7 +745,7 @@ BEGIN
 	-- 	so truncating it to the 10 least significant digits is OK.
 	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
 
-	-- [1] Update program
+	-- [1] Update program (child programs in case of a slab)
 	INSERT INTO SNDBaseDev.dbo.TransAct (
 		TransType,		-- `SN76`
 		District,
