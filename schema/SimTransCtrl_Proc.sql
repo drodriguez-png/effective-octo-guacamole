@@ -499,7 +499,8 @@ BEGIN
 	-- load dxf path template from configuration and interpolate @sheet_name
 	DECLARE @dxf_file INT = (
 		SELECT TOP 1
-			CONCAT(RemnantDxfPath, '\', @sheet_name, '.dxf')
+			-- CONCAT(RemnantDxfPath, '\', @sheet_name, '.dxf')
+			CONCAT(RemnantDxfPath, CHAR(92), @sheet_name, '.dxf')
 		FROM sap.InterfaceConfig
 	);
 
