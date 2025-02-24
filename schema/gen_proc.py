@@ -32,7 +32,7 @@ with open(oys_template_file) as sql:
 
 
 def generate(env, district, simtrans):
-    sql = USE_DB.sub(f"USE SNDBase{env};", st_template)
+    sql = USE_DB.sub(f"USE SNInter{env};", st_template)
     sql = SIMTRANS_DB.sub(f"\\1 SNDBase{simtrans}\\2", sql)
     sql = CONFIG.sub(f"({district}, '\\1{env}\\2'\\3)", sql)
 
