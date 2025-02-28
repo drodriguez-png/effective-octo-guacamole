@@ -615,7 +615,7 @@ CREATE TABLE sap.FeedbackQueue (
 	ProgramName VARCHAR(50),
 	RepeatId INT,
 	MachineName VARCHAR(50),
-	CuttingTime FLOAT,
+	CuttingTime INT,
 
 	-- Sheet(s)
 	SheetIndex INT,
@@ -632,8 +632,8 @@ CREATE TABLE sap.FeedbackQueue (
 
 	-- Remnant(s)
 	RemnantName VARCHAR(50),
-	Length FLOAT,
-	Width FLOAT,
+	Length INT,
+	Width INT,
 	Area FLOAT,
 	IsRectangular BIT
 );
@@ -683,7 +683,7 @@ BEGIN
 			ELSE 1
 		END AS RepeatId,
 		MachineName,
-		CuttingTime
+		CuttingTime	-- This is seconds, FeedbackQueue will round
 	FROM oys.Status
 	INNER JOIN oys.Program
 		ON Status.ProgramGUID = Program.ProgramGUID
@@ -728,8 +728,8 @@ BEGIN
 		ChildPart.QtyProgram AS PartQty,
 		ChildPart.Job,
 		ChildPart.Shipment,
-		ChildPart.TrueArea,
-		ChildPart.NestedArea
+		ROUND(ChildPart.TrueArea, 3),	-- SAP is 3 decimals
+		ROUND(ChildPart.NestedArea, 3)	-- SAP is 3 decimals
 	FROM oys.ChildPart
 	INNER JOIN oys.ChildPlate
 		ON ChildPlate.ChildPlateGUID=ChildPart.ChildPlateGUID
@@ -754,9 +754,9 @@ BEGIN
 		Program.AutoId AS ArchivePacketId,
 		ChildPlate.PlateNumber AS SheetIndex,
 		Remnant.RemnantName,
-		Remnant.RectWidth,
-		Remnant.RectLength,
-		Remnant.Area,
+		Remnant.RectWidth,	-- for batch reference: FeedbackQueue will round
+		Remnant.RectLength,	-- for batch reference: FeedbackQueue will round
+		ROUND(Remnant.Area, 3),
 		Remnant.IsRectangular
 	FROM oys.Remnant
 	INNER JOIN oys.ChildPlate
@@ -774,7 +774,6 @@ BEGIN
 	WHERE SapStatus = @ExportStatus;
 END;
 GO
-
 CREATE OR ALTER PROCEDURE sap.MarkFeedbackSapUploadComplete
 	@feedback_id INT
 AS
