@@ -674,7 +674,7 @@ BEGIN
 		SigmanestStatus AS Status,
 		ProgramName,
 		CASE Program.NestType
-			-- ChildPlate.ChildNestRepeatID, for Regular nests, 1 for slabs
+			-- ChildPlate.ChildNestRepeatID for Regular nests, 1 for slabs
 			WHEN 'Standard' THEN (
 				SELECT TOP 1 ChildNestRepeatID
 				FROM oys.ChildPlate
