@@ -604,12 +604,45 @@ GO
 -- ********************************************
 -- *    Interface 3: Create/Delete Nest       *
 -- ********************************************
+-- Boomi table for results
+CREATE TABLE sap.FeedbackQueue (
+	FeedBackId BIGINT IDENTITY(1,1) PRIMARY KEY,
+	DataSet VARCHAR(64),
+		
+	-- Program
+	ArchivePacketId BIGINT,
+	Status VARCHAR(64),
+	ProgramName VARCHAR(50),
+	RepeatId INT,
+	MachineName VARCHAR(50),
+	CuttingTime FLOAT,
+
+	-- Sheet(s)
+	SheetIndex INT,
+	SheetName VARCHAR(50),
+	MaterialMaster VARCHAR(50),
+
+	-- Part(s)
+	PartName VARCHAR(100),
+	PartQty INT,
+	Job VARCHAR(50),
+	Shipment VARCHAR(50),
+	TrueArea FLOAT,
+	NestedArea FLOAT,
+
+	-- Remnant(s)
+	RemnantName VARCHAR(50),
+	Length FLOAT,
+	Width FLOAT,
+	Area FLOAT,
+	IsRectangular BIT
+);
+GO
 CREATE OR ALTER PROCEDURE sap.GetFeedback
 AS
 BEGIN
 	-- status constants
-	DECLARE @ExportStatus VARCHAR(16) = 'Processing'
-	DECLARE @FullPayloadStatus VARCHAR(16) = 'Created'
+	DECLARE @ExportStatus VARCHAR(16) = 'Processing';
 
 	-- remove(defer) reposts
 	UPDATE oys.Status SET SapStatus = 'Skipped'
@@ -624,12 +657,19 @@ BEGIN
 	--	partial data sets do not get  uploaded to SAP
 	--	(i.e. Parts list, but not Program header)
 	UPDATE oys.Status SET SapStatus = @ExportStatus
-	WHERE SapStatus IS NULL
-	OR SapStatus = 'Sent';	-- resend 'Sent' feedback (i.e. failed on last push)
+	WHERE SapStatus IS NULL;
 
 	-- programs
-	SELECT
-		Status.AutoId AS FeedbackId,
+	INSERT INTO sap.FeedbackQueue (
+		DataSet,
+		ArchivePacketId,
+		Status,
+		ProgramName,
+		RepeatId,
+		MachineName,
+		CuttingTime
+	) SELECT
+		'Program' AS DataSet,
 		Program.AutoId AS ArchivePacketId,
 		SigmanestStatus AS Status,
 		ProgramName,
@@ -647,10 +687,17 @@ BEGIN
 	FROM oys.Status
 	INNER JOIN oys.Program
 		ON Status.ProgramGUID = Program.ProgramGUID
-	WHERE Status.SapStatus = @ExportStatus
+	WHERE Status.SapStatus = @ExportStatus;
 
 	-- sheet(s)
-	SELECT
+	INSERT INTO sap.FeedbackQueue (
+		DataSet,
+		ArchivePacketId,
+		SheetIndex,
+		SheetName,
+		MaterialMaster
+	) SELECT
+		'Sheets' AS DataSet,
 		Program.AutoId AS ArchivePacketId,
 		ChildPlate.PlateNumber AS SheetIndex,
 		ChildPlate.PlateName AS SheetName,
@@ -660,11 +707,21 @@ BEGIN
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = @ExportStatus
-	AND SigmanestStatus = @FullPayloadStatus;
+	WHERE Status.SapStatus = @ExportStatus;
 
 	-- part(s)
-	SELECT
+	INSERT INTO sap.FeedbackQueue (
+		DataSet,
+		ArchivePacketId,
+		SheetIndex,
+		PartName,
+		PartQty,
+		Job,
+		Shipment,
+		TrueArea,
+		NestedArea
+	) SELECT
+		'Parts' AS DataSet,
 		Program.AutoId AS ArchivePacketId,
 		ChildPlate.PlateNumber AS SheetIndex,
 		ChildPart.SAPPartName AS PartName,
@@ -680,14 +737,25 @@ BEGIN
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = @ExportStatus
-	AND SigmanestStatus = @FullPayloadStatus;
+	WHERE Status.SapStatus = @ExportStatus;
 
 	-- remnant(s)
-	SELECT
+	INSERT INTO sap.FeedbackQueue (
+		DataSet,
+		ArchivePacketId,
+		SheetIndex,
+		RemnantName,
+		Width,
+		Length,
+		Area,
+		IsRectangular
+	) SELECT
+		'Remnants' AS DataSet,
 		Program.AutoId AS ArchivePacketId,
 		ChildPlate.PlateNumber AS SheetIndex,
 		Remnant.RemnantName,
+		Remnant.RectWidth,
+		Remnant.RectLength,
 		Remnant.Area,
 		Remnant.IsRectangular
 	FROM oys.Remnant
@@ -697,11 +765,12 @@ BEGIN
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = @ExportStatus
-	AND SigmanestStatus = @FullPayloadStatus;
+	WHERE Status.SapStatus = @ExportStatus;
 
-	-- update oys.Status.SapStatus = 'Sent'
-	UPDATE oys.Status SET SapStatus = 'Sent'
+	SELECT * FROM sap.FeedbackQueue;
+
+	-- update oys.Status.SapStatus = 'Complete'
+	UPDATE oys.Status SET SapStatus = 'Complete'
 	WHERE SapStatus = @ExportStatus;
 END;
 GO
@@ -711,8 +780,10 @@ CREATE OR ALTER PROCEDURE sap.MarkFeedbackSapUploadComplete
 AS
 BEGIN
 	-- Marks feedback items as successfully uploaded to SAP.
-	-- Feedback items marked as 'Sent' will continue to send to SAP
-	UPDATE oys.Status SET SapStatus = 'Complete' WHERE AutoId=@feedback_id;
+	-- Feedback items that are not removed will continue to push to SAP
+
+	-- Delete feedback item from queue
+	DELETE FROM sap.FeedbackQueue WHERE FeedBackId=@feedback_id;
 END;
 GO
 
