@@ -96,7 +96,7 @@ BEGIN
 	);
 
 	-- load SimTrans heatswap keyword from configuration
-	DECLARE @heatswap_keyword INT = (
+	DECLARE @heatswap_keyword VARCHAR(64) = (
 		SELECT TOP 1 HeatSwapKeyword
 		FROM sap.InterfaceConfig
 	);
@@ -500,7 +500,7 @@ BEGIN
 		FROM sap.InterfaceConfig
 	);
 	-- load dxf path template from configuration and interpolate @sheet_name
-	DECLARE @dxf_file INT = (
+	DECLARE @dxf_file VARCHAR(255) = (
 		SELECT TOP 1
 			-- CONCAT(RemnantDxfPath, '\', @sheet_name, '.dxf')
 			CONCAT(RemnantDxfPath, CHAR(92), @sheet_name, '.dxf')
