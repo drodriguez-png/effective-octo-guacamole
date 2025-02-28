@@ -2,3 +2,4 @@
 SimTransCtrl_Proc_*.sql
 OysSchema_*.sql
 schema/SQLQuery*.sql
+schema/patches/*.sql
