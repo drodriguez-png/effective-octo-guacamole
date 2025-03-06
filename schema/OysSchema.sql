@@ -149,8 +149,10 @@ CREATE TABLE oys.Status (
 	DBEntryDateTime DATETIME DEFAULT GETDATE(),
 	ProgramGUID UNIQUEIDENTIFIER NOT NULL,
 	StatusGUID UNIQUEIDENTIFIER NOT NULL,
-	SigmanestStatus VARCHAR(64), -- 'Created', 'Released', or 'Deleted'
-	SAPStatus VARCHAR(64)
+	SigmanestStatus VARCHAR(64),	-- 'Created', 'Released', or 'Deleted'
+	SAPStatus VARCHAR(64),
+	Source VARCHAR(64),	-- 'SAPPost', 'Split'
+	UserName VARCHAR(64)
 );
 GO
 ALTER TABLE oys.Status
