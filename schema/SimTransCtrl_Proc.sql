@@ -60,6 +60,57 @@ CREATE TABLE sap.RenamedDemandAllocation (
 );
 GO
 
+CREATE OR ALTER PROCEDURE sap.CheckMaterialExists
+	@matl VARCHAR(50)
+AS
+BEGIN
+	IF @matl IS NULL
+		RETURN;
+
+	-- check if material exists in SimTrans input
+	IF (
+		SELECT 1 FROM SNDBaseDev.dbo.TransAct
+		WHERE Material = @matl
+		AND TransType = 'SN60'
+		AND District = (
+			SELECT TOP 1 SimTransDistrict
+			FROM sap.InterfaceConfig
+		)
+	) IS NOT NULL
+		RETURN;
+
+	-- check if material exists in Sigmanest
+	IF (SELECT 1 FROM SNDBaseDev.dbo.Material WHERE MaterialType = @matl) IS NULL
+	BEGIN
+		-- load SimTrans district from configuration
+		DECLARE @simtrans_district INT = (
+			SELECT TOP 1 SimTransDistrict
+			FROM sap.InterfaceConfig
+		);
+
+		-- add material into Sigmanest
+		INSERT INTO SNDBaseDev.dbo.TransAct (
+			TransType,
+			District,
+			Material,
+			ItemData1,	-- Material Group
+			Param1	-- Density
+		)
+		SELECT TOP 1
+			'SN60',
+			@simtrans_district,
+			@matl,
+			MatGroupName,
+			Densityin
+		FROM SNDBaseDev.dbo.Material
+		INNER JOIN SNDBaseDev.dbo.MaterialGroup
+			ON Material.MatGroupID=MaterialGroup.MatGroupID
+		-- assume this is the main/first group ("mild steel")
+		WHERE MaterialGroup.MatGroupID=1;
+	END
+END;
+GO
+
 -- ********************************************
 -- *    Interface 1: Demand                   *
 -- ********************************************
@@ -185,7 +236,10 @@ BEGIN
 		AND ItemName = @part_name
 		AND ItemData18 = @sap_event_id;
 
-		-- [3] Add/Update demand via SimTrans
+		-- [3.1] Check if material exists in Sigmanest
+		EXEC sap.CheckMaterialExists @matl;
+
+		-- [3.2] Add/Update demand via SimTrans
 		INSERT INTO SNDBaseDev.dbo.TransAct (
 			TransType,  -- `SN81`
 			District,
@@ -551,7 +605,10 @@ BEGIN
 		-- This step is optional, but it helps the performance of the SimTrans.
 		DELETE FROM SNDBaseDev.dbo.TransAct WHERE ItemName = @sheet_name;
 
-		-- [3] Add/Update stock via SimTrans
+		-- [3.1] Check if material exists in Sigmanest
+		EXEC sap.CheckMaterialExists @matl;
+
+		-- [3.2] Add/Update stock via SimTrans
 		INSERT INTO SNDBaseDev.dbo.TransAct (
 			TransType,	-- `SN91A or SN97`
 			District,
