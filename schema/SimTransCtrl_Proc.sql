@@ -44,7 +44,7 @@ BEGIN
 	IF UPDATE(HeatSwapKeyword)
 		-- update the HeatSwapKeyword for all current work orders
 		-- ensures that Data14 matches the configured keyword
-		UPDATE SNDBaseDev.dbo.Part 
+		UPDATE SNDBaseDev.dbo.Part
 		SET Part.Data10=inserted.HeatSwapKeyword
 		FROM inserted;
 END;
@@ -65,7 +65,7 @@ GO
 -- ********************************************
 CREATE OR ALTER PROCEDURE sap.PushSapDemand
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
-	
+
 	-- TODO: impl SAP MM usage to escape truncation due to character limit
 	@sap_part_name VARCHAR(18) = NULL,
 
@@ -132,7 +132,7 @@ BEGIN
 			FROM SNDBaseDev.dbo.Part AS Parts
 			WHERE PartName = @part_name
 			-- keeps additional removal transactions from being inserted if the
-			--	SimTrans runs in the middle of a data push.187
+			--	SimTrans runs in the middle of a data push.
 			AND Data18 != @sap_event_id
 		)
 		INSERT INTO SNDBaseDev.dbo.TransAct (
@@ -608,7 +608,7 @@ GO
 CREATE TABLE sap.FeedbackQueue (
 	FeedBackId BIGINT IDENTITY(1,1) PRIMARY KEY,
 	DataSet VARCHAR(64),
-		
+
 	-- Program
 	ArchivePacketId BIGINT,
 	Status VARCHAR(64),
