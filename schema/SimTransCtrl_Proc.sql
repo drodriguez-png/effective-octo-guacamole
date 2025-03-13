@@ -212,13 +212,15 @@ BEGIN
 	-- handle parts in archived work orders
 	IF @work_order not in (SELECT WoNumber FROM SNDBaseDev.dbo.Wo)
 	BEGIN
-		SET @qty = @qty - (
+		SET @qty = @qty - ISNULL(
+			(
 			SELECT TOP 1
 				SUM(QtyOrdered) AS QtyProduced
 			FROM SNDBaseDev.dbo.PartArchive
 			WHERE WoNumber = @work_order
 			AND PartName = @part_name
 			GROUP BY WoNumber, PartName
+			), 0
 		);
 	END;
 
