@@ -543,10 +543,10 @@ CREATE OR ALTER PROCEDURE sap.PushSapInventory
 	@wid FLOAT,
 	@len FLOAT,
 	@mm VARCHAR(50),
-	@notes1 VARCHAR(50) NULL,
-	@notes2 VARCHAR(50) NULL,
-	@notes3 VARCHAR(50) NULL,
-	@notes4 VARCHAR(50) NULL
+	@notes1 VARCHAR(50) = NULL,
+	@notes2 VARCHAR(50) = NULL,
+	@notes3 VARCHAR(50) = NULL,
+	@notes4 VARCHAR(50) = NULL
 AS
 SET NOCOUNT ON
 BEGIN
