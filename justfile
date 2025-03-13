@@ -8,10 +8,12 @@ default:
 demo target *args:
     python scripts/demo.py {{target}} {{args}}
 
-gensql:
-    rm SimTransCtrl_Proc_*.sql
-    rm OysSchema_*.sql
+gensql: clean
     python schema/gen_proc.py
 
 slab:
     uv run schema/gen_slab.py
+
+clean:
+    rm SimTransCtrl_Proc_*.sql
+    rm OysSchema_*.sql
