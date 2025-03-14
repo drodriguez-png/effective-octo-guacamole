@@ -75,7 +75,7 @@ CREATE OR ALTER PROCEDURE sap.PushSapDemand
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	-- TODO: impl SAP MM usage to escape truncation due to character limit
-	@sap_part_name VARCHAR(18) = NULL,
+	@sap_part_name VARCHAR(18),
 
 	@work_order VARCHAR(50),
 	@part_name VARCHAR(100),
