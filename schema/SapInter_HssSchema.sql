@@ -1,0 +1,91 @@
+USE SNInterDev;
+GO
+
+CREATE SCHEMA sap;
+GO
+
+CREATE TABLE sap.InterfaceConfig (
+	-- All queries of this configuration table use `SELECT TOP 1` to ensure that
+	-- 	that the transaction happens against 1 district. It could be catastrophic
+	-- 	to post transactions against multiple Sigmanest databases, since each SAP
+	-- 	system will have 1 Sigmanest database synced with it.
+	-- Essentially, this table should only have 1 entry. Lock ensures that:
+	--	https://stackoverflow.com/a/3971669
+	Lock TINYINT NOT NULL DEFAULT 1,
+	CONSTRAINT PK_CONFIG PRIMARY KEY (Lock),
+	CONSTRAINT CK_CONFIG_LOCKED CHECK (Lock = 1),
+	-- SimTrans district (Sigmanest system) involved with SAP system
+	SimTransDistrict INT NOT NULL,
+	-- Path format template string to build DXF file
+	RemnantDxfPath VARCHAR(255),
+	-- Path should be to a windows file system folder without trailing \
+	--	(as well as other invalid windows folder name characters)
+	CONSTRAINT CK_RemnantDxfPath CHECK (RemnantDxfPath NOT LIKE '%[\/:*?"<>|]'),
+	-- Placehold word used heat swap (inserted into Data14 in interface 1).
+	-- This might be hardcoded in the Sigmanest post, so check before changing.
+	-- Changing this also requires changing the HeatSwap configuration.
+	HeatSwapKeyword VARCHAR(64),
+	-- Log procedure calls to log schema for debugging
+	LogProcedureCalls BIT
+);
+INSERT INTO
+	sap.InterfaceConfig (SimTransDistrict, RemnantDxfPath, HeatSwapKeyword)
+VALUES
+	(
+		1,
+		'\\hssieng\SNDataQas\RemSaveOutput\DXF',
+		'HighHeatNum',
+		0
+	);
+GO
+
+-- ********************************************
+-- *    Interface 1: Demand                   *
+-- ********************************************
+CREATE TABLE sap.RenamedDemandAllocation (
+	Id INT PRIMARY KEY,
+	SapPartName VARCHAR(50),
+	NewPartName VARCHAR(50),
+	Job VARCHAR(50),
+	Shipment VARCHAR(50),
+	Qty INT
+);
+GO
+
+-- ********************************************
+-- *    Interface 3: Create/Delete Nest       *
+-- ********************************************
+-- Boomi table for results
+CREATE TABLE sap.FeedbackQueue (
+	FeedBackId BIGINT IDENTITY(1,1) PRIMARY KEY,
+	DataSet VARCHAR(64),
+
+	-- Program
+	ArchivePacketId BIGINT,
+	Status VARCHAR(64),
+	ProgramName VARCHAR(50),
+	RepeatId INT,
+	MachineName VARCHAR(50),
+	CuttingTime INT,
+
+	-- Sheet(s)
+	SheetIndex INT,
+	SheetName VARCHAR(50),
+	MaterialMaster VARCHAR(50),
+
+	-- Part(s)
+	PartName VARCHAR(100),
+	PartQty INT,
+	Job VARCHAR(50),
+	Shipment VARCHAR(50),
+	TrueArea FLOAT,
+	NestedArea FLOAT,
+
+	-- Remnant(s)
+	RemnantName VARCHAR(50),
+	Length INT,
+	Width INT,
+	Area FLOAT,
+	IsRectangular BIT
+);
+GO
