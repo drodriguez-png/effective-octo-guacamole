@@ -370,7 +370,7 @@ BEGIN
 			@mark,	-- part name (Material Master with job removed)
 			@heatswap_keyword,
 			@chargeref,	-- PART hours order for shipment
-			@part_name,
+			@sap_part_name,
 			@sap_event_id
 		);
 	END;
