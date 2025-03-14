@@ -748,7 +748,9 @@ BEGIN
 			-- SimTrans transaction
 			CASE @sheet_type
 				WHEN 'Remnant' THEN 'SN97'
-				ELSE 'SN91A'
+				-- SN91A works for everything, but requires special SimTrans options
+				-- TODO: SN91 if sheets exist
+				ELSE 'SN90' -- fails if @qty=0, which is handled by IF statement
 			END,
 			@simtrans_district,
 			@trans_id,
