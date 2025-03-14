@@ -158,8 +158,8 @@ BEGIN
 	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
 
 	-- set @mark by stripping @job from @part_name
-	IF @mark IS NULL
-		SET @mark = REPLACE(@part_name, CONCAT(@job, '-'), '');
+	IF @mark IS NULL AND @part_name LIKE @job + '[-_]%'
+		SET @mark = SUBSTRING(@part_name,LEN(@job)+2,LEN(@part_name)-LEN(@job)-1);
 
 	-- Pre-event processing for any group of calls for the same @sap_event_id
 	-- Because of this `IF` statement, this will only do anything on the first
