@@ -212,7 +212,11 @@ BEGIN
 	-- Pre-event processing for any group of calls for the same @sap_event_id
 	-- Because of this `IF` statement, this will only do anything on the first
 	-- 	call for a given SAP event id (which should be for one material master).
-	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM SNDBaseDev.dbo.TransAct)
+	IF @trans_id NOT IN (
+		SELECT DISTINCT TransID
+		FROM SNDBaseDev.dbo.TransAct
+		WHERE ItemName = @part_name
+	)
 	BEGIN
 		-- [1] Preemtively set all parts to be removed for the given @mm
 		-- This ensures that any demand in Sigmanest that is not in SAP is
