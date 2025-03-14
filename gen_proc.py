@@ -21,7 +21,7 @@ CONFIG = re.compile(
     r"\(\d+, '(\\\\\w+\\SNData)\w+([\\a-zA-Z]+)'([^\n]*)\)"
 )
 
-schema_dir = path.dirname(__file__)
+schema_dir = path.join(path.dirname(__file__), "schema")
 st_template_file = path.join(schema_dir, "SimTransCtrl_Proc.sql")
 oys_template_file = path.join(schema_dir, "OysSchema.sql")
 

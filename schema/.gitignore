@@ -1,2 +1,5 @@
 /.vs
 *.ssmss*
+SQLQuery*.sql
+patches/*.sql
+tests/*.sql
