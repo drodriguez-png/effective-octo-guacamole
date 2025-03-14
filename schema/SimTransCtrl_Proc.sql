@@ -28,11 +28,14 @@ CREATE TABLE sap.InterfaceConfig (
 	-- Placehold word used heat swap (inserted into Data14 in interface 1).
 	-- This might be hardcoded in the Sigmanest post, so check before changing.
 	-- Changing this also requires changing the HeatSwap configuration.
-	HeatSwapKeyword VARCHAR(64)
+	HeatSwapKeyword VARCHAR(64),
+
+	-- Log procedure calls to log schema for debugging
+	LogProcedureCalls BIT
 );
 INSERT INTO sap.InterfaceConfig (SimTransDistrict, RemnantDxfPath, HeatSwapKeyword)
 VALUES
-	(1, '\\hssieng\SNDataQas\RemSaveOutput\DXF', 'HighHeatNum');
+	(1, '\\hssieng\SNDataQas\RemSaveOutput\DXF', 'HighHeatNum', 0);
 GO
 
 CREATE OR ALTER TRIGGER sap.PostConfigUpdate
@@ -140,6 +143,51 @@ CREATE OR ALTER PROCEDURE sap.PushSapDemand
 AS
 SET NOCOUNT ON
 BEGIN
+	-- log procedure call
+	INSERT INTO log.SapDemandCalls (
+		ProcCalled,
+		sap_event_id,
+		sap_part_name,
+		work_order,
+		part_name,
+		qty,
+		matl,
+		process,
+		state,
+		dwg,
+		codegen,
+		job,
+		shipment,
+		chargeref,
+		op1,
+		op2,
+		op3,
+		mark,
+		raw_mm
+	)
+	SELECT
+		'PushSapDemand',
+		@sap_event_id,
+		@sap_part_name,
+		@work_order,
+		@part_name,
+		@qty,
+		@matl,
+		@process,
+		@state,
+		@dwg,
+		@codegen,
+		@job,
+		@shipment,
+		@chargeref,
+		@op1,
+		@op2,
+		@op3,
+		@mark,
+		@raw_mm
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
@@ -336,6 +384,25 @@ CREATE OR ALTER PROCEDURE sap.PushRenamedDemand
 	@shipment VARCHAR(50) = NULL
 AS
 BEGIN
+	-- log procedure call
+	INSERT INTO log.SapDemandCalls (
+		ProcCalled,
+		sap_part_name,
+		part_name,
+		qty,
+		job,
+		shipment
+	)
+	SELECT
+		'PushRenamedDemand',
+		@sap_part_name,
+		@new_part_name,
+		@qty,
+		@job,
+		@shipment
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
@@ -440,6 +507,15 @@ CREATE OR ALTER PROCEDURE sap.RemoveRenamedDemand
 	@id INT
 AS
 BEGIN
+	-- log procedure call
+	INSERT INTO log.SapDemandCalls (
+		ProcCalled, alloc_id
+	)
+	SELECT
+		'RemoveRenamedDemand', @id
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
@@ -550,6 +626,41 @@ CREATE OR ALTER PROCEDURE sap.PushSapInventory
 AS
 SET NOCOUNT ON
 BEGIN
+	-- log procedure call
+	INSERT INTO log.SapInventoryCalls(
+		ProcCalled,
+		sap_event_id,
+		sheet_name, 
+		sheet_type,
+		qty,
+		matl,
+		thk,
+		wid,
+		len,
+		mm,
+		notes1,
+		notes2,
+		notes3,
+		notes4
+	)
+	SELECT
+		'PushSapInventory',
+		@sap_event_id,
+		@sheet_name, 
+		@sheet_type,
+		@qty,
+		@matl,
+		@thk,
+		@wid,
+		@len,
+		@mm,
+		@notes1,
+		@notes2,
+		@notes3,
+		@notes4
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
 		SELECT TOP 1 SimTransDistrict
@@ -862,6 +973,15 @@ BEGIN
 	-- 		transactions have posted, then this should hold
 	--	For a slab nest, we only have to update the child nests, because the slab
 	--		nest has no work order parts and therefore was not written to the database
+
+	-- log procedure call
+	INSERT INTO log.UpdateProgramCalls (
+		ProcCalled, sap_event_id, archive_packet_id
+	)
+	SELECT
+		'UpdateProgram', @sap_event_id, @archive_packet_id
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
 
 	-- load SimTrans district from configuration
 	DECLARE @simtrans_district INT = (
