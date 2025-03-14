@@ -634,7 +634,7 @@ BEGIN
 	INSERT INTO log.SapInventoryCalls(
 		ProcCalled,
 		sap_event_id,
-		sheet_name, 
+		sheet_name,
 		sheet_type,
 		qty,
 		matl,
@@ -650,7 +650,7 @@ BEGIN
 	SELECT
 		'PushSapInventory',
 		@sap_event_id,
-		@sheet_name, 
+		@sheet_name,
 		@sheet_type,
 		@qty,
 		@matl,
