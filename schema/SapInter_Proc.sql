@@ -572,14 +572,32 @@ BEGIN
 			TransType,
 			District,
 			TransID,	-- for logging purposes
-			ItemName
+			ItemName,
+			Qty,
+			Material,
+			Thickness,
+			Length,
+			Width
 		)
 		SELECT
-			'SN92',
+			'SN91A',
 			@simtrans_district,
 			@trans_id,
-			SheetName
+			Stock.SheetName,
+			ISNULL(InProcess.QtyInProcess, 0),
+			Material,
+			Thickness,
+			Length,
+			Width
 		FROM SNDBaseDev.dbo.Stock
+		LEFT JOIN (
+			SELECT
+				SheetName,
+				SUM(QtyInProcess) AS QtyInProcess
+			FROM SNDBaseDev.dbo.SIP
+			GROUP BY SheetName
+		) AS InProcess
+			ON Stock.SheetName=InProcess.SheetName
 		WHERE SNDBaseDev.dbo.Stock.PrimeCode = @mm
 		-- keeps transactions from being inserted if the SimTrans runs
 		--	in the middle of a data push.
@@ -655,26 +673,70 @@ GO
 -- ********************************************
 -- *    Interface 3: Create/Delete Nest       *
 -- ********************************************
+CREATE OR ALTER PROCEDURE sap.ConsolidateFeedback
+AS
+BEGIN
+	-- remove(defer) reposts
+	--	- Created -> Deleted
+	--	- Released -> Deleted
+	--		not (Created: pushed to SAP) -> Released -> Deleted
+	--	- Any Program with SigmanestStatus = 'Deleted' and Program not in SAP
+	WITH
+		Updates AS (
+			-- Records that need to be sent to SAP
+			SELECT
+				ProgramGUID, SigmanestStatus
+			FROM oys.Status
+			WHERE SapStatus IS NULL
+		),
+		SentToSap AS (
+			-- Records that have been exported* to SAP
+			--	*may or may not be successful
+			SELECT
+				ProgramGUID
+			FROM oys.Status
+			WHERE SapStatus = 'Complete'
+		)
+	UPDATE oys.Status SET SapStatus = 'Skipped'
+	WHERE ProgramGUID IN (
+		SELECT ProgramGUID FROM Updates WHERE SigmanestStatus = 'Deleted'
+
+		-- remove items in SAP
+		EXCEPT SELECT ProgramGUID FROM SentToSap
+	);
+END;
+GO
 CREATE OR ALTER PROCEDURE sap.GetFeedback
 AS
 BEGIN
-	-- status constants
-	DECLARE @ExportStatus VARCHAR(16) = 'Processing';
-
-	-- remove(defer) reposts
-	UPDATE oys.Status SET SapStatus = 'Skipped'
-	WHERE ProgramGUID IN (
-		SELECT ProgramGUID FROM oys.Status WHERE SigmanestStatus = 'Created'
-		INTERSECT
-		SELECT ProgramGUID FROM oys.Status WHERE SigmanestStatus = 'Deleted'
-	);
+	EXEC sap.ConsolidateFeedback;
 
 	-- set feedback to processing
 	-- This ensures that if feedback items are added in the middle of processing,
 	--	partial data sets do not get  uploaded to SAP
 	--	(i.e. Parts list, but not Program header)
+	DECLARE @ExportStatus VARCHAR(16) = 'Processing';
 	UPDATE oys.Status SET SapStatus = @ExportStatus
 	WHERE SapStatus IS NULL;
+
+	-- update NestType for split plate nests
+	WITH ProgramToChildPart AS (
+		SELECT
+			Program.ProgramGUID,
+			ChildPart.SNPartName,
+			Program.NestType,
+			Status.SapStatus
+		FROM oys.Program
+		INNER JOIN oys.Status
+			ON Program.ProgramGUID=Status.ProgramGUID
+		INNER JOIN oys.ChildPlate
+			ON Program.ProgramGUID=ChildPlate.ProgramGUID
+		INNER JOIN oys.ChildPart
+			ON ChildPlate.ChildPlateGUID=ChildPart.ChildPlateGUID
+	)
+	UPDATE ProgramToChildPart SET NestType='Split'
+		WHERE SNPartName='GHOST'
+		AND SapStatus IS NULL;
 
 	-- programs
 	INSERT INTO sap.FeedbackQueue (
@@ -688,7 +750,7 @@ BEGIN
 	) SELECT
 		'Program' AS DataSet,
 		Program.AutoId AS ArchivePacketId,
-		SigmanestStatus AS Status,
+		UPPER(SigmanestStatus) AS Status,
 		ProgramName,
 		CASE Program.NestType
 			-- ChildPlate.ChildNestRepeatID for Regular nests, 1 for slabs
@@ -699,7 +761,10 @@ BEGIN
 			)
 			ELSE 1
 		END AS RepeatId,
-		MachineName,
+		CASE
+			WHEN Program.NestType = 'Split' THEN 'SPLIT'
+			ELSE UPPER(MachineName)
+		END AS MachineName,
 		CuttingTime	-- This is seconds, FeedbackQueue will round
 	FROM oys.Status
 	INNER JOIN oys.Program
@@ -724,7 +789,12 @@ BEGIN
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = @ExportStatus;
+	WHERE Status.SapStatus = @ExportStatus
+		AND Status.ProgramGUID NOT IN (
+			SELECT ProgramGUID
+			FROM oys.Status
+			WHERE SapStatus='Complete'
+		);
 
 	-- part(s)
 	INSERT INTO sap.FeedbackQueue (
@@ -744,7 +814,7 @@ BEGIN
 		ChildPart.SAPPartName AS PartName,
 		ChildPart.QtyProgram AS PartQty,
 		ChildPart.Job,
-		ChildPart.Shipment,
+		ChildPart.Shipment,	-- TODO: zero pad (01)
 		ROUND(ChildPart.TrueArea, 3),	-- SAP is 3 decimals
 		ROUND(ChildPart.NestedArea, 3)	-- SAP is 3 decimals
 	FROM oys.ChildPart
@@ -754,7 +824,13 @@ BEGIN
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = @ExportStatus;
+	WHERE Status.SapStatus = @ExportStatus
+		AND ChildPart.SAPPartName != ''	-- no parts for split plate
+		AND Status.ProgramGUID NOT IN (
+			SELECT ProgramGUID
+			FROM oys.Status
+			WHERE SapStatus='Complete'
+		);
 
 	-- remnant(s)
 	INSERT INTO sap.FeedbackQueue (
@@ -782,35 +858,98 @@ BEGIN
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = @ExportStatus;
-
-	SELECT * FROM sap.FeedbackQueue;
+	WHERE Status.SapStatus = @ExportStatus
+		AND Status.ProgramGUID NOT IN (
+			SELECT ProgramGUID
+			FROM oys.Status
+			WHERE SapStatus='Complete'
+		);
 
 	-- update oys.Status.SapStatus = 'Complete'
 	UPDATE oys.Status SET SapStatus = 'Complete'
 	WHERE SapStatus = @ExportStatus;
+
+	SELECT * FROM sap.FeedbackQueue;
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.MarkFeedbackSapUploadComplete
-	@feedback_id INT
+	@feedback_id INT = NULL,
+	@archive_packet_id INT = NULL
 AS
 BEGIN
 	-- Marks feedback items as successfully uploaded to SAP.
 	-- Feedback items that are not removed will continue to push to SAP
 
-	-- Delete feedback item from queue
+	-- log procedure call
+	INSERT INTO log.FeedbackCalls (
+		ProcCalled, feedback_id, archive_packet_id
+	)
+	SELECT
+		'MarkFeedbackSapUploadComplete', @feedback_id, @archive_packet_id
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
+	-- Delete feedback item(s) from queue
+	--	FeedBackId and ArchivePacketId should never be null,
+	--	so we don't need to validate our arguments
 	DELETE FROM sap.FeedbackQueue WHERE FeedBackId=@feedback_id;
+	DELETE FROM sap.FeedbackQueue WHERE ArchivePacketId=@archive_packet_id;
 END;
 GO
 
 
--- ********************************************
--- *    Interface 4: Update Program           *
--- ********************************************
+-- ***************************************************
+-- *    Interface 4: Release/Delete/Update Program   *
+-- ***************************************************
+CREATE OR ALTER PROCEDURE sap.ReleaseProgram
+	@archive_packet_id INT,
+	@source VARCHAR(64) = 'CodeMover',
+	@username VARCHAR(64) = NULL
+AS
+SET NOCOUNT ON
+BEGIN
+	-- log procedure call
+	INSERT INTO log.UpdateProgramCalls (
+		ProcCalled, archive_packet_id, source, username
+	)
+	SELECT
+		'ReleaseProgram', @archive_packet_id, @source, @username
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
+	-- load SimTrans district from configuration
+	DECLARE @simtrans_district INT = (
+		SELECT TOP 1 SimTransDistrict
+		FROM sap.InterfaceConfig
+	);
+
+	-- Push a new entry into oys.Status with SigmanestStatus = 'Updated'
+	--	to simulate a program update
+	INSERT INTO oys.Status (
+		DBEntryDateTime,
+		ProgramGUID,
+		StatusGUID,
+		SigmanestStatus,
+		Source,
+		UserName
+	)
+	SELECT
+		GETDATE(),
+		ProgramGUID,
+		NEWID(),
+		'Released',
+		@source,
+		ISNULL(@username, CURRENT_USER)
+	FROM oys.Program
+	WHERE Program.AutoId = @archive_packet_id;
+END;
+GO
 CREATE OR ALTER PROCEDURE sap.UpdateProgram
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
-	@archive_packet_id INT
+	@archive_packet_id INT,
+	@source VARCHAR(64) = 'Boomi',
+	@username VARCHAR(64) = NULL
 AS
 SET NOCOUNT ON
 BEGIN
@@ -823,10 +962,10 @@ BEGIN
 
 	-- log procedure call
 	INSERT INTO log.UpdateProgramCalls (
-		ProcCalled, sap_event_id, archive_packet_id
+		ProcCalled, sap_event_id, archive_packet_id, source, username
 	)
 	SELECT
-		'UpdateProgram', @sap_event_id, @archive_packet_id
+		'UpdateProgram', @sap_event_id, @archive_packet_id, @source, @username
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 
@@ -850,7 +989,7 @@ BEGIN
 		ProgramRepeat	-- Repeat ID of the program
 	)
 	SELECT
-		'SN76',
+		'SN70',
 		@simtrans_district,
 		@trans_id,
 		ChildNestProgramName,
@@ -866,13 +1005,88 @@ BEGIN
 		DBEntryDateTime,
 		ProgramGUID,
 		StatusGUID,
-		SigmanestStatus
+		SigmanestStatus,
+		SAPStatus,
+		Source,
+		UserName
 	)
 	SELECT
 		GETDATE(),
 		ProgramGUID,
 		NEWID(),
-		'Updated'
+		'Updated',
+		'Complete',
+		@source,
+		ISNULL(@username, CURRENT_USER)
+	FROM oys.Program
+	WHERE Program.AutoId = @archive_packet_id;
+END;
+GO
+CREATE OR ALTER PROCEDURE sap.DeleteProgram
+	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
+
+	@archive_packet_id INT,
+	@source VARCHAR(64) = 'ProgramDelete',
+	@username VARCHAR(64) = NULL
+AS
+SET NOCOUNT ON
+BEGIN
+	-- log procedure call
+	INSERT INTO log.UpdateProgramCalls (
+		ProcCalled, sap_event_id, archive_packet_id, source, username
+	)
+	SELECT
+		'DeleteProgram', @sap_event_id, @archive_packet_id, @source, @username
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
+	-- load SimTrans district from configuration
+	DECLARE @simtrans_district INT = (
+		SELECT TOP 1 SimTransDistrict
+		FROM sap.InterfaceConfig
+	);
+
+	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
+	-- The use of this as TransID is purely for diagnostic reasons,
+	-- 	so truncating it to the 10 least significant digits is OK.
+	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
+
+	-- [1] Delete program (child programs in case of a slab)
+	INSERT INTO SNDBaseDev.dbo.TransAct (
+		TransType,		-- `SN76`
+		District,
+		TransID,		-- for logging purposes
+		ProgramName,	-- Program name/number
+		ProgramRepeat	-- Repeat ID of the program
+	)
+	SELECT
+		'SN74',
+		@simtrans_district,
+		@trans_id,
+		ChildNestProgramName,
+		ChildNestRepeatID
+	FROM oys.Program
+	INNER JOIN oys.ChildPlate
+		ON Program.ProgramGUID=ChildPlate.ProgramGUID
+	WHERE Program.AutoId = @archive_packet_id;
+
+	-- Push a new entry into oys.Status with SigmanestStatus = 'Deleted'
+	--	to simulate a program delete
+	INSERT INTO oys.Status (
+		DBEntryDateTime,
+		ProgramGUID,
+		StatusGUID,
+		SigmanestStatus,
+		Source,
+		UserName
+	)
+	SELECT
+		GETDATE(),
+		ProgramGUID,
+		NEWID(),
+		'Deleted',
+		@source,
+		ISNULL(@username, CURRENT_USER)
 	FROM oys.Program
 	WHERE Program.AutoId = @archive_packet_id;
 END;
