@@ -71,6 +71,11 @@ GO
 -- ********************************************
 -- *    Interface 1: Demand                   *
 -- ********************************************
+-- Note on SimTrans transactions used
+--	- SN81B: sets the "qty to nest"
+--	- SN82: remove the part from the work order
+-- The use of the SN81B means that if the qty is 0, the part remains in the
+--	work order with no demand.
 CREATE OR ALTER PROCEDURE sap.PushSapDemand
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 	@sap_part_name VARCHAR(18),
@@ -175,17 +180,9 @@ BEGIN
 		-- 	removed since SAP will not always tell us that the demand
 		-- 	was removed.
 		WITH Parts AS (
-			SELECT
-				PartName,
-				WONumber,
-				QtyCompleted + (
-					SELECT COALESCE(SUM(QtyInProcess), 0)
-					FROM SNDBaseDev.dbo.PIP
-					WHERE Parts.PartName = PIP.PartName
-					AND   Parts.WONumber = PIP.WONumber
-				) AS QtyCommited
+			SELECT PartName, WONumber
 			FROM SNDBaseDev.dbo.Part AS Parts
-			WHERE PartName = @part_name
+			WHERE Data17 = @sap_event_id
 			-- keeps additional removal transactions from being inserted if the
 			--	SimTrans runs in the middle of a data push.
 			AND Data18 != @sap_event_id
@@ -200,33 +197,29 @@ BEGIN
 			ItemData18
 		)
 		SELECT
-			CASE Parts.QtyCommited
-				WHEN 0 THEN 'SN82'	-- Delete part from work order
-				ELSE 'SN81'			-- Modify part in work order
-			END,
+			'SN81B',	-- Modify part in work order
 			@simtrans_district,
 			@trans_id,
 			Parts.WONumber,
 			Parts.PartName,
-			Parts.QtyCommited,
+			0,
 			@sap_event_id
 		FROM Parts;
 	END;
 
-	-- handle parts in archived work orders
-	IF @work_order not in (SELECT WoNumber FROM SNDBaseDev.dbo.Wo)
-	BEGIN
-		SET @qty = @qty - ISNULL(
-			(
-			SELECT TOP 1
-				SUM(QtyOrdered) AS QtyProduced
-			FROM SNDBaseDev.dbo.PartArchive
-			WHERE WoNumber = @work_order
-			AND PartName = @part_name
-			GROUP BY WoNumber, PartName
-			), 0
-		);
+	-- handle on-hold
+	DECLARE @onhold BIT = CASE @process
+		WHEN 'DTE' THEN 1
+		ELSE 0
 	END;
+
+	-- reduce by renamed demand
+	SET @qty = @qty - ISNULL((
+		SELECT SUM(Qty)
+		FROM sap.RenamedDemandAllocation
+		WHERE OriginalPartName = @part_name
+		AND WorkOrderName  = @work_order
+	), 0);
 
 	-- @qty = 0 means SAP has no demand for that material master, so all demand
 	-- 	with the same @part_name needs to be removed from Sigmanest.
@@ -238,7 +231,7 @@ BEGIN
 		-- This removes transactions added in [1] that are not necessary.
 		-- This step is optional, but it helps the performance of the SimTrans.
 		DELETE FROM SNDBaseDev.dbo.TransAct
-		WHERE OrderNo = @work_order
+		WHERE OrderNo = CONCAT(@work_order, CHOOSE(@onhold, '-onhold'))
 		AND ItemName = @part_name
 		AND ItemData18 = @sap_event_id;
 
@@ -247,7 +240,7 @@ BEGIN
 
 		-- [3.2] Add/Update demand via SimTrans
 		INSERT INTO SNDBaseDev.dbo.TransAct (
-			TransType,  -- `SN81`
+			TransType,  -- `SN81B`
 			District,
 			TransID,	-- for logging purposes
 			OrderNo,	-- work order name
@@ -301,16 +294,15 @@ BEGIN
 			--	Data20: <unused>
 		)
 		VALUES (
-			'SN81',
+			'SN81B',
 			@simtrans_district,
 			@trans_id,
 
-			@work_order,
+			-- put on-hold parts in their own work order, since on-hold is a
+			--	work order level option
+			CONCAT(@work_order, CHOOSE(@onhold, '-onhold')),
 			@part_name,
-			CASE @process	-- OnHold
-				WHEN 'DTE' THEN 1	-- scan plates
-				ELSE 0
-			END,
+			@onhold,
 			@qty,
 			@matl,
 
@@ -330,19 +322,65 @@ BEGIN
 			@sap_event_id
 		);
 	END;
+
+	-- recursively call procedure for Renamed Demand
+	DECLARE RenamedDemandCursor CURSOR
+		LOCAL FORWARD_ONLY READ_ONLY
+	FOR
+		SELECT
+			NewPartName,
+			WorkOrderName,
+			Qty
+		FROM sap.RenamedDemandAllocation
+		WHERE OriginalPartName = @part_name
+		AND WorkOrderName = @work_order;
+
+	OPEN RenamedDemandCursor;
+	FETCH NEXT FROM RenamedDemandCursor
+		INTO @part_name, @work_order, @qty;
+
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		EXEC sap.PushSapDemand
+			@sap_event_id,
+			@sap_part_name,
+			@work_order,
+			@part_name,
+			@qty,
+			@matl,
+			NULL,	-- Process: we don't want these on hold
+			@state,
+			@dwg,
+			@codegen,
+			@job,
+			@shipment,
+			@chargeref,
+			@op1,
+			@op2,
+			@op3,
+			@mark,
+			@raw_mm;
+
+		FETCH NEXT FROM RenamedDemandCursor
+			INTO @part_name, @work_order, @qty;
+	END;
+
+	CLOSE RenamedDemandCursor;
+	DEALLOCATE RenamedDemandCursor;
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.PushRenamedDemand
+	@event_id VARCHAR(50) NULL,
+	@original_part_name VARCHAR(50),
 	@new_part_name VARCHAR(50),
-	@sap_part_name VARCHAR(50),
-	@qty INT,
-	@job VARCHAR(50) = NULL,
-	@shipment VARCHAR(50) = NULL
+	@work_order VARCHAR(50),
+	@qty INT
 AS
 BEGIN
 	-- log procedure call
 	INSERT INTO log.SapDemandCalls (
 		ProcCalled,
+		sap_event_id,
 		sap_part_name,
 		part_name,
 		work_order,
@@ -350,212 +388,79 @@ BEGIN
 	)
 	SELECT
 		'PushRenamedDemand',
-		@sap_part_name,
+		@event_id,
+		@original_part_name,
 		@new_part_name,
 		@work_order,
 		@qty
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 
-	-- load SimTrans district from configuration
-	DECLARE @simtrans_district INT = (
-		SELECT TOP 1 SimTransDistrict
-		FROM sap.InterfaceConfig
-	);
+	-- update/create allocation
+	UPDATE sap.RenamedDemandAllocation
+	SET Qty=Qty + @qty
+	WHERE NewPartName=@new_part_name
+	AND WorkOrderName=@work_order;
+	IF @@ROWCOUNT = 0
+	BEGIN
+		INSERT INTO sap.RenamedDemandAllocation (
+			OriginalPartName,
+			NewPartName,
+			WorkOrderName,
+			Qty
+		)
+		VALUES (
+			@original_part_name,
+			@new_part_name,
+			@work_order,
+			@qty
+		)
+	END;
 
-	-- create allocation
-	INSERT INTO sap.RenamedDemandAllocation
-		(NewPartName, SapPartName, Qty, Job, Shipment)
-	VALUES
-		(@new_part_name, @sap_part_name, @qty, @job, @shipment);
-
-	-- [CRITICAL] We must guarantee that a given (@part_name, @job, @shipment)
-	--	only occurs once (in a single work order). If the system is changed
-	--	where this guarantee does not hold, we must change stored procedures:
-	--		- PushSapDemand
-	--		- PushRenamedDemand (this procedure)
-
-	-- Remove/reduce on-hold demand
-	WITH Parts AS (
-		SELECT TOP 1
-			WONumber,
-			PartName,
-			QtyOrdered - @qty AS Qty
-		FROM SNDBaseDev.dbo.Part
-		WHERE PartName = @sap_part_name
-		AND Data1 = @job
-		AND Data2 = @shipment
-	)
-	INSERT INTO SNDBaseDev.dbo.TransAct(
-		TransType,  -- `SN81`
-		District,
-		OrderNo,	-- work order name
-		ItemName,	-- Material Master (part name)
-		Qty
-	)
-	SELECT
-		CASE Qty
-			WHEN 0 THEN 'SN82'	-- Delete from work order
-			ELSE 'SN81'			-- Update qty
-		END,
-		@simtrans_district,
-
-		Parts.WONumber,
-		@sap_part_name,
-		Parts.Qty	-- Ignored for SN82 items
-	FROM Parts;
-
-	-- insert SimTrans Transaction
-	INSERT INTO SNDBaseDev.dbo.TransAct (
-		TransType,  -- `SN81`
-		District,
-		OrderNo,	-- work order name
-		ItemName,	-- Material Master (part name)
-		Qty,
-		Material,	-- {spec}-{grade}{test}
-		-- Customer(State) removed because it is not in the Part table and should
-		--	be already set at the work order level
-		DwgNumber,	-- Drawing name
-		Remark,		-- autoprocess instruction
-		ItemData1,	-- Job(project)
-		ItemData2,	-- Shipment
-		ItemData3,	-- Raw material master (from BOM, if exists)
-		ItemData4,	-- secondary operation 1
-		ItemData5,	-- secondary operation 2
-		ItemData6,	-- secondary operation 3
-		ItemData9,	-- part name (Material Master with job removed)
-		ItemData10,	-- HeatSwap keyword
-		ItemData16,	-- PART hours order for shipment
-		ItemData17,	-- SAP Part Name (for when PartName needs changed)
-		ItemData18	-- SAP event id
-	)
+	-- trigger interface 1 to push demand (if not already in the queue)
+	INSERT INTO sap.FeedbackQueue
+		(DataSet, ArchivePacketId, PartName)
 	SELECT TOP 1
-		'SN81',
-		@simtrans_district,
-
-		WONumber,
-		@new_part_name,
-		@qty,
-		Material,
-
-		DrawingNumber,
-		Remark,	-- autoprocess instruction
-		Data1,	-- Job(project)
-		Data2,	-- Shipment
-		Data3,	-- Raw material master (from BOM, if exists)
-		Data4,	-- secondary operation 1
-		Data5,	-- secondary operation 2
-		Data6,	-- secondary operation 3
-		Data9,	-- part name (Material Master with job removed)
-		Data10,	-- HeatSwap keyword
-		Data16,	-- PART hours order for shipment
-		@sap_part_name,
-		Data18	-- SAP event id
+		'Demand', 0, Data17
 	FROM SNDBaseDev.dbo.Part
-	WHERE PartName = @sap_part_name
-	AND Data1 = @job
-	AND Data2 = @shipment
+	LEFT JOIN sap.FeedbackQueue
+		ON FeedbackQueue.PartName = Part.Data17
+	WHERE Part.PartName = @original_part_name
+		AND FeedbackQueue.FeedBackId IS NULL;
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.RemoveRenamedDemand
-	@id INT
+	@event_id VARCHAR(50) NULL,
+	@id INT,
+	@qty INT
 AS
 BEGIN
 	-- log procedure call
 	INSERT INTO log.SapDemandCalls (
-		ProcCalled, alloc_id
+		ProcCalled, sap_event_id, alloc_id, qty
 	)
 	SELECT
-		'RemoveRenamedDemand', @id
+		'RemoveRenamedDemand', @event_id, @id, @qty
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
+	
+	-- reduce allocation
+	UPDATE sap.RenamedDemandAllocation
+	SET Qty = Qty - @qty
+	WHERE Id = @id;
 
-	-- load SimTrans district from configuration
-	DECLARE @simtrans_district INT = (
-		SELECT TOP 1 SimTransDistrict
-		FROM sap.InterfaceConfig
-	);
-
-	-- add on-hold demand
-	INSERT INTO SNDBaseDev.dbo.TransAct (
-		TransType,  -- `SN81`
-		District,
-		OrderNo,	-- work order name
-		ItemName,	-- Material Master (part name)
-		Qty,
-		Material,	-- {spec}-{grade}{test}
-		-- Customer(State) removed because it is not in the Part table and should
-		--	be already set at the work order level
-		DwgNumber,	-- Drawing name
-		Remark,		-- autoprocess instruction
-		ItemData1,	-- Job(project)
-		ItemData2,	-- Shipment
-		ItemData3,	-- Raw material master (from BOM, if exists)
-		ItemData4,	-- secondary operation 1
-		ItemData5,	-- secondary operation 2
-		ItemData6,	-- secondary operation 3
-		ItemData9,	-- part name (Material Master with job removed)
-		ItemData10,	-- HeatSwap keyword
-		ItemData16,	-- PART hours order for shipment
-		ItemData17,	-- SAP Part Name (for when PartName needs changed)
-		ItemData18	-- SAP event id
-	)
-	SELECT
-		'SN81',
-		@simtrans_district,
-
-		WONumber,
-		PartName,
-		QtyOrdered + (
-			SELECT COALESCE(SUM(QtyOrdered), 0)
-			FROM SNDBaseDev.dbo.Part AS OnHoldParts
-			WHERE OnHoldParts.PartName = Part.Data3
-			AND OnHoldParts.Data1 = Part.Data1
-			AND OnHoldParts.Data2 = Part.Data2
-		),
-		Material,
-
-		DrawingNumber,
-		Remark,	-- autoprocess instruction
-		Data1,	-- Job(project)
-		Data2,	-- Shipment
-		Data3,	-- Raw material master (from BOM, if exists)
-		Data4,	-- secondary operation 1
-		Data5,	-- secondary operation 2
-		Data6,	-- secondary operation 3
-		Data9,	-- part name (Material Master with job removed)
-		Data10,	-- HeatSwap keyword
-		Data16,	-- PART hours order for shipment
-		Data17,	-- SAP part name
-		Data18	-- SAP event id
+	-- trigger interface 1 to push demand (if not already in the queue)
+	INSERT INTO sap.FeedbackQueue
+		(DataSet, ArchivePacketId, PartName)
+	SELECT TOP 1
+		'Demand', 0, Data17
 	FROM SNDBaseDev.dbo.Part
 	INNER JOIN RenamedDemandAllocation AS Alloc
-		ON Part.PartName = Alloc.NewPartName
-		AND Part.Data1 = Alloc.Job
-		AND Part.Data2 = Alloc.Shipment
-	WHERE Alloc.Id = @id;
-
-	-- remove renamed demand
-	INSERT INTO SNDBaseDev.dbo.TransAct(
-		TransType,  -- `SN82`
-		District,
-		OrderNo,	-- work order name
-		ItemName	-- Material Master (part name)
-	)
-	SELECT
-		'SN82',	-- Delete from work order
-		@simtrans_district,
-
-		WONumber,
-		NewPartName
-	FROM sap.RenamedDemandAllocation
-		INNER JOIN SNDBaseDev.dbo.Part
-			ON Part.PartName = RenamedDemandAllocation.NewPartName
-		WHERE Id = @id;
-
-	-- delete allocation
-	DELETE FROM sap.RenamedDemandAllocation WHERE Id = @id;
-
+		ON Part.PartName = Alloc.OriginalPartName
+	LEFT JOIN sap.FeedbackQueue
+		ON FeedbackQueue.PartName = Part.Data17
+	WHERE Alloc.Id = @id
+		AND FeedbackQueue.FeedBackId IS NULL;
 END;
 GO
 
