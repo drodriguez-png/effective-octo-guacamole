@@ -46,11 +46,20 @@ CREATE TABLE log.SapInventoryCalls (
 	notes3 VARCHAR(50),
 	notes4 VARCHAR(50)
 );
+CREATE TABLE log.FeedbackCalls (
+	LogDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+	ProcCalled VARCHAR(64),
+
+	feedback_id INT,
+	archive_packet_id INT
+);
 CREATE TABLE log.UpdateProgramCalls (
 	LogDate DATETIME DEFAULT CURRENT_TIMESTAMP,
 	ProcCalled VARCHAR(64),
 
 	sap_event_id VARCHAR(50),
-	archive_packet_id INT
+	archive_packet_id INT,
+	source VARCHAR(64),
+	username VARCHAR(64)
 );
 GO
