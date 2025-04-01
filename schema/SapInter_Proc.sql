@@ -525,13 +525,34 @@ BEGIN
 		SELECT TOP 1 SimTransDistrict
 		FROM sap.InterfaceConfig
 	);
+
 	-- load dxf path template from configuration and interpolate @sheet_name
-	DECLARE @dxf_file VARCHAR(255) = (
-		SELECT TOP 1
-			-- CONCAT(RemnantDxfPath, '\', @sheet_name, '.dxf')
-			CONCAT(RemnantDxfPath, CHAR(92), @sheet_name, '.dxf')
-		FROM sap.InterfaceConfig
-	);
+	DECLARE @dxf_file VARCHAR(255);
+	IF @sheet_type = 'Remnant'
+	BEGIN
+		-- Having an invalid filepath character in @sheet_name is catastrophic
+		--	to the process because we cannot establish a link to the geometry file
+		IF @sheet_name LIKE '%[\/:*?"<>|]%'
+		BEGIN
+			RAISERROR(
+				'SheetName `%s` contains an invalid path character',
+				16, -- severity
+				1,	-- state
+				@sheet_name
+			);
+			-- do not need to ROLLBACK TRANSACTION because nothing changed
+			--	and we still want to log the transaction call
+			RETURN;
+		END;
+
+		SET @dxf_file = (
+			SELECT TOP 1
+				-- CONCAT(RemnantDxfPath, '\', @sheet_name, '.dxf')
+				CONCAT(RemnantDxfPath, CHAR(92), @sheet_name, '.dxf')
+			FROM sap.InterfaceConfig
+		);
+	END;
+	 
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
