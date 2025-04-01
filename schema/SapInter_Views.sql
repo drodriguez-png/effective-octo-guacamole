@@ -1,0 +1,99 @@
+USE SNInterDev;
+GO
+
+drop view oys.ActivePrograms;
+drop view oys.PartsOnProgram;
+drop view sap.RenamedDemandAllocationInProcess;
+go
+
+CREATE OR ALTER VIEW oys.ActivePrograms
+AS
+	WITH ActiveGUID AS (
+		SELECT ProgramGUID FROM oys.Status
+		EXCEPT
+		SELECT ProgramGUID FROM oys.Status
+		WHERE SigmanestStatus IN ('Updated', 'Deleted') 
+	)
+	SELECT
+		Program.AutoId AS ArchivePacketId,
+		Program.ProgramGUID,
+		Program.ProgramName,
+		Program.MachineName,
+		Program.TaskName,
+		Program.WSName,
+		Program.NestType,
+
+		Status.SigmanestStatus,
+		Status.SAPStatus,
+		Status.Source,
+		Status.UserName
+	FROM ActiveGUID
+	INNER JOIN oys.Program
+		ON Program.ProgramGUID=ActiveGUID.ProgramGUID
+	INNER JOIN oys.Status
+		ON Status.ProgramGUID=Program.ProgramGUID;
+GO
+
+CREATE OR ALTER VIEW oys.PartsOnProgram
+AS
+	WITH WorkOrderParts AS (
+		SELECT
+			WONumber,
+			PartName,
+			ProgramName,
+			RepeatID
+		FROM SNDBaseDev.dbo.PIP
+		UNION
+		SELECT
+			WONumber,
+			PartName,
+			ProgramName,
+			RepeatID
+		FROM SNDBaseDev.dbo.PIPArchive
+		WHERE TransType='SN102'
+	)
+	SELECT
+		ChildPart.AutoId AS ChildPartId,
+		ChildPart.SAPPartName,
+		WorkOrderParts.WONumber,
+		ChildPart.SNPartName,
+		ChildPart.QtyProgram,
+
+		Program.AutoId AS ArchivePacketId,
+		Program.ProgramName,
+		Program.MachineName
+	FROM oys.ChildPart
+	INNER JOIN oys.ChildPlate
+		ON ChildPlate.ChildPlateGUID=ChildPart.ChildPlateGUID
+	INNER JOIN oys.Program
+		ON Program.ProgramGUID=ChildPlate.ProgramGUID
+	INNER JOIN WorkOrderParts
+		ON WorkOrderParts.ProgramName=ChildPlate.ChildNestProgramName
+		AND WorkOrderParts.RepeatID=ChildPlate.ChildNestRepeatID
+GO
+
+CREATE OR ALTER VIEW sap.RenamedDemandAllocationInProcess
+AS
+	WITH WorkOrderParts AS (
+		SELECT
+			WONumber,
+			PartName,
+			QtyInProcess,
+			QtyCompleted
+		FROM SNDBaseDev.dbo.PartWithQtyInProcess
+	)
+	SELECT
+		Id,
+		OriginalPartName,
+		NewPartName,
+		WorkOrderName,
+		Qty - QtyInProcess - QtyCompleted AS QtyRemaining
+	FROM sap.RenamedDemandAllocation AS Alloc
+	LEFT JOIN WorkOrderParts
+		ON  WorkOrderParts.WONumber=Alloc.WorkOrderName
+		AND WorkOrderParts.PartName=Alloc.NewPartName;
+GO
+
+select * from oys.ActivePrograms;
+select * from oys.PartsOnProgram;
+select * from sap.RenamedDemandAllocationInProcess;
