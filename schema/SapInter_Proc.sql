@@ -345,17 +345,15 @@ BEGIN
 		ProcCalled,
 		sap_part_name,
 		part_name,
-		qty,
-		job,
-		shipment
+		work_order,
+		qty
 	)
 	SELECT
 		'PushRenamedDemand',
 		@sap_part_name,
 		@new_part_name,
-		@qty,
-		@job,
-		@shipment
+		@work_order,
+		@qty
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 

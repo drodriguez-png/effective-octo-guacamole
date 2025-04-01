@@ -43,12 +43,16 @@ GO
 -- *    Interface 1: Demand                   *
 -- ********************************************
 CREATE TABLE sap.RenamedDemandAllocation (
-	Id INT PRIMARY KEY,
-	SapPartName VARCHAR(50),
+	Id INT IDENTITY(1,1) PRIMARY KEY,
+	OriginalPartName VARCHAR(50),
 	NewPartName VARCHAR(50),
-	Job VARCHAR(50),
-	Shipment VARCHAR(50),
-	Qty INT
+	WorkOrderName VARCHAR(50),
+	Qty INT,
+
+	-- required or sap.PushSapDemand could result
+	--	in an endless recursive loop
+	CONSTRAINT PartNamesDiffer
+		CHECK (OriginalPartName != NewPartName)
 );
 GO
 
