@@ -21,4 +21,5 @@ where TransType like 'SN9%'
 ;
 
 select * from log.SapInventoryCalls
+where LogDate > CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '07:00:00'
 ;

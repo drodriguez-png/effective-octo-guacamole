@@ -3,7 +3,7 @@
 --where TransType='SN60'
 --and ( Material is null or Material like '%NA%' );
 
---delete from SNDBaseDev.dbo.TransAct;
+delete from SNDBaseDev.dbo.TransAct where AutoInc in (1516, 1517, 1518, 1519);
 
 --select * from SNDBaseDev.dbo.TransAct;
 select
@@ -35,7 +35,9 @@ from SNDBaseDev.dbo.TransAct
 where TransType like 'SN8%'
 ;
 
+select * from sap.RenamedDemandAllocation;
+
 select *
 from log.SapDemandCalls
-where LogDate > CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '14:00:00'
+where LogDate > CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '10:00:00'
 ;
