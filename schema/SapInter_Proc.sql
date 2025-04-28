@@ -175,14 +175,14 @@ BEGIN
 		WHERE ItemName = @part_name
 	)
 	BEGIN
-		-- [1] Preemtively set all parts to be removed for the given @mm
+		-- [1] Preemtively set all parts to be removed for the given @sap_part_name
 		-- This ensures that any demand in Sigmanest that is not in SAP is
 		-- 	removed since SAP will not always tell us that the demand
 		-- 	was removed.
 		WITH Parts AS (
 			SELECT PartName, WONumber
 			FROM SNDBaseDev.dbo.Part AS Parts
-			WHERE Data17 = @sap_event_id
+			WHERE Data17 = @sap_part_name
 			-- keeps additional removal transactions from being inserted if the
 			--	SimTrans runs in the middle of a data push.
 			AND Data18 != @sap_event_id
