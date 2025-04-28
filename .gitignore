@@ -1,3 +1,4 @@
 *.json
 SimTransCtrl_Proc_*.sql
 OysSchema_*.sql
+.venv/
