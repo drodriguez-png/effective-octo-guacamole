@@ -875,30 +875,36 @@ BEGIN
 	WHERE SapStatus = @ExportStatus;
 
 	SELECT * FROM sap.FeedbackQueue;
+
+	-- clear sap.FeedbackQueue
+	--	we are assuming Boomi transport was successful
+	--	in the event of failure, Boomi/SAP should generate errors and
+	--		sap.GenerateFeedbackForArchivePacketId will be manually called
+	DELETE FROM sap.FeedbackQueue;
 END;
 GO
-CREATE OR ALTER PROCEDURE sap.MarkFeedbackSapUploadComplete
-	@feedback_id INT = NULL,
+CREATE OR ALTER PROCEDURE sap.GenerateFeedbackForArchivePacketId
 	@archive_packet_id INT = NULL
 AS
 BEGIN
-	-- Marks feedback items as successfully uploaded to SAP.
-	-- Feedback items that are not removed will continue to push to SAP
+	-- Sets a feedback packet to be re-sent
 
 	-- log procedure call
 	INSERT INTO log.FeedbackCalls (
-		ProcCalled, feedback_id, archive_packet_id
+		ProcCalled, archive_packet_id
 	)
 	SELECT
-		'MarkFeedbackSapUploadComplete', @feedback_id, @archive_packet_id
+		'GenerateFeedbackForArchivePacketId', @archive_packet_id
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 
-	-- Delete feedback item(s) from queue
-	--	FeedBackId and ArchivePacketId should never be null,
-	--	so we don't need to validate our arguments
-	DELETE FROM sap.FeedbackQueue WHERE FeedBackId=@feedback_id;
-	DELETE FROM sap.FeedbackQueue WHERE ArchivePacketId=@archive_packet_id;
+	-- push all status entries for a given packet ID
+	UPDATE oys.Status SET SAPStatus = NULL
+	WHERE ProgramGUID in (
+		SELECT ProgramGUID FROM oys.Program where AutoId = @archive_packet_id
+	);
+
+	EXEC sap.GetFeedback;
 END;
 GO
 
