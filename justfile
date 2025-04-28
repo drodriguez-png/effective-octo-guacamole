@@ -14,6 +14,9 @@ gensql: clean
 slab:
     uv run schema/gen_slab.py
 
+convert *args: clean
+    uv run convert_bom.py {{args}}
+
 clean:
-    rm SimTransCtrl_Proc_*.sql
-    rm OysSchema_*.sql
+    rm dist/*_SapInter_*.sql
+    rm conversion/output/*.ready
