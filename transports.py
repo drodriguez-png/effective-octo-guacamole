@@ -1,8 +1,11 @@
+
 from argparse import ArgumentParser
 from dataclasses import dataclass
-import os
+from pathlib import Path
+import shutil
+from tqdm import tqdm
 
-FILE_SERVER = r"\\hssieng"
+FILE_SERVER = Path(r"\\hssieng")
 
 
 @dataclass
@@ -27,11 +30,11 @@ class Env:
 
     @property
     def network_path(self):
-        return os.path.join(FILE_SERVER, f"SNData{self.env}")
+        return FILE_SERVER / f"SNData{self.env}"
 
     @property
     def post_dir(self):
-        return os.path.join(self.network_path, "Post")
+        return self.network_path / "Post"
 
 
 DEV = Env("Dev", "HIISQLSERV6")
@@ -73,7 +76,8 @@ def prd_to_qas():
 
 
 def copy_posts(src: Env, dest: Env):
-    pass
+    for path in tqdm(list(src.post_dir.glob("*.Nc.xml")), desc="[TEC] Task Params"):
+        shutil.copy(path, dest.post_dir)
 
 
 if __name__ == "__main__":
