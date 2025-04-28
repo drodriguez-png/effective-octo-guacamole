@@ -1,47 +1,50 @@
-from os import path
+from os import path, mkdir
+from glob import glob
 import re
 
 ENV_CONFIG = {
-    # "SimTrans Env": [("Sigmanest Env", "District")],
+    # "SimTrans Env": [("Sigmanest Env", "District", "LogProcedureCalls")],
     # SimTrans/Sigmanest Env maps to which database said Env is on
     #   for example, "Dev" maps to SNDBaseDev
     "Prd": [
-        ("Prd", 2),
+        ("Prd", 2, False),
     ],
     "Dev": [
-        ("Qas", 4),
-        ("Dev", 3),
+        ("Qas", 4, True),
+        ("Dev", 3, True),
     ],
 }
 
-USE_DB = re.compile("USE SN(DBase|Inter)Dev;")
-SIMTRANS_DB = re.compile(r"(FROM|INTO) SNDBaseDev(\.\w+\.\w+)")
-CONFIG = re.compile(
-    # i.e. (1, '\\hssieng\SNDataQas\', ...)
-    r"\(\d+, '(\\\\\w+\\SNData)\w+([\\a-zA-Z]+)'([^\n]*)\)"
-)
+USE_INTER_DB = re.compile("USE SNInterDev;")
+SIGMA_DB = re.compile(r"(SNDBase)Dev(\.\w+\.(?!TransAct)\w+)")
+SIMTRANS_DB = re.compile(r"(SNDBase)Dev(\.dbo\.TransAct)")
+CONFIG_DISTRICT = re.compile(r"(DECLARE @district INT =) 1;")
+CONFIG_LOGGING = re.compile(r"(DECLARE @do_logging BIT =) 0;")
+CONFIG_ENV = re.compile(r"(DECLARE @env_name VARCHAR\(8\) =) 'Qas';")
 
 schema_dir = path.join(path.dirname(__file__), "schema")
-st_template_file = path.join(schema_dir, "SimTransCtrl_Proc.sql")
-oys_template_file = path.join(schema_dir, "OysSchema.sql")
 
-with open(st_template_file) as sql:
-    st_template = sql.read()
-with open(oys_template_file) as sql:
-    oys_template = sql.read()
+def generate(env, district, do_logging, simtrans):
+    try:
+        mkdir("dist")
+    except FileExistsError:
+        pass
 
+    for f in glob("SapInter_*.sql", root_dir=schema_dir):
+        with open(path.join(schema_dir, f), "r") as sql_file:
+            sql = sql_file.read()
 
-def generate(env, district, simtrans):
-    sql = USE_DB.sub(f"USE SNInter{env};", st_template)
-    sql = SIMTRANS_DB.sub(f"\\1 SNDBase{simtrans}\\2", sql)
-    sql = CONFIG.sub(f"({district}, '\\1{env}\\2'\\3)", sql)
+        sql = USE_INTER_DB.sub(f"USE SNInter{env};", sql)
+        sql = SIGMA_DB.sub(f"\\1{env}\\2", sql)
+        sql = SIMTRANS_DB.sub(f"\\1{simtrans}\\2", sql)
 
-    with open("SimTransCtrl_Proc_{}.sql".format(env), "w") as sql_file:
-        sql_file.write(sql)
+        if f == "SapInter_HssSchema.sql":
+            sql = CONFIG_DISTRICT.sub(f"\\1 {district};", sql)
+            sql = CONFIG_LOGGING.sub(f"\\1 {int(do_logging)};", sql)
+            sql = CONFIG_ENV.sub(f"\\1 '{env}';", sql)
 
-    sql = re.sub(f"SNInterDev", f"SNInter{env}", oys_template)
-    with open("OysSchema_{}.sql".format(env), "w") as sql_file:
-        sql_file.write(sql)
+        with open(path.join("dist", f"{env}_{f}"), "w") as sql_file:
+            sql_file.write(sql)
 
 
 def main():

@@ -4,6 +4,9 @@ GO
 CREATE SCHEMA sap;
 GO
 
+DECLARE @district INT = 1;
+DECLARE @do_logging BIT = 0;
+DECLARE @env_name VARCHAR(8) = 'Qas';
 CREATE TABLE sap.InterfaceConfig (
 	-- All queries of this configuration table use `SELECT TOP 1` to ensure that
 	-- 	that the transaction happens against 1 district. It could be catastrophic
@@ -29,15 +32,16 @@ CREATE TABLE sap.InterfaceConfig (
 	LogProcedureCalls BIT
 );
 INSERT INTO
-	sap.InterfaceConfig (SimTransDistrict, RemnantDxfPath, HeatSwapKeyword)
+	sap.InterfaceConfig (SimTransDistrict, RemnantDxfPath, HeatSwapKeyword, LogProcedureCalls)
 VALUES
 	(
-		1,
-		'\\hssieng\SNDataQas\RemSaveOutput\DXF',
+		@district,
+		'\\hssieng\SNData' + @env_name + '\RemSaveOutput\DXF',
 		'HighHeatNum',
-		0
+		@do_logging
 	);
 GO
+SELECT * FROM sap.InterfaceConfig;
 
 -- ********************************************
 -- *    Interface 1: Demand                   *
