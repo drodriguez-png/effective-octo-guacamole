@@ -1,4 +1,9 @@
+use log;
+use simplelog::{
+    ColorChoice, CombinedLogger, Config, LevelFilter, TermLogger, TerminalMode, WriteLogger,
+};
 use std::fmt::Display;
+use std::fs::OpenOptions;
 
 use gumdrop::Options;
 
@@ -24,6 +29,8 @@ enum ValidationError {
     InvalidProgramName,
     #[error("At least 1 heat number must be provided")]
     NoHeatNumbers,
+    #[error("I/O Error")]
+    IoError(#[from] std::io::Error),
 }
 
 #[derive(Debug)]
@@ -58,14 +65,33 @@ impl Cli {
 fn main() -> Result<(), ValidationError> {
     let args = Cli::parse_args_default_or_exit();
 
-    if args.verbose > 1 {
-        println!("{:?}", args);
+    let mut term_level = LevelFilter::Warn;
+    if args.verbose > 0 {
+        term_level = LevelFilter::Info;
     }
 
+    let _ = CombinedLogger::init(vec![
+        TermLogger::new(
+            term_level,
+            Config::default(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        ),
+        WriteLogger::new(
+            LevelFilter::Trace,
+            Config::default(),
+            OpenOptions::new()
+                .write(true)
+                .append(true)
+                .create(true)
+                .open("heatswap.log")?,
+        ),
+    ]);
+
+    log::debug!("{:?}", args);
     match args.validate() {
-        Ok(prog) if args.verbose > 0 => println!("{}", prog),
-        Err(e) => eprintln!("Error: {}", e),
-        _ => ()
+        Ok(prog) => log::info!("{}", prog),
+        Err(e) => log::error!("Error: {}", e),
     }
 
     Ok(())
