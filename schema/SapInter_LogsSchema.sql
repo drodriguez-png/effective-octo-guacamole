@@ -5,6 +5,7 @@ CREATE SCHEMA log;
 GO
 
 CREATE TABLE log.SapDemandCalls (
+	LogId INT IDENTITY(1,1) PRIMARY KEY,
 	LogDate DATETIME DEFAULT CURRENT_TIMESTAMP,
 	ProcCalled VARCHAR(64),
 
@@ -29,6 +30,7 @@ CREATE TABLE log.SapDemandCalls (
 	alloc_id INT
 );
 CREATE TABLE log.SapInventoryCalls (
+	LogId INT IDENTITY(1,1) PRIMARY KEY,
 	LogDate DATETIME DEFAULT CURRENT_TIMESTAMP,
 	ProcCalled VARCHAR(64),
 
@@ -47,6 +49,7 @@ CREATE TABLE log.SapInventoryCalls (
 	notes4 VARCHAR(50)
 );
 CREATE TABLE log.FeedbackCalls (
+	LogId INT IDENTITY(1,1) PRIMARY KEY,
 	LogDate DATETIME DEFAULT CURRENT_TIMESTAMP,
 	ProcCalled VARCHAR(64),
 
@@ -54,6 +57,7 @@ CREATE TABLE log.FeedbackCalls (
 	archive_packet_id INT
 );
 CREATE TABLE log.UpdateProgramCalls (
+	LogId INT IDENTITY(1,1) PRIMARY KEY,
 	LogDate DATETIME DEFAULT CURRENT_TIMESTAMP,
 	ProcCalled VARCHAR(64),
 
