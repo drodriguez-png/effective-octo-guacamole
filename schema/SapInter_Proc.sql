@@ -762,7 +762,8 @@ BEGIN
 			ELSE 1
 		END AS RepeatId,
 		CASE
-			WHEN Program.NestType = 'Split' THEN 'SPLIT'
+			WHEN Program.NestType = 'Split'
+				THEN 'SPLIT-' + IIF(MachineName LIKE 'Plant_3_%', 'HS02', 'HS01')
 			ELSE UPPER(MachineName)
 		END AS MachineName,
 		CuttingTime	-- This is seconds, FeedbackQueue will round
