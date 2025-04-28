@@ -12,7 +12,9 @@ create table #temp (id int);
 insert into #temp(id)
 	select AutoInc
 	from SNDBaseDev.dbo.TransAct
-	where TransID like '[1-4]-%';
+	--where TransID like '[1-4]-%'
+;
+
 
 -- copy items to move
 insert into HIISQLSERV5.SNDBase91.dbo.TransAct (
