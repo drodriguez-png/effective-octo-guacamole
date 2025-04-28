@@ -9,7 +9,7 @@ demo target *args:
     python scripts/demo.py {{target}} {{args}}
 
 gensql: clean
-    python schema/gen_proc.py
+    python gen_proc.py
 
 slab:
     uv run schema/gen_slab.py
