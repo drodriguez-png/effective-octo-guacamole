@@ -1,5 +1,10 @@
+# data files
 *.json
 *.csv
+
+# generated files
 dist/
-.venv/
 conversion/
+
+# python env
+.venv/
