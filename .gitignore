@@ -1,4 +1,5 @@
 *.json
+*.csv
 dist/
 .venv/
 conversion/
