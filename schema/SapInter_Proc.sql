@@ -814,7 +814,7 @@ BEGIN
 		ChildPart.SAPPartName AS PartName,
 		ChildPart.QtyProgram AS PartQty,
 		ChildPart.Job,
-		ChildPart.Shipment,	-- TODO: zero pad (01)
+		ChildPart.Shipment,
 		ROUND(ChildPart.TrueArea, 3),	-- SAP is 3 decimals
 		ROUND(ChildPart.NestedArea, 3)	-- SAP is 3 decimals
 	FROM oys.ChildPart
