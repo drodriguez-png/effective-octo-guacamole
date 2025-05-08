@@ -69,7 +69,8 @@ select
 	Status.UserName
 from oys.Status
 left join oys.Program
-	on Program.ProgramGUID=Status.ProgramGUID;
+	on Program.ProgramGUID=Status.ProgramGUID
+order by Status.AutoId;
 
 if @retry_id = 0
 	select * from sap.FeedbackQueue;
