@@ -851,11 +851,10 @@ BEGIN
 		Remnant.RectWidth,	-- for batch reference: FeedbackQueue will round
 		Remnant.RectLength,	-- for batch reference: FeedbackQueue will round
 		ROUND(Remnant.Area, 3),
-		Remnant.IsRectangular	-- TODO: change to Y/N
-		--CASE Remnant.IsRectangular
-		--	WHEN 1 THEN 'Y'
-		--	ELSE 'N'
-		--END
+		CASE Remnant.IsRectangular
+			WHEN 1 THEN 'Y'
+			ELSE 'N'
+		END
 	FROM oys.Remnant
 	INNER JOIN oys.ChildPlate
 		ON ChildPlate.ChildPlateGUID=Remnant.ChildPlateGUID

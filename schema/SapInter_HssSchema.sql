@@ -94,7 +94,6 @@ CREATE TABLE sap.FeedbackQueue (
 	Length INT,
 	Width INT,
 	Area FLOAT,
-	IsRectangular BIT
-	--IsRectangular CHAR
+	IsRectangular CHAR
 );
 GO
