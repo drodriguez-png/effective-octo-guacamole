@@ -695,7 +695,7 @@ BEGIN
 			SELECT
 				ProgramGUID
 			FROM oys.Status
-			WHERE SapStatus = 'Complete'
+			WHERE SapStatus IN ('Sent', 'Complete')
 		)
 	UPDATE oys.Status SET SapStatus = 'Skipped'
 	WHERE ProgramGUID IN (
@@ -707,9 +707,11 @@ BEGIN
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.GetFeedback
+	@skip_consolidation BIT = 0
 AS
 BEGIN
-	EXEC sap.ConsolidateFeedback;
+	IF @skip_consolidation = 0
+		EXEC sap.ConsolidateFeedback;
 
 	-- set feedback to processing
 	-- This ensures that if feedback items are added in the middle of processing,
@@ -794,7 +796,7 @@ BEGIN
 		AND Status.ProgramGUID NOT IN (
 			SELECT ProgramGUID
 			FROM oys.Status
-			WHERE SapStatus='Complete'
+			WHERE SapStatus IN ('Sent', 'Complete')
 		);
 
 	-- part(s)
@@ -826,11 +828,10 @@ BEGIN
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=Program.ProgramGUID
 	WHERE Status.SapStatus = @ExportStatus
-		AND ChildPart.SAPPartName != ''	-- no parts for split plate
 		AND Status.ProgramGUID NOT IN (
 			SELECT ProgramGUID
 			FROM oys.Status
-			WHERE SapStatus='Complete'
+			WHERE SapStatus IN ('Sent', 'Complete')
 		);
 
 	-- remnant(s)
@@ -866,20 +867,44 @@ BEGIN
 		AND Status.ProgramGUID NOT IN (
 			SELECT ProgramGUID
 			FROM oys.Status
-			WHERE SapStatus='Complete'
+			WHERE SapStatus IN ('Sent', 'Complete')
 		);
 
-	-- update oys.Status.SapStatus = 'Complete'
-	UPDATE oys.Status SET SapStatus = 'Complete'
+	-- mark feedback 'Sent' in Status
+	UPDATE oys.Status SET SapStatus = 'Sent'
 	WHERE SapStatus = @ExportStatus;
 
+	-- return results
 	SELECT * FROM sap.FeedbackQueue;
+END;
+GO
+CREATE OR ALTER PROCEDURE sap.MarkFeedbackSapUploadComplete
+	@archive_packet_id INT
+AS
+BEGIN
+	-- Marks feedback items as successfully uploaded to SAP.
+	-- Feedback items that are not removed will continue to push to SAP
 
-	-- clear sap.FeedbackQueue
-	--	we are assuming Boomi transport was successful
-	--	in the event of failure, Boomi/SAP should generate errors and
-	--		sap.GenerateFeedbackForArchivePacketId will be manually called
-	DELETE FROM sap.FeedbackQueue;
+	-- log procedure call
+	INSERT INTO log.FeedbackCalls (
+		ProcCalled, archive_packet_id
+	)
+	SELECT
+		'MarkFeedbackSapUploadComplete', @archive_packet_id
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
+	-- Delete feedback item(s) from queue
+	DELETE FROM sap.FeedbackQueue WHERE ArchivePacketId=@archive_packet_id;
+
+	-- update SAPStatus to 'Complete'
+	--	there could be multiple Status' with the same @archive_packet_id
+	--		(i.e. Created & Released), but we'll ignore that.
+	UPDATE oys.Status SET SAPStatus = 'Complete'
+	WHERE ProgramGUID in (
+		SELECT ProgramGUID FROM oys.Program where AutoId = @archive_packet_id
+	)
+	AND SAPStatus = 'Sent';
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.GenerateFeedbackForArchivePacketId
@@ -897,13 +922,17 @@ BEGIN
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 
+	-- remove any feedback entries that may still be in the queue
+	DELETE FROM sap.FeedbackQueue WHERE ArchivePacketId = @archive_packet_id;
+
 	-- push all status entries for a given packet ID
 	UPDATE oys.Status SET SAPStatus = NULL
 	WHERE ProgramGUID in (
 		SELECT ProgramGUID FROM oys.Program where AutoId = @archive_packet_id
 	);
 
-	EXEC sap.GetFeedback;
+	-- process feedback
+	EXEC sap.GetFeedback 1;
 END;
 GO
 
