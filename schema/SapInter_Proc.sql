@@ -737,8 +737,8 @@ BEGIN
 			ON ChildPlate.ChildPlateGUID=ChildPart.ChildPlateGUID
 	)
 	UPDATE ProgramToChildPart SET NestType='Split'
-		WHERE SNPartName='GHOST'
-		AND SapStatus IS NULL;
+		WHERE SapStatus IS NULL
+		AND SNPartName='GHOST';
 
 	-- programs
 	INSERT INTO sap.FeedbackQueue (
