@@ -1,10 +1,34 @@
 USE SNInterDev;
 GO
 
-drop view oys.ActivePrograms;
-drop view oys.PartsOnProgram;
-drop view sap.RenamedDemandAllocationInProcess;
-go
+CREATE OR ALTER VIEW sap.ProgramId
+AS
+	SELECT DISTINCT
+		Program.ProgramGUID,
+		ChildPlate.AutoID AS ArchivePacketId,
+		CASE Program.NestType
+			WHEN 'Slab' THEN 1
+			ELSE ChildPlate.ChildNestRepeatID
+		END AS RepeatId
+	FROM oys.Program
+	INNER JOIN oys.ChildPlate
+		ON ChildPlate.ProgramGUID=Program.ProgramGUID
+	WHERE ChildPlate.PlateNumber=1;	-- same ID for all slab layouts
+GO
+CREATE OR ALTER VIEW sap.ChildNestId
+AS
+	SELECT 
+		ProgramId.ProgramGUID,
+		ProgramId.ArchivePacketId,
+		ChildPlate.ChildPlateGUID,
+		ChildPlate.PlateNumber AS SheetIndex,
+		ChildPlate.ChildNestProgramName AS ProgramName,
+		ChildPlate.ChildNestRepeatID AS RepeatId
+	FROM oys.ChildPlate
+	INNER JOIN sap.ProgramId
+		ON ProgramId.ProgramGUID=ChildPlate.ProgramGUID
+		AND ProgramId.RepeatId=ChildPlate.ChildNestRepeatID;
+GO
 
 CREATE OR ALTER VIEW oys.ActivePrograms
 AS
@@ -93,7 +117,3 @@ AS
 		ON  WorkOrderParts.WONumber=Alloc.WorkOrderName
 		AND WorkOrderParts.PartName=Alloc.NewPartName;
 GO
-
-select * from oys.ActivePrograms;
-select * from oys.PartsOnProgram;
-select * from sap.RenamedDemandAllocationInProcess;
