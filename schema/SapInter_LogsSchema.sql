@@ -21,7 +21,6 @@ CREATE TABLE log.SapDemandCalls (
 	codegen VARCHAR(50),
 	job VARCHAR(50),
 	shipment VARCHAR(50),
-	chargeref VARCHAR(50),
 	op1 VARCHAR(50),
 	op2 VARCHAR(50),
 	op3 VARCHAR(50),

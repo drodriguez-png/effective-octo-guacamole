@@ -248,7 +248,6 @@ BEGIN
 			ItemData6,	-- secondary operation 3
 			ItemData9,	-- part name (Material Master with job removed)
 			ItemData10,	-- HeatSwap keyword
-			ItemData16,	-- PART hours order for shipment
 			ItemData17,	-- SAP Part Name (for when PartName needs changed)
 			ItemData18	-- SAP event id
 
@@ -271,7 +270,7 @@ BEGIN
 			--	Data13: ChildPart relationship (continued)
 			--	Data14: <unused>
 			--	Data15: <unused>
-			--	Data16: PART hours order for shipment
+			--	Data16: <unused>
 			--	Data17: SAP Part Name
 			--	Data18: SAP event id
 
