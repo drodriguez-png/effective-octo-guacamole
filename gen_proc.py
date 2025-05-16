@@ -15,7 +15,7 @@ ENV_CONFIG = {
     ],
 }
 
-USE_INTER_DB = re.compile("USE SNInterDev;")
+INTER_DB = re.compile("SNInterDev")
 SIGMA_DB = re.compile(r"(SNDBase)Dev(\.\w+\.(?!TransAct)\w+)")
 SIMTRANS_DB = re.compile(r"(SNDBase)Dev(\.dbo\.TransAct)")
 CONFIG_DISTRICT = re.compile(r"(DECLARE @district INT =) 1;")
@@ -34,7 +34,7 @@ def generate(env, district, do_logging, simtrans):
         with open(path.join(schema_dir, f), "r") as sql_file:
             sql = sql_file.read()
 
-        sql = USE_INTER_DB.sub(f"USE SNInter{env};", sql)
+        sql = INTER_DB.sub(f"SNInter{env}", sql)
         sql = SIGMA_DB.sub(f"\\1{env}\\2", sql)
         sql = SIMTRANS_DB.sub(f"\\1{simtrans}\\2", sql)
 
