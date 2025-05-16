@@ -528,7 +528,7 @@ BEGIN
 
 	-- load dxf path template from configuration and interpolate @sheet_name
 	DECLARE @dxf_file VARCHAR(255);
-	IF @sheet_type = 'Remnant'
+	IF @sheet_type IN ('Remnant', 'Planned Remnant')
 	BEGIN
 		-- Having an invalid filepath character in @sheet_name is catastrophic
 		--	to the process because we cannot establish a link to the geometry file
@@ -642,6 +642,7 @@ BEGIN
 			-- SimTrans transaction
 			CASE @sheet_type
 				WHEN 'Remnant' THEN 'SN97'
+				WHEN 'Planned Remnant' THEN 'SN97'
 				-- SN91A works for everything, but requires special SimTrans options
 				ELSE 'SN91A' -- fails if @qty=0, which is handled by IF statement
 			END,
