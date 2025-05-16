@@ -744,10 +744,10 @@ BEGIN
 			ON ChildPlate.ChildPlateGUID=ChildPart.ChildPlateGUID
 	)
 	UPDATE ProgramToChildPart SET NestType='Split'
-		WHERE SapStatus IS NULL
+		WHERE SapStatus = @ExportStatus
 		AND SNPartName='GHOST';
 
-	-- programs
+	-- program(s)
 	INSERT INTO sap.FeedbackQueue (
 		DataSet,
 		ArchivePacketId,
@@ -833,13 +833,8 @@ BEGIN
 	INNER JOIN oys.Program
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
-		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = @ExportStatus
-		AND Status.ProgramGUID NOT IN (
-			SELECT ProgramGUID
-			FROM oys.Status
-			WHERE SapStatus IN ('Sent', 'Complete')
-		);
+		ON Status.ProgramGUID=ChildNestId.ProgramGUID
+	WHERE Status.SapStatus = @ExportStatus;
 
 	-- remnant(s)
 	INSERT INTO sap.FeedbackQueue (
@@ -869,13 +864,8 @@ BEGIN
 	INNER JOIN oys.Program
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN oys.Status
-		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = @ExportStatus
-		AND Status.ProgramGUID NOT IN (
-			SELECT ProgramGUID
-			FROM oys.Status
-			WHERE SapStatus IN ('Sent', 'Complete')
-		);
+		ON Status.ProgramGUID=ChildNestId.ProgramGUID
+	WHERE Status.SapStatus = @ExportStatus;
 
 	-- mark feedback 'Sent' in Status
 	UPDATE oys.Status SET SapStatus = 'Sent'
