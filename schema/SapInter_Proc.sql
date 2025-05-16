@@ -91,7 +91,7 @@ CREATE OR ALTER PROCEDURE sap.PushSapDemand
 	@codegen VARCHAR(50) = NULL,	-- autoprocess instruction
 	@job VARCHAR(50) = NULL,
 	@shipment VARCHAR(50) = NULL,
-	@chargeref VARCHAR(50) = NULL,	-- PART hours order for shipment
+	@chargeref VARCHAR(50) = NULL,	-- PART hours order for shipment (TODO: remove because it is in 4a/b)
 	@op1 VARCHAR(50) = NULL,	-- secondary operation 1
 	@op2 VARCHAR(50) = NULL,	-- secondary operation 2
 	@op3 VARCHAR(50) = NULL,	-- secondary operation 3
