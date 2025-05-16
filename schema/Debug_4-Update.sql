@@ -1,3 +1,5 @@
+use SNInterQas;
+go
 
 select
 	Status.AutoId as StatusId,
@@ -8,6 +10,7 @@ select
 
 	Status.ProgramGUID,
 	Program.AutoId as ProgramId,
+	ChildNestId.ArchivePacketId,
 	Program.ProgramName,
 	Program.NestType,
 	Program.TaskName,
@@ -19,10 +22,12 @@ select
 	Status.UserName
 from oys.Status
 left join oys.Program
-	on Program.ProgramGUID=Status.ProgramGUID;
-;
+	on Program.ProgramGUID=Status.ProgramGUID
+left join sap.ChildNestId
+	on ChildNestId.ProgramGUID=Program.ProgramGUID
+where Status.DBEntryDateTime > CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '00:00:00'
+order by Status.AutoId;
 
---select * from SNDBaseDev.dbo.TransAct;
 select
 	AutoInc,
 	TransType,
@@ -36,5 +41,5 @@ where TransType like 'SN7%'
 
 select *
 from log.UpdateProgramCalls
-where LogDate > CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '08:00:00'
+where LogDate > CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '00:00:00'
 ;

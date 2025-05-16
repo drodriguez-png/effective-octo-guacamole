@@ -48,7 +48,7 @@ begin
 	) update stat set SapStatus = null;
 	exec sap.GetFeedback;
 end;
---exec sap.MarkFeedbackSapUploadComplete @archive_packet_id = 19;
+
 select
 	Status.AutoId as StatusId,
 	Status.DBEntryDateTime,
@@ -58,6 +58,7 @@ select
 
 	Status.ProgramGUID,
 	Program.AutoId as ProgramId,
+	ChildNestId.ArchivePacketId,
 	Program.ProgramName,
 	Program.NestType,
 	Program.TaskName,
@@ -70,6 +71,9 @@ select
 from oys.Status
 left join oys.Program
 	on Program.ProgramGUID=Status.ProgramGUID
+left join sap.ChildNestId
+	on ChildNestId.ProgramGUID=Program.ProgramGUID
+where Status.DBEntryDateTime > CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '00:00:00'
 order by Status.AutoId;
 
 if @retry_id = 0

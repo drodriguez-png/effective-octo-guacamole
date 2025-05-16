@@ -18,6 +18,7 @@ select
 	FileName	-- {remnant geometry folder}\{SheetName}.dxf
 from SNDBaseDev.dbo.TransAct
 where TransType like 'SN9%'
+or TransType like 'SN6%'
 ;
 
 use SNDBaseDev;

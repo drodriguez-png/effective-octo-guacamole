@@ -12,8 +12,12 @@ create table #temp (id int);
 insert into #temp(id)
 	select AutoInc
 	from SNDBaseDev.dbo.TransAct
+	where District < 99
 	--where TransID like '[1-4]-%'
 ;
+
+--delete from HIISQLSERV5.SNDBase91.dbo.TransAct
+--where District in (3,4) and ErrorTag=1;
 
 
 -- copy items to move
@@ -105,4 +109,5 @@ drop table #temp;
 
 -- show results
 select * from HIISQLSERV5.SNDBase91.dbo.TransAct;
+--select * from SNDBaseDev.dbo.TransAct;
 

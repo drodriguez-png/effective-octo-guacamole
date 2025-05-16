@@ -45,3 +45,5 @@ select *
 from log.SapDemandCalls
 where LogDate > CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '00:00:00'
 ;
+
+update SNDBaseDev.dbo.TransAct set District=99 where District=4 and TransType='SN70'
