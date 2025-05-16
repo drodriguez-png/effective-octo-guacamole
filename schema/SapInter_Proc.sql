@@ -24,47 +24,39 @@ BEGIN
 	IF @matl IS NULL
 		RETURN;
 
-	-- check if material exists in SimTrans input
-	IF (
-		SELECT 1 FROM SNDBaseDev.dbo.TransAct
-		WHERE Material = @matl
-		AND TransType = 'SN60'
-		AND District = (
-			SELECT TOP 1 SimTransDistrict
-			FROM sap.InterfaceConfig
+	-- add SN60 to SimTrans if
+	--	- @matl is not in Sigmanest material list
+	--	- an existing SN60 does not exist in the SimTrans
+	WITH
+		MatlNames AS (
+			SELECT @matl AS MaterialName
+			EXCEPT SELECT MaterialType
+				FROM SNDBaseDev.dbo.Material
+			EXCEPT SELECT Material
+				FROM SNDBaseDev.dbo.TransAct
+				WHERE TransType = 'SN60'
+		),
+		MildSteelData AS (
+			SELECT TOP 1 MatGroupName, DensityIn
+			FROM SNDBaseDev.dbo.Material
+			INNER JOIN SNDBaseDev.dbo.MaterialGroup
+				ON Material.MatGroupID = MaterialGroup.MatGroupID
+			WHERE MatGroupName = 'MS'
 		)
-	) IS NOT NULL
-		RETURN;
-
-	-- check if material exists in Sigmanest
-	IF (SELECT 1 FROM SNDBaseDev.dbo.Material WHERE MaterialType = @matl) IS NULL
-	BEGIN
-		-- load SimTrans district from configuration
-		DECLARE @simtrans_district INT = (
-			SELECT TOP 1 SimTransDistrict
-			FROM sap.InterfaceConfig
-		);
-
-		-- add material into Sigmanest
-		INSERT INTO SNDBaseDev.dbo.TransAct (
-			TransType,
-			District,
-			Material,
-			ItemData1,	-- Material Group
-			Param1	-- Density
-		)
-		SELECT TOP 1
-			'SN60',
-			@simtrans_district,
-			@matl,
-			MatGroupName,
-			Densityin
-		FROM SNDBaseDev.dbo.Material
-		INNER JOIN SNDBaseDev.dbo.MaterialGroup
-			ON Material.MatGroupID=MaterialGroup.MatGroupID
-		-- assume this is the main/first group ("mild steel")
-		WHERE MaterialGroup.MatGroupID=1;
-	END
+	INSERT INTO SNDBaseDev.dbo.TransAct (
+		TransType,
+		District,
+		Material,
+		ItemData1,
+		Param1
+	)
+	SELECT
+		'SN60',
+		SimTransDistrict,
+		MaterialName,
+		MatGroupName,
+		DensityIn
+	FROM MatlNames, MildSteelData, sap.InterfaceConfig;
 END;
 GO
 
@@ -91,7 +83,6 @@ CREATE OR ALTER PROCEDURE sap.PushSapDemand
 	@codegen VARCHAR(50) = NULL,	-- autoprocess instruction
 	@job VARCHAR(50) = NULL,
 	@shipment VARCHAR(50) = NULL,
-	@chargeref VARCHAR(50) = NULL,	-- PART hours order for shipment (TODO: remove because it is in 4a/b)
 	@op1 VARCHAR(50) = NULL,	-- secondary operation 1
 	@op2 VARCHAR(50) = NULL,	-- secondary operation 2
 	@op3 VARCHAR(50) = NULL,	-- secondary operation 3
@@ -115,7 +106,6 @@ BEGIN
 		codegen,
 		job,
 		shipment,
-		chargeref,
 		op1,
 		op2,
 		op3,
@@ -136,7 +126,6 @@ BEGIN
 		@codegen,
 		@job,
 		@shipment,
-		@chargeref,
 		@op1,
 		@op2,
 		@op3,
@@ -317,7 +306,6 @@ BEGIN
 			@op3,	-- secondary operation 3
 			@mark,	-- part name (Material Master with job removed)
 			@heatswap_keyword,
-			@chargeref,	-- PART hours order for shipment
 			@sap_part_name,
 			@sap_event_id
 		);
@@ -354,7 +342,6 @@ BEGIN
 			@codegen,
 			@job,
 			@shipment,
-			@chargeref,
 			@op1,
 			@op2,
 			@op3,
