@@ -6,5 +6,6 @@ edition = "2021"
 [dependencies]
 gumdrop = "0.8.1"
 log = "0.4.27"
+regex = "1.11.1"
 simplelog = "0.12.2"
 thiserror = "2.0.3"

@@ -1,0 +1,6 @@
+
+
+test:
+    cargo run -- mach1 123 "(test1)(w34x)(456)"
+    cat heatswap.log
+
