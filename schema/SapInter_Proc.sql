@@ -711,6 +711,12 @@ CREATE OR ALTER PROCEDURE sap.GetFeedback
 	@skip_consolidation BIT = 0
 AS
 BEGIN
+	-- log procedure call
+	INSERT INTO log.FeedbackCalls (ProcCalled)
+	SELECT 'GetFeedback'
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
 	IF @skip_consolidation = 0
 		EXEC sap.ConsolidateFeedback;
 
