@@ -758,18 +758,10 @@ BEGIN
 		CuttingTime
 	) SELECT
 		'Program' AS DataSet,
-		Program.AutoId AS ArchivePacketId,
+		ProgramId.ArchivePacketId,
 		UPPER(SigmanestStatus) AS Status,
 		ProgramName,
-		CASE Program.NestType
-			-- ChildPlate.ChildNestRepeatID for Regular nests, 1 for slabs
-			WHEN 'Standard' THEN (
-				SELECT TOP 1 ChildNestRepeatID
-				FROM oys.ChildPlate
-				WHERE ChildPlate.ProgramGUID=Program.ProgramGUID
-			)
-			ELSE 1
-		END AS RepeatId,
+		ProgramId.RepeatId,
 		CASE
 			WHEN Program.NestType = 'Split'
 				THEN 'SPLIT-' + IIF(MachineName LIKE 'Plant_3_%', 'HS02', 'HS01')
@@ -779,8 +771,20 @@ BEGIN
 	FROM oys.Status
 	INNER JOIN oys.Program
 		ON Status.ProgramGUID = Program.ProgramGUID
+	INNER JOIN sap.ProgramId
+		ON Program.ProgramGUID = ProgramId.ProgramGUID
 	WHERE Status.SapStatus = @ExportStatus;
 
+	-- set all programs that are in SAP as 'Sent' to skip data sets below
+	-- [CRITICAL] this needs to be after program(s), but before sheet(s),
+	--	otherwise sheet(s), part(s), remnant(s) will produce unnecessary exports
+	UPDATE oys.Status SET SapStatus = 'Sent'
+	WHERE SAPStatus=@ExportStatus
+	AND Status.ProgramGUID IN (
+		SELECT ProgramGUID FROM oys.Status
+		WHERE SapStatus IN ('Sent', 'Complete')
+	);
+ 
 	-- sheet(s)
 	INSERT INTO sap.FeedbackQueue (
 		DataSet,
@@ -790,21 +794,18 @@ BEGIN
 		MaterialMaster
 	) SELECT
 		'Sheets' AS DataSet,
-		Program.AutoId AS ArchivePacketId,
+		ChildNestId.ArchivePacketId,
 		ChildPlate.PlateNumber AS SheetIndex,
 		ChildPlate.PlateName AS SheetName,
 		ChildPlate.MaterialMaster
 	FROM oys.ChildPlate
-	INNER JOIN oys.Program
-		ON Program.ProgramGUID=ChildPlate.ProgramGUID
+	INNER JOIN sap.ChildNestId
+		ON ChildNestId.ProgramGUID = ChildPlate.ProgramGUID
+		AND ChildNestId.RepeatId = ChildPlate.ChildNestRepeatID
 	INNER JOIN oys.Status
-		ON Status.ProgramGUID=Program.ProgramGUID
-	WHERE Status.SapStatus = @ExportStatus
-		AND Status.ProgramGUID NOT IN (
-			SELECT ProgramGUID
-			FROM oys.Status
-			WHERE SapStatus IN ('Sent', 'Complete')
-		);
+		ON Status.ProgramGUID=ChildNestId.ProgramGUID
+		AND ChildPlate.PlateNumber=ChildNestId.SheetIndex
+	WHERE Status.SapStatus = @ExportStatus;
 
 	-- part(s)
 	INSERT INTO sap.FeedbackQueue (
@@ -819,8 +820,8 @@ BEGIN
 		NestedArea
 	) SELECT
 		'Parts' AS DataSet,
-		Program.AutoId AS ArchivePacketId,
-		ChildPlate.PlateNumber AS SheetIndex,
+		ChildNestId.ArchivePacketId,
+		ChildNestId.SheetIndex,
 		ChildPart.SAPPartName AS PartName,
 		ChildPart.QtyProgram AS PartQty,
 		ChildPart.Job,
@@ -828,10 +829,8 @@ BEGIN
 		ROUND(ChildPart.TrueArea, 3),	-- SAP is 3 decimals
 		ROUND(ChildPart.NestedArea, 3)	-- SAP is 3 decimals
 	FROM oys.ChildPart
-	INNER JOIN oys.ChildPlate
-		ON ChildPlate.ChildPlateGUID=ChildPart.ChildPlateGUID
-	INNER JOIN oys.Program
-		ON Program.ProgramGUID=ChildPlate.ProgramGUID
+	INNER JOIN sap.ChildNestId
+		ON ChildNestId.ChildPlateGUID=ChildPart.ChildPlateGUID
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=ChildNestId.ProgramGUID
 	WHERE Status.SapStatus = @ExportStatus;
@@ -848,8 +847,8 @@ BEGIN
 		IsRectangular
 	) SELECT
 		'Remnants' AS DataSet,
-		Program.AutoId AS ArchivePacketId,
-		ChildPlate.PlateNumber AS SheetIndex,
+		ChildNestId.ArchivePacketId,
+		ChildNestId.SheetIndex,
 		Remnant.RemnantName,
 		Remnant.RectWidth,	-- for batch reference: FeedbackQueue will round
 		Remnant.RectLength,	-- for batch reference: FeedbackQueue will round
@@ -859,10 +858,8 @@ BEGIN
 			ELSE 'N'
 		END
 	FROM oys.Remnant
-	INNER JOIN oys.ChildPlate
-		ON ChildPlate.ChildPlateGUID=Remnant.ChildPlateGUID
-	INNER JOIN oys.Program
-		ON Program.ProgramGUID=ChildPlate.ProgramGUID
+	INNER JOIN sap.ChildNestId
+		ON ChildNestId.ChildPlateGUID = Remnant.ChildPlateGUID
 	INNER JOIN oys.Status
 		ON Status.ProgramGUID=ChildNestId.ProgramGUID
 	WHERE Status.SapStatus = @ExportStatus;
@@ -899,7 +896,9 @@ BEGIN
 	--		(i.e. Created & Released), but we'll ignore that.
 	UPDATE oys.Status SET SAPStatus = 'Complete'
 	WHERE ProgramGUID in (
-		SELECT ProgramGUID FROM oys.Program where AutoId = @archive_packet_id
+		SELECT ProgramGUID
+		FROM sap.ProgramId
+		where ArchivePacketId = @archive_packet_id
 	)
 	AND SAPStatus = 'Sent';
 END;
@@ -925,7 +924,9 @@ BEGIN
 	-- push all status entries for a given packet ID
 	UPDATE oys.Status SET SAPStatus = NULL
 	WHERE ProgramGUID in (
-		SELECT ProgramGUID FROM oys.Program where AutoId = @archive_packet_id
+		SELECT ProgramGUID
+		FROM sap.ProgramId
+		where ArchivePacketId = @archive_packet_id
 	);
 
 	-- process feedback
@@ -1033,7 +1034,11 @@ BEGIN
 	FROM oys.Program
 	INNER JOIN oys.ChildPlate
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
-	WHERE Program.AutoId = @archive_packet_id;
+	WHERE Program.ProgramGUID in (
+		SELECT ProgramGUID
+		FROM sap.ProgramId
+		where ArchivePacketId = @archive_packet_id
+	);
 
 	-- Push a new entry into oys.Status with SigmanestStatus = 'Updated'
 	--	to simulate a program update
@@ -1055,7 +1060,11 @@ BEGIN
 		@source,
 		ISNULL(@username, CURRENT_USER)
 	FROM oys.Program
-	WHERE Program.AutoId = @archive_packet_id;
+	WHERE Program.ProgramGUID in (
+		SELECT ProgramGUID
+		FROM sap.ProgramId
+		where ArchivePacketId = @archive_packet_id
+	);
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.DeleteProgram
