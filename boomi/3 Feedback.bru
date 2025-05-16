@@ -1,0 +1,18 @@
+meta {
+  name: 3 Feedback
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{url}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "atomId": "{{atom_id}}",
+    "processId": "{{PID3}}"
+  }
+}

@@ -1,0 +1,18 @@
+meta {
+  name: 4 Execute
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{url}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "atomId": "{{atom_id}}",
+    "processId": "{{PID4}}"
+  }
+}

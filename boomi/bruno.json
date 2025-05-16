@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "SAP-Sigmanest interface",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
