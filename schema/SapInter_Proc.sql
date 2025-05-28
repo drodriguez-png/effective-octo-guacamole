@@ -896,7 +896,7 @@ BEGIN
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.GenerateFeedbackForArchivePacketId
-	@archive_packet_id INT = NULL
+	@archive_packet_id INT
 AS
 BEGIN
 	-- Sets a feedback packet to be re-sent
