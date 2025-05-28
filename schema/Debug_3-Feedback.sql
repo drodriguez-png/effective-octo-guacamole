@@ -49,7 +49,7 @@ begin
 	exec sap.GetFeedback;
 end;
 
-select
+select distinct
 	Status.AutoId as StatusId,
 	Status.DBEntryDateTime,
 	Status.StatusGUID,
