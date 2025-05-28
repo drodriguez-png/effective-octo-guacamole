@@ -952,8 +952,8 @@ BEGIN
 		FROM sap.InterfaceConfig
 	);
 
-	-- Push a new entry into oys.Status with SigmanestStatus = 'Updated'
-	--	to simulate a program update
+	-- Push a new entry into oys.Status with SigmanestStatus = 'Released'
+	--	to push to SAP
 	INSERT INTO oys.Status (
 		DBEntryDateTime,
 		ProgramGUID,
@@ -1009,7 +1009,7 @@ BEGIN
 	-- 	so truncating it to the 10 least significant digits is OK.
 	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
 
-	-- [1] Update program (child programs in case of a slab)
+	-- [1] delete remnants from nest
 	INSERT INTO SNDBaseDev.dbo.TransAct (
 		TransType,		-- `SN76`
 		District,
@@ -1094,6 +1094,8 @@ BEGIN
 		RepeatId
 	FROM sap.ChildNestId
 	WHERE ArchivePacketId = @archive_packet_id;
+
+	-- [2] Push a new entry into oys.Status with SigmanestStatus = 'Deleted'
 	--	to simulate a program delete
 	INSERT INTO oys.Status (
 		DBEntryDateTime,
