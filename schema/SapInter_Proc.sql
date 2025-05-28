@@ -946,12 +946,6 @@ BEGIN
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 
-	-- load SimTrans district from configuration
-	DECLARE @simtrans_district INT = (
-		SELECT TOP 1 SimTransDistrict
-		FROM sap.InterfaceConfig
-	);
-
 	-- Push a new entry into oys.Status with SigmanestStatus = 'Released'
 	--	to push to SAP
 	INSERT INTO oys.Status (
