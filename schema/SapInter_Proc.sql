@@ -1043,6 +1043,24 @@ BEGIN
 	FROM sap.ChildNestId
 	WHERE ArchivePacketId = @archive_packet_id;
 
+	-- [3] delete slab sheet (if slab)
+	INSERT INTO SNDBaseDev.dbo.TransAct (
+		TransType,		-- `SN92`
+		District,
+		TransID,		-- for logging purposes
+		ItemName		-- sheet name
+	)
+	SELECT DISTINCT
+		'SN92',
+		@simtrans_district,
+		@trans_id,
+		ParentPlate.PlateName
+	FROM oys.ParentPlate
+	INNER JOIN sap.ProgramId
+		ON ProgramId.ProgramGUID=ParentPlate.ProgramGUID
+	WHERE ProgramId.NestType='Slab'
+	AND ArchivePacketId=@archive_packet_id
+
 	-- Push a new entry into oys.Status with SigmanestStatus = 'Updated'
 	--	to simulate a program update
 	INSERT INTO oys.Status (
