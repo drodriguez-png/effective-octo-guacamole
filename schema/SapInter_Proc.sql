@@ -886,12 +886,12 @@ BEGIN
 	-- update SAPStatus to 'Complete'
 	--	there could be multiple Status' with the same @archive_packet_id
 	--		(i.e. Created & Released), but we'll ignore that.
-	UPDATE oys.Status SET SAPStatus = 'Complete'
-	WHERE ProgramGUID in (
-		SELECT ProgramGUID
-		FROM sap.ProgramId
-		where ArchivePacketId = @archive_packet_id
-	)
+	UPDATE oys.Status
+	SET SAPStatus = 'Complete'
+	FROM oys.Status
+	INNER JOIN sap.ProgramId
+		ON ProgramId.ProgramGUID=Status.ProgramGUID
+	WHERE ArchivePacketId = @archive_packet_id
 	AND SAPStatus = 'Sent';
 END;
 GO
@@ -914,12 +914,12 @@ BEGIN
 	DELETE FROM sap.FeedbackQueue WHERE ArchivePacketId = @archive_packet_id;
 
 	-- push all status entries for a given packet ID
-	UPDATE oys.Status SET SAPStatus = NULL
-	WHERE ProgramGUID in (
-		SELECT ProgramGUID
-		FROM sap.ProgramId
-		where ArchivePacketId = @archive_packet_id
-	);
+	UPDATE oys.Status
+	SET SAPStatus = NULL
+	FROM oys.Status
+	INNER JOIN sap.ProgramId
+		ON ProgramId.ProgramGUID=Status.ProgramGUID
+	WHERE ArchivePacketId = @archive_packet_id;
 
 	-- process feedback
 	EXEC sap.GetFeedback 1;
@@ -969,8 +969,8 @@ BEGIN
 		'Released',
 		@source,
 		ISNULL(@username, CURRENT_USER)
-	FROM oys.Program
-	WHERE Program.AutoId = @archive_packet_id;
+	FROM sap.ProgramId
+	WHERE ProgramId.ArchivePacketId = @archive_packet_id;
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.UpdateProgram
@@ -1021,16 +1021,10 @@ BEGIN
 		'SN70',
 		@simtrans_district,
 		@trans_id,
-		ChildNestProgramName,
-		ChildNestRepeatID
-	FROM oys.Program
-	INNER JOIN oys.ChildPlate
-		ON Program.ProgramGUID=ChildPlate.ProgramGUID
-	WHERE Program.ProgramGUID in (
-		SELECT ProgramGUID
-		FROM sap.ProgramId
-		where ArchivePacketId = @archive_packet_id
-	);
+		ProgramName,
+		RepeatId
+	FROM sap.ChildNestId
+	WHERE ArchivePacketId = @archive_packet_id;
 
 	-- Push a new entry into oys.Status with SigmanestStatus = 'Updated'
 	--	to simulate a program update
@@ -1051,12 +1045,8 @@ BEGIN
 		'Complete',
 		@source,
 		ISNULL(@username, CURRENT_USER)
-	FROM oys.Program
-	WHERE Program.ProgramGUID in (
-		SELECT ProgramGUID
-		FROM sap.ProgramId
-		where ArchivePacketId = @archive_packet_id
-	);
+	FROM sap.ProgramId
+	WHERE ArchivePacketId = @archive_packet_id;
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.DeleteProgram
@@ -1100,14 +1090,10 @@ BEGIN
 		'SN74',
 		@simtrans_district,
 		@trans_id,
-		ChildNestProgramName,
-		ChildNestRepeatID
-	FROM oys.Program
-	INNER JOIN oys.ChildPlate
-		ON Program.ProgramGUID=ChildPlate.ProgramGUID
-	WHERE Program.AutoId = @archive_packet_id;
-
-	-- Push a new entry into oys.Status with SigmanestStatus = 'Deleted'
+		ProgramName,
+		RepeatId
+	FROM sap.ChildNestId
+	WHERE ArchivePacketId = @archive_packet_id;
 	--	to simulate a program delete
 	INSERT INTO oys.Status (
 		DBEntryDateTime,
@@ -1124,7 +1110,7 @@ BEGIN
 		'Deleted',
 		@source,
 		ISNULL(@username, CURRENT_USER)
-	FROM oys.Program
-	WHERE Program.AutoId = @archive_packet_id;
+	FROM sap.ProgramId
+	WHERE ProgramId.ArchivePacketId = @archive_packet_id;
 END;
 GO

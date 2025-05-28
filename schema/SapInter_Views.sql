@@ -5,6 +5,7 @@ CREATE OR ALTER VIEW sap.ProgramId
 AS
 	SELECT DISTINCT
 		Program.ProgramGUID,
+		Program.NestType,
 		ChildPlate.AutoID AS ArchivePacketId,
 		CASE Program.NestType
 			WHEN 'Slab' THEN 1
