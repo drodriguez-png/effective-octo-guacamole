@@ -1018,6 +1018,23 @@ BEGIN
 		ProgramRepeat	-- Repeat ID of the program
 	)
 	SELECT
+		'SN76',
+		@simtrans_district,
+		@trans_id,
+		ProgramName,
+		RepeatId
+	FROM sap.ChildNestId
+	WHERE ArchivePacketId = @archive_packet_id
+
+	-- [2] Update program (child programs in case of a slab)
+	INSERT INTO SNDBaseDev.dbo.TransAct (
+		TransType,		-- `SN70`
+		District,
+		TransID,		-- for logging purposes
+		ProgramName,	-- Program name/number
+		ProgramRepeat	-- Repeat ID of the program
+	)
+	SELECT
 		'SN70',
 		@simtrans_district,
 		@trans_id,
