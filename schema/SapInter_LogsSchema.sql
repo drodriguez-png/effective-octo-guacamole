@@ -26,6 +26,7 @@ CREATE TABLE log.SapDemandCalls (
 	op3 VARCHAR(50),
 	mark VARCHAR(50),
 	raw_mm VARCHAR(50),
+	due_date DATE,
 	alloc_id INT
 );
 CREATE TABLE log.SapInventoryCalls (

@@ -87,7 +87,8 @@ CREATE OR ALTER PROCEDURE sap.PushSapDemand
 	@op2 VARCHAR(50) = NULL,	-- secondary operation 2
 	@op3 VARCHAR(50) = NULL,	-- secondary operation 3
 	@mark VARCHAR(50) = NULL,	-- part name (Material Master with job removed)
-	@raw_mm VARCHAR(50) = NULL
+	@raw_mm VARCHAR(50) = NULL,
+	@due_date DATE = NULL
 AS
 SET NOCOUNT ON
 BEGIN
@@ -110,7 +111,8 @@ BEGIN
 		op2,
 		op3,
 		mark,
-		raw_mm
+		raw_mm,
+		due_date
 	)
 	SELECT
 		'PushSapDemand',
@@ -130,7 +132,8 @@ BEGIN
 		@op2,
 		@op3,
 		@mark,
-		@raw_mm
+		@raw_mm,
+		@due_date
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 
@@ -235,6 +238,7 @@ BEGIN
 			OrderNo,	-- work order name
 			ItemName,	-- Material Master (part name)
 			OnHold,		-- part is available for nesting
+			DueDate,
 			Qty,
 			Material,	-- {spec}-{grade}{test}
 			Customer,	-- State(occurrence)
@@ -291,6 +295,7 @@ BEGIN
 			CONCAT(@work_order, CHOOSE(@onhold, '-onhold')),
 			@part_name,
 			@onhold,
+			@due_date,
 			@qty,
 			@matl,
 
@@ -345,7 +350,8 @@ BEGIN
 			@op2,
 			@op3,
 			@mark,
-			@raw_mm;
+			@raw_mm,
+			@due_date;
 
 		FETCH NEXT FROM RenamedDemandCursor
 			INTO @part_name, @work_order, @qty;
