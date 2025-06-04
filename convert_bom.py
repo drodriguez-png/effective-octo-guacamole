@@ -3,7 +3,8 @@
 # dependencies = [
 #   "pyodbc",
 #   "tabulate",
-#   "tqdm"
+#   "tqdm",
+#   "xlwings",
 # ]
 # ///
 
@@ -19,6 +20,11 @@ MM = re.compile(r"\d{7}[A-Z]-MM\.ready")
 STOCK_MM = re.compile(r"(50(?:\/50)?W?)-(\d{2})(\d{2})(\w*)")
 PROJ_MM = re.compile(r"(\d{7}[A-Z]\d{2})-0(\d{4})(\w*)")
 GRADE = re.compile(r"([AM]\d{3})-(3\d{2}|TYPE4|(?:HPS)?[5710]{1,2}0W?)((?:[TF][123])?)")
+
+WEB_MM = re.compile(r"\d{7}[A-Z]\d{2}-[09]3\d{3}\w*")
+FLG_MM = re.compile(r"\d{7}[A-Z]\d{2}-[09]4\d{3}\w*")
+WEB_PART = re.compile(r"\d{7}[A-Z]\d{0,2}-\w+\d+\w*-[NF]?W\d+")
+FLG_PART = re.compile(r"\d{7}[A-Z]\d{0,2}-\w+\d+\w*-[TB]\d+")
 
 FOLDER = "conversion"
 
@@ -188,7 +194,7 @@ class ConeMAT(ReadyFile):
         line[1] = f"PL {thk} x {wid} x {length} {grade}{test}"
 
         return line
-
+    
 class ProjMM(ReadyFile):
     """
     this file has a header
@@ -233,12 +239,192 @@ class ProjMM(ReadyFile):
         line[17:20] = part_grades.setdefault(line[1], [None] * 3)
 
         return line
+        
+class ZHPP009Parser:
+    """
+    This class is used to parse ZHPP009 files.
+    generates lines that pass the test:
+        - UoM is IN2 or FT2
+    """
+
+    def matches_filename(self, workbook):
+        return "ZHPP009" in workbook.name.upper()
+
+    def generate_from_xl(self, workbook):
+        """
+        Generate a ConeBOM file from a ZHPP009 export Excel file.
+        """
+        sheet = workbook.sheets.active
+
+        header = sheet.range("A1").expand("right").value
+        matl = header.index("Material")
+        raw_mm = header.index("Component")
+        area = header.index("Quantity")
+        unit = header.index("Un")
+        scrap = header.index("C.scrap")
+        
+        # format: PartName, RawMM, Area, UoM, <blank>, <blank>, <blank>, Scrap
+        lines = []
+        end = max(matl, raw_mm, area, unit, scrap) + 1
+        for row in sheet.range((2,1), (2, end)).expand("down").value:
+            if row[unit] not in ("IN2", "FT2"):
+                continue
+
+            lines.append([
+                row[matl],    # PartName
+                row[raw_mm],  # RawMM
+                row[area],    # Area
+                row[unit],    # UoM
+                "", "", "",   # placeholders
+                row[scrap]    # Scrap
+            ])
+
+        if lines:
+            name = "{}_BOM.ready".format(workbook.name.split('.')[0])
+            with open(os.path.join(FOLDER, 'input', name), "w") as file:
+                for line in lines:
+                    file.write("\t".join(str(x) for x in line) + "\n")
+                print(f"Generated {len(lines)} lines for {name} in input folder.")
+            ConeBOM(name).convert()
+
+class ZHMM002Parser:
+    """
+    This class is used to parse ZHMM002 files.
+    Project MM files are generated for lines that pass the test:
+        - UoM is EA
+        - Material Type is HALB
+        - Material Description starts with PL, MISC, or SHEET
+        - Line does not appear to be converted (Document is not a PartName)
+    Cone MAT files are generated for lines that pass the test:
+        - UoM is IN2 or FT2
+        - Material Type is ZROH
+        - Material Description starts with PL, MISC, or SHEET
+    """
+
+    @staticmethod
+    def matches_filename(workbook):
+        return "ZHMM002" in workbook.name.upper()
+
+    @staticmethod
+    def generate_from_xl(workbook):
+        """
+        Generate a ZHMM002 file from a ZHMM002 export Excel file.
+        """
+        
+        sheet = workbook.sheets.active
+
+        header = sheet.range("A1").expand("right").value
+        matl = header.index("Material")
+        desc = header.index("Material Description")
+        matl_type = header.index("MTyp")
+        size = header.index("Size/dimensions")
+        grade = header.index("Industry Std Desc.")
+        uom = header.index("BUn")
+        pdt = header.index("PDT")
+        weight = header.index("Gross Weight")
+        doc = header.index("Document")
+
+        def parse_size(size):
+            t,w,l = map(lambda x: round(float(x), 3), size.split(' X '))
+
+            return [l, w, t]
+
+        def generate_mm(row):
+            assert row[uom] == "EA", "UoM is not EA"
+            if row[matl][:8] == row[doc][:8]:
+                return None
+
+            part_type = "PART"
+            if WEB_PART.match(row[matl]):
+                part_type = "WEB"
+            elif FLG_PART.match(row[matl]):
+                part_type = "FLANGE"
+
+            return [
+                part_type,  # PartType
+                row[matl],  # MM
+                row[desc],  # Description
+                row[uom],  # UOM
+                row[weight],  # Weight
+                "",  # AltDim
+                "",  # AltUOM
+                "",  # Volume
+                *parse_size(row[size]),  # Length, Width, Height
+                "HS PARTS",  # Routing
+                "",  # Document (will be moved later)
+                "",  # PurchText
+                row[doc],  # DocName
+                "",  # DocPath
+                row[grade],  # IndustryStd
+            ]
+
+        def generate_mat(row):
+            if row[uom] not in ("IN2", "FT2"):
+                return None
+
+            _type = "RawDetail"
+            if WEB_MM.match(row[matl]):
+                _type = "RawWeb"
+            elif FLG_MM.match(row[matl]):
+                _type = "RawFlange"
+
+            return [
+                row[matl],  # RawMM
+                row[desc],  # Description
+                _type,  # Type
+                *parse_size(row[size]),  # Length, Width, Thickness
+                row[weight],  # UnitWeight in FT2
+                row[uom],  # UoM
+                row[grade],  # Grade
+                104152,  # Vendor (hardcoded)
+                "",  # Price
+                row[pdt],  # DeliveryTime
+            ]
+        
+    
+        mm, mat = [], []
+        mm.append("PARTTYPE	MM	DESCRIPTION	UOM	WEIGHT	ALTDIM	ALTUOM	VOLUME	LENGTH	WIDTH	HEIGHT	ROUTING	DOCUMENT	PURCHTEXT	DOCNAME	DOCPATH	INDUSTRYSTD	SPEC	GRADE	TEST	ASSYMETHOD	DOCNO".split("\t"))
+        end = max(matl, desc, matl_type, size, grade, uom, pdt, weight, doc) + 1
+        for row in sheet.range((2,1), (2, end)).expand("down").value:
+            if row[desc].split(' ')[0].upper() not in ('PL', 'MISC', 'SHEET'):
+                continue
+
+            match row[matl_type]:
+                case "HALB":
+                    line = generate_mm(row)
+                    if line:
+                        mm.append(line)
+                case "ZROH":
+                    line = generate_mat(row)
+                    if line:
+                        mat.append(line)
+        
+        def write_ready_file(filename, lines):
+            with open(os.path.join(FOLDER, 'input', filename), "w") as file:
+                for line in lines:
+                    file.write("\t".join(str(x) for x in line) + "\n")
+            print(f"Generated {len(lines)} lines for {filename} in input folder.")
+
+        # Project MM
+        if len(mm) > 1:
+            name = "{}_MM.ready".format(workbook.name.split('.')[0])
+            write_ready_file(name, mm)
+            ProjMM(name).convert()
+
+        # Cone MAT
+        if mat:
+            name = "{}_MAT.ready".format(workbook.name.split('.')[0])
+            write_ready_file(name, mat)
+            ConeMAT(name).convert()
+            
+
 
 def main():
     parser = ArgumentParser()
     parser.add_argument("--id", type=int, help="Id for renaming project")
     parser.add_argument("--gen-parts-grades", action="store_true", help="Generate part grades")
     parser.add_argument("--min-project", type=int, default=0, help="Floor for filtering projects")
+    parser.add_argument("--gen-bom-files", action="store_true", help="generate BOM files from SAP export")
     args = parser.parse_args()
 
     if args.min_project:
@@ -247,11 +433,27 @@ def main():
 
     if args.gen_parts_grades:
         generate_part_grades(floor=args.min_project)
-    else:
-        part_grades.update(load_bom_parts())
-        converter = ReadyFile(test_id=args.id)
-        for f in os.listdir(os.path.join(FOLDER, "input")):
-            converter.process(f)
+        return
+
+    part_grades.update(load_bom_parts())
+    if args.gen_bom_files:
+        generate_bom_files()
+        return
+
+    converter = ReadyFile(test_id=args.id)
+    for f in os.listdir(os.path.join(FOLDER, "input")):
+        converter.process(f)
+
+
+def generate_bom_files():
+    import xlwings
+
+    parsers = [ZHPP009Parser(), ZHMM002Parser()]
+    for wb in xlwings.books:
+        for parser in parsers:
+            if parser.matches_filename(wb):
+                parser.generate_from_xl(wb)
+
 
 def generate_part_grades(floor=0):
     import pyodbc
