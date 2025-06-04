@@ -1,49 +1,64 @@
 
-use SNInterQas;
-go
+USE SNInterDev;
+GO
 
---delete from SNDBaseDev.dbo.TransAct
---where TransType='SN60'
---and ( Material is null or Material like '%NA%' );
+-- Queries:
+-- - log
+-- - Queue
+-- - SimTrans
+-- - Part
+-- - Demand Allocation
 
---delete from SNDBaseDev.dbo.TransAct where OrderNo NOT like 'D-1236169%'
---update SNDBaseDev.dbo.TransAct set ItemName=ItemData17 where TransType like 'SN8%';
+DECLARE @start DATETIME = CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '00:00:00';
 
---select * from SNDBaseDev.dbo.TransAct;
-select
+SELECT * FROM (SELECT NULL AS Log) AS _, log.SapDemandCalls WHERE LogDate > @start;
+
+SELECT * FROM (SELECT NULL AS Queue) AS _, sap.DemandQueue;
+
+SELECT
+	NULL AS SimTrans,
 	AutoInc,
 	TransType,
 	District,
 	TransID,
-	OrderNo as WorkOrder,
-	ItemName as PartName,
+	OrderNo AS WorkOrder,
+	ItemName AS PartName,
 	OnHold,		-- part is available for nesting
 	Qty,
 	Material,	-- {spec}-{grade}{test}
 	Customer,	-- State(occurrence)
 	DwgNumber,	-- Drawing name
 	Remark,		-- autoprocess instruction
-	ItemData1 as Job,	-- Job(project)
-	ItemData2 as Shipment,	-- Shipment
-	ItemData3 as RawMaterialMaster,
-	ItemData4 as Operation1,
-	ItemData5 as Operation2,
-	ItemData6 as Operation3,
-	ItemData9 as Mark,	-- part name (Material Master with job removed)
-	ItemData10 as HeatSwapKeyword,
-	ItemData16 as PartHoursOrder,
-	ItemData17 as SapPartName,
-	ItemData18 as SapEventId,
+	ItemData1 AS Job,	-- Job(project)
+	ItemData2 AS Shipment,	-- Shipment
+	ItemData3 AS RawMaterialMaster,
+	ItemData4 AS Operation1,
+	ItemData5 AS Operation2,
+	ItemData6 AS Operation3,
+	ItemData9 AS Mark,	-- part name (Material Master with job removed)
+	ItemData10 AS HeatSwapKeyword,
+	ItemData16 AS PartHoursOrder,
+	ItemData17 AS SapPartName,
+	ItemData18 AS SapEventId,
 	AddedDate
-from SNDBaseDev.dbo.TransAct
-where TransType like 'SN8%'
-;
+FROM SNDBaseDev.dbo.TransAct
+WHERE TransType LIKE 'SN8%';
 
---select * from sap.RenamedDemandAllocation;
+SELECT *
+FROM (SELECT NULL AS Part) AS _, SNDBaseDev.dbo.Part
+WHERE PartName IN (
+	SELECT ItemName FROM SNDBaseDev.dbo.TransAct
+	UNION
+	SELECT PartName FROM sap.DemandQueue
+	UNION
+	SELECT part_name FROM log.SapDemandCalls WHERE LogDate > @start
+)
+OR Data17 in (
+	SELECT ItemData17 FROM SNDBaseDev.dbo.TransAct
+	UNION
+	SELECT SapPartName FROM sap.DemandQueue
+	UNION
+	SELECT sap_part_name FROM log.SapDemandCalls WHERE LogDate > @start
+)
 
-select *
-from log.SapDemandCalls
-where LogDate > CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '00:00:00'
-;
-
-update SNDBaseDev.dbo.TransAct set District=99 where District=4 and TransType='SN70'
+SELECT * FROM (SELECT NULL AS RenamedAlloc) AS _, sap.RenamedDemandAllocation;

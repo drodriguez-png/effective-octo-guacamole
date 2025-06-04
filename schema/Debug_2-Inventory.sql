@@ -1,5 +1,22 @@
 
+use SNInterDev;
+go
+
+-- Queries:
+-- - log
+-- - Queue
+-- - SimTrans
+-- - Stock
+-- - StockCompatibility
+
+declare @start datetime = CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '00:00:00';
+
+select * from (select null as Log) as _, log.SapInventoryCalls where LogDate > @start;
+
+select * from (select null as Queue) as _, sap.InventoryQueue;
+
 select
+	null as SimTrans,
 	TransType,
 	District,
 	TransID,	-- for logging purposes
@@ -17,14 +34,51 @@ select
 	ItemData4 as Notes4,
 	FileName	-- {remnant geometry folder}\{SheetName}.dxf
 from SNDBaseDev.dbo.TransAct
-where TransType like 'SN9%'
-or TransType like 'SN6%'
+	where TransType like 'SN9%'
+	or TransType like 'SN6%'
 ;
 
-use SNDBaseDev;
-select * from Stock where SheetName in (select itemname from SNDBaseDev.dbo.TransAct)
+select
+	null as Stock,
+	SheetName,
+	Qty,
+	QtyAvailable,
+	Material,
+	Thickness,
+	Width,
+	Length,
+	PrimeCode as MaterialMaster,
+	SheetData1,
+	SheetData2,
+	SheetData3,
+	SheetData4,
 
-use SNInterQas;
-select * from log.SapInventoryCalls
-where LogDate > CAST(CAST(GETDATE() AS DATE) AS DATETIME) + '00:00:00'
-;
+	SheetType,
+	BinNumber as SapEventId,
+	DateCreated,
+	DateCreated
+from SNDBaseDev.dbo.Stock
+where SheetName in (
+	select ItemName from SNDBaseDev.dbo.TransAct
+	union
+	select SheetName from sap.InventoryQueue
+	union
+	select sheet_name from log.SapInventoryCalls where LogDate > @start
+)
+or PrimeCode in (
+	select PrimeCode from SNDBaseDev.dbo.TransAct
+	union
+	select MaterialMaster from sap.InventoryQueue
+	union
+	select mm from log.SapInventoryCalls where LogDate > @start
+);
+select *
+from (select null as StockCompatibility) as _,
+	 SNDBaseDev.dbo.StockCompatibility
+where SheetName in (
+	select ItemName from SNDBaseDev.dbo.TransAct
+	union
+	select SheetName from sap.InventoryQueue
+	union
+	select sheet_name from log.SapInventoryCalls where LogDate > @start
+);
