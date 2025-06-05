@@ -1141,6 +1141,12 @@ BEGIN
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 
+	-- load SimTrans district from configuration
+	DECLARE @simtrans_district INT = (
+		SELECT TOP 1 SimTransDistrict
+		FROM sap.InterfaceConfig
+	);
+
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
 	-- 	so truncating it to the 10 least significant digits is OK.
@@ -1156,11 +1162,11 @@ BEGIN
 	)
 	SELECT
 		'SN76',
-		@simtrans_district,
+		SimTransDistrict,
 		@trans_id,
 		ProgramName,
 		RepeatId
-	FROM sap.ChildNestId
+	FROM sap.ChildNestId, sap.InterfaceConfig
 	WHERE ArchivePacketId = @archive_packet_id
 
 	-- [2] Update program (child programs in case of a slab)
@@ -1173,14 +1179,23 @@ BEGIN
 	)
 	SELECT
 		'SN70',
-		@simtrans_district,
+		SimTransDistrict,
 		@trans_id,
 		ProgramName,
 		RepeatId
-	FROM sap.ChildNestId
+	FROM sap.ChildNestId, sap.InterfaceConfig
 	WHERE ArchivePacketId = @archive_packet_id;
 
 	-- [3] delete slab sheet (if slab)
+	WITH SlabNests AS (
+		SELECT DISTINCT
+			ArchivePacketId,
+			ParentPlate.PlateName AS SheetName
+		FROM oys.ParentPlate
+		INNER JOIN sap.ProgramId
+			ON ProgramId.ProgramGUID=ParentPlate.ProgramGUID
+		WHERE ProgramId.NestType='Slab'
+	)
 	INSERT INTO SNDBaseDev.dbo.TransAct (
 		TransType,		-- `SN92`
 		District,
@@ -1189,14 +1204,11 @@ BEGIN
 	)
 	SELECT DISTINCT
 		'SN92',
-		@simtrans_district,
+		SimTransDistrict,
 		@trans_id,
-		ParentPlate.PlateName
-	FROM oys.ParentPlate
-	INNER JOIN sap.ProgramId
-		ON ProgramId.ProgramGUID=ParentPlate.ProgramGUID
-	WHERE ProgramId.NestType='Slab'
-	AND ArchivePacketId=@archive_packet_id
+		SheetName
+	FROM SlabNests, sap.InterfaceConfig
+	WHERE ArchivePacketId=@archive_packet_id
 
 	-- [4] Push a new entry into oys.Status with SigmanestStatus = 'Updated'
 	--	to simulate a program update
@@ -1258,11 +1270,11 @@ BEGIN
 	)
 	SELECT
 		'SN74',
-		@simtrans_district,
+		SimTransDistrict,
 		@trans_id,
 		ProgramName,
 		RepeatId
-	FROM sap.ChildNestId
+	FROM sap.ChildNestId, sap.InterfaceConfig
 	WHERE ArchivePacketId = @archive_packet_id;
 
 	-- [2] Push a new entry into oys.Status with SigmanestStatus = 'Deleted'
