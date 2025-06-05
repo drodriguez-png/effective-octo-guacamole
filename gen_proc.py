@@ -6,12 +6,12 @@ ENV_CONFIG = {
     # "SimTrans Env": [("Sigmanest Env", "District", "LogProcedureCalls")],
     # SimTrans/Sigmanest Env maps to which database said Env is on
     #   for example, "Dev" maps to SNDBaseDev
-    "Prd": [
-        ("Prd", 2, False),
-    ],
     "Dev": [
         ("Qas", 4, True),
         ("Dev", 3, True),
+    ],
+    "Prd": [
+        ("Prd", 5, False),
     ],
 }
 
