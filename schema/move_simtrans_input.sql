@@ -108,6 +108,8 @@ where AutoInc in (select id from #temp);
 
 drop table #temp;
 
+update HIISQLSERV5.SNDBase91.dbo.TransAct set ErrorTag=0;
+
 -- show results
 select * from HIISQLSERV5.SNDBase91.dbo.TransAct;
 --select * from SNDBaseDev.dbo.TransAct;
