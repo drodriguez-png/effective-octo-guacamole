@@ -75,6 +75,7 @@ GO
 -- *    Interface 1: Demand                   *
 -- ********************************************
 CREATE OR ALTER PROCEDURE sap.PushSapDemand
+	-- this is the procedure called by Boomi
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 	@sap_part_name VARCHAR(18),
 
@@ -98,6 +99,11 @@ CREATE OR ALTER PROCEDURE sap.PushSapDemand
 AS
 SET NOCOUNT ON
 BEGIN
+	-- [0] log procedure call
+	-- [1] set @mark by stripping @job from @part_name
+	-- [2] Queue demand for SimTrans PreExec
+	-- [3] push SimTrans trigger transaction
+
 	-- [0] log procedure call
 	INSERT INTO log.SapDemandCalls (
 		ProcCalled,
@@ -213,7 +219,11 @@ CREATE OR ALTER PROCEDURE sap.PushRenamedDemand
 	@qty INT
 AS
 BEGIN
-	-- log procedure call
+	-- [0] log procedure call
+	-- [1] update/create allocation
+	-- [2] trigger interface 1 to push demand (if not already in the queue)
+
+	-- [0] log procedure call
 	INSERT INTO log.SapDemandCalls (
 		ProcCalled,
 		sap_event_id,
@@ -232,7 +242,7 @@ BEGIN
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 
-	-- update/create allocation
+	-- [1] update/create allocation
 	UPDATE sap.RenamedDemandAllocation
 	SET Qty=Qty + @qty
 	WHERE NewPartName=@new_part_name
@@ -253,7 +263,7 @@ BEGIN
 		)
 	END;
 
-	-- trigger interface 1 to push demand (if not already in the queue)
+	-- [2] trigger interface 1 to push demand (if not already in the queue)
 	INSERT INTO sap.FeedbackQueue
 		(DataSet, ArchivePacketId, PartName)
 	SELECT TOP 1
@@ -271,7 +281,11 @@ CREATE OR ALTER PROCEDURE sap.RemoveRenamedDemand
 	@qty INT
 AS
 BEGIN
-	-- log procedure call
+	-- [0] log procedure call
+	-- [1] reduce allocation
+	-- [2] trigger interface 1 to push demand
+
+	-- [0] log procedure call
 	INSERT INTO log.SapDemandCalls (
 		ProcCalled, sap_event_id, alloc_id, qty
 	)
@@ -280,12 +294,12 @@ BEGIN
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 	
-	-- reduce allocation
+	-- [1] reduce allocation
 	UPDATE sap.RenamedDemandAllocation
 	SET Qty = Qty - @qty
 	WHERE Id = @id;
 
-	-- trigger interface 1 to push demand (if not already in the queue)
+	-- [2] trigger interface 1 to push demand (if not already in the queue)
 	INSERT INTO sap.FeedbackQueue
 		(DataSet, ArchivePacketId, PartName)
 	SELECT TOP 1
@@ -303,11 +317,12 @@ CREATE OR ALTER PROCEDURE sap.DemandPreExec
 AS
 BEGIN
 	-- called before the SimTrans runs to
-	--	[1] consolidate staged data
-	--	[2] delete parts in Sigmanest but not Queue
-	--	[3] delete Queue items with no work order
-	--	[4] push data into the SimTrans
-	--	[5] clear queue
+	-- [1] consolidate staged data
+	-- [2] delete parts in Sigmanest but not Queue
+	-- [3] delete Queue items with no work order
+	-- [4] reduce by renamed demand
+	-- [5] push data into the SimTrans
+	-- [6] clear queue
 
 	-- Note on SimTrans transactions used
 	--	- SN81B: sets the "qty to nest"
@@ -324,7 +339,7 @@ BEGIN
 	-- place all this in a transaction for consistency
 	BEGIN TRANSACTION
 	
-		--	[1] remove queued items with a superceded SapEventId
+		-- [1] remove queued items with a superceded SapEventId
 		DELETE FROM sap.DemandQueue
 		WHERE SapEventId NOT IN (
 			SELECT MAX(SapEventId) AS MaxId
@@ -332,7 +347,7 @@ BEGIN
 			GROUP BY SapPartName
 		);
 
-		--	[2] push items not in queue for deletion
+		-- [2] push items not in queue for deletion
 		WITH ForDeletion AS (
 			SELECT WONumber, PartName
 			FROM SNDBaseDev.dbo.Part
@@ -367,10 +382,10 @@ BEGIN
 		LEFT JOIN IdMap
 			ON IdMap.IdPartName=ForDeletion.PartName;
 
-		--	[3] delete items with no work order (Qty=0 items from SAP)
+		-- [3] delete items with no work order (Qty=0 items from SAP)
 		DELETE FROM sap.DemandQueue WHERE WorkOrder IS NULL;
 	
-		--	[4] push data into the SimTrans
+		-- [5] push data into the SimTrans
 		WITH DemandAndAlloc AS (
 			SELECT
 				SapEventId,
@@ -484,7 +499,7 @@ BEGIN
 			SapEventId
 		FROM DemandAndAlloc, sap.InterfaceConfig;
 
-		--	[5] clear queue
+		-- [6] clear queue
 		DELETE FROM sap.DemandQueue;
 	
 	-- end transaction
@@ -496,6 +511,7 @@ GO
 -- *    Interface 2: Inventory                *
 -- ********************************************
 CREATE OR ALTER PROCEDURE sap.PushSapInventory
+	-- this is the procedure called by Boomi
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	@sheet_name VARCHAR(50),
@@ -513,6 +529,11 @@ CREATE OR ALTER PROCEDURE sap.PushSapInventory
 AS
 SET NOCOUNT ON
 BEGIN
+	-- [0] log procedure call
+	-- [1] validate SheetName for building DXF path at pre-SimTrans
+	-- [2] Queue sheet for SimTrans PreExec
+	-- [3] push SimTrans trigger transaction
+
 	-- [0] log procedure call
 	INSERT INTO log.SapInventoryCalls(
 		ProcCalled,
@@ -608,12 +629,12 @@ CREATE OR ALTER PROCEDURE sap.InventoryPreExec
 AS
 BEGIN
 	-- called before the SimTrans runs to
-	--	[1] consolidate staged data
-	--	[2] (add to Queue) delete sheets in Sigmanest but not SimTrans
-	--	[3] delete Queue items with no SheetName
-	--	[4] delete compatible materials for sheet deletions
-	--	[5] push data into the SimTrans
-	--	[6] clear queue
+	-- [1] consolidate staged data
+	-- [2] (add to Queue) delete sheets in Sigmanest but not SimTrans
+	-- [3] delete Queue items with no SheetName
+	-- [4] delete compatible materials for sheet deletions
+	-- [5] push data into the SimTrans
+	-- [6] clear queue
 
 	-- [0] log procedure call
 	INSERT INTO log.SapInventoryCalls(ProcCalled)
@@ -669,7 +690,7 @@ BEGIN
 		LEFT JOIN IdMap
 			ON IdMap.IdSheetName=ForDeletion.SheetName;
 
-		--	[3] delete items with no sheet name (Qty=0 items from SAP)
+		-- [3] delete items with no sheet name (Qty=0 items from SAP)
 		DELETE FROM sap.InventoryQueue WHERE SheetName IS NULL;
 
 		-- [4] clear stock compatability for removals
@@ -736,7 +757,7 @@ BEGIN
 				ELSE NULL
 			END
 		FROM sap.InventoryQueue, sap.InterfaceConfig;
-
+	
 		-- [6] clear queue
 		DELETE FROM sap.InventoryQueue;
 	
@@ -1045,7 +1066,10 @@ CREATE OR ALTER PROCEDURE sap.ReleaseProgram
 AS
 SET NOCOUNT ON
 BEGIN
-	-- log procedure call
+	-- [0] log procedure call
+	-- [1] Push a new entry into oys.Status with SigmanestStatus = 'Released'
+	
+	-- [0] log procedure call
 	INSERT INTO log.UpdateProgramCalls (
 		ProcCalled, archive_packet_id, source, username
 	)
@@ -1054,7 +1078,7 @@ BEGIN
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 
-	-- Push a new entry into oys.Status with SigmanestStatus = 'Released'
+	-- [1] Push a new entry into oys.Status with SigmanestStatus = 'Released'
 	--	to push to SAP
 	INSERT INTO oys.Status (
 		DBEntryDateTime,
@@ -1076,6 +1100,7 @@ BEGIN
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.UpdateProgram
+	-- this is the procedure called by Boomi
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 
 	@archive_packet_id INT,
@@ -1084,6 +1109,12 @@ CREATE OR ALTER PROCEDURE sap.UpdateProgram
 AS
 SET NOCOUNT ON
 BEGIN
+	-- [0] log procedure call
+	-- [1] delete remnants from nest
+	-- [2] Update program (child programs in case of a slab)
+	-- [3] delete slab sheet (if slab)
+	-- [4] Push a new entry into oys.Status with SigmanestStatus = 'Updated'
+
 	-- Expected Condition:
 	-- 	It is expected that the program with the given AutoId exists.
 	-- 	If program update in Sigmanest is disabled and all Interface 3
@@ -1091,7 +1122,7 @@ BEGIN
 	--	For a slab nest, we only have to update the child nests, because the slab
 	--		nest has no work order parts and therefore was not written to the database
 
-	-- log procedure call
+	-- [0] log procedure call
 	INSERT INTO log.UpdateProgramCalls (
 		ProcCalled, sap_event_id, archive_packet_id, source, username
 	)
@@ -1099,12 +1130,6 @@ BEGIN
 		'UpdateProgram', @sap_event_id, @archive_packet_id, @source, @username
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
-
-	-- load SimTrans district from configuration
-	DECLARE @simtrans_district INT = (
-		SELECT TOP 1 SimTransDistrict
-		FROM sap.InterfaceConfig
-	);
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
@@ -1163,7 +1188,7 @@ BEGIN
 	WHERE ProgramId.NestType='Slab'
 	AND ArchivePacketId=@archive_packet_id
 
-	-- Push a new entry into oys.Status with SigmanestStatus = 'Updated'
+	-- [4] Push a new entry into oys.Status with SigmanestStatus = 'Updated'
 	--	to simulate a program update
 	INSERT INTO oys.Status (
 		DBEntryDateTime,
@@ -1195,7 +1220,11 @@ CREATE OR ALTER PROCEDURE sap.DeleteProgram
 AS
 SET NOCOUNT ON
 BEGIN
-	-- log procedure call
+	-- [0] log procedure call
+	-- [1] Delete program (child programs in case of a slab)
+	-- [2] Push a new entry into oys.Status with SigmanestStatus = 'Deleted'
+
+	-- [0] log procedure call
 	INSERT INTO log.UpdateProgramCalls (
 		ProcCalled, sap_event_id, archive_packet_id, source, username
 	)
@@ -1203,12 +1232,6 @@ BEGIN
 		'DeleteProgram', @sap_event_id, @archive_packet_id, @source, @username
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
-
-	-- load SimTrans district from configuration
-	DECLARE @simtrans_district INT = (
-		SELECT TOP 1 SimTransDistrict
-		FROM sap.InterfaceConfig
-	);
 
 	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
 	-- The use of this as TransID is purely for diagnostic reasons,
@@ -1255,7 +1278,7 @@ END;
 GO
 
 -- ***************************************************
--- *    SimTrans: Runs before SimTrans runs          *
+-- *    SimTrans: Runs before/after SimTrans runs    *
 -- ***************************************************
 CREATE OR ALTER PROCEDURE sap.SimTransPreExec
 AS BEGIN
