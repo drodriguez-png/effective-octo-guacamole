@@ -16,8 +16,8 @@ insert into #temp(id)
 	--where TransID like '[1-4]-%'
 ;
 
---delete from HIISQLSERV5.SNDBase91.dbo.TransAct
---where District in (3,4) and ErrorTag=1;
+delete from HIISQLSERV5.SNDBase91.dbo.TransAct
+where District in (3,4) and ErrorTag=1;
 
 
 -- copy items to move
@@ -78,6 +78,7 @@ select
 	Length,
 	FileName,
 	PrimeCode,
+	BinNumber,
 	Remark,
 	ItemData1,
 	ItemData2,
