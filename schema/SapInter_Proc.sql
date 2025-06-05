@@ -152,16 +152,8 @@ BEGIN
 	-- [1] set @mark by stripping @job from @part_name
 	IF @mark IS NULL AND @part_name LIKE @job + '[-_]%'
 		SET @mark = SUBSTRING(@part_name,LEN(@job)+2,LEN(@part_name)-LEN(@job)-1);
-
-	-- [2] reduce by renamed demand
-	SET @qty = @qty - ISNULL((
-		SELECT SUM(Qty)
-		FROM sap.RenamedDemandAllocation
-		WHERE OriginalPartName = @part_name
-		AND WorkOrderName  = @work_order
-	), 0);
-
-	-- [3] Add/Update demand via SimTrans
+		
+	-- [2] Queue demand for SimTrans PreExec
 	INSERT INTO sap.DemandQueue (
 		SapEventId,
 		SapPartName,
@@ -209,6 +201,15 @@ BEGIN
 		@raw_mm,
 		@due_date
 	);
+
+	-- [3] push SimTrans trigger transaction
+	-- the SimTrans will not trigger for a district without any transactions
+	--	(pre-exec will not be called)
+	INSERT INTO SNDBaseDev.dbo.TransAct (TransType, District)
+	SELECT 'TRIGGER', SimTransDistrict
+	FROM sap.InterfaceConfig
+	EXCEPT
+	SELECT TransType, District FROM SNDBaseDev.dbo.TransAct
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.PushRenamedDemand
@@ -623,6 +624,15 @@ BEGIN
 		@notes3,
 		@notes4
 	);
+
+	-- [3] push SimTrans trigger transaction
+	-- the SimTrans will not trigger for a district without any transactions
+	--	(pre-exec will not be called)
+	INSERT INTO SNDBaseDev.dbo.TransAct (TransType, District)
+	SELECT 'TRIGGER', SimTransDistrict
+	FROM sap.InterfaceConfig
+	EXCEPT
+	SELECT TransType, District FROM SNDBaseDev.dbo.TransAct
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.InventoryPreExec
@@ -1285,6 +1295,13 @@ AS BEGIN
 	EXEC sap.AddNewMaterials;
 	EXEC sap.DemandPreExec;
 	EXEC sap.InventoryPreExec;
+	
+	-- remove SimTrans trigger transaction
+	DELETE FROM SNDBaseDev.dbo.TransAct
+	WHERE TransType = 'TRIGGER'
+	AND District IN (
+		SELECT SimTransDistrict FROM sap.InterfaceConfig
+	);
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.SimTransPostExec
