@@ -38,6 +38,7 @@ insert into HIISQLSERV5.SNDBase91.dbo.TransAct (
 	Length,
 	FileName,
 	PrimeCode,
+	BinNumber,
 	Remark,
 	ItemData1,
 	ItemData2,
