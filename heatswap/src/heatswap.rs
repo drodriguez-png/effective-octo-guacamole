@@ -8,6 +8,8 @@ use std::fs::OpenOptions;
 use gumdrop::Options;
 use regex::Regex;
 
+// TODO: 4a/4b executables
+
 /// Heat Swap NC code interface
 #[derive(Debug, gumdrop::Options)]
 struct Cli {
@@ -50,7 +52,13 @@ struct Program {
 
 impl Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} -> [{}] at {}", self.name, self.heat.join("|"), self.machine)
+        write!(
+            f,
+            "{} -> [{}] at {}",
+            self.name,
+            self.heat.join("|"),
+            self.machine
+        )
     }
 }
 
@@ -77,7 +85,10 @@ impl Cli {
         Ok(Program {
             machine: self.machine.clone(),
             name: self.program.clone(),
-            heat: words.find_iter(&self.heat).map(|m| String::from(m.as_str())).collect(),
+            heat: words
+                .find_iter(&self.heat)
+                .map(|m| String::from(m.as_str()))
+                .collect(),
         })
     }
 }
@@ -113,6 +124,11 @@ fn main() -> Result<(), ValidationError> {
         Ok(prog) => log::info!("{}", prog),
         Err(e) => log::error!("Error: {}", e),
     }
+
+    // TODO: move file to production folder
+    // TODO: get extension
+    let path = format!(r"\\hssieng\SNDataDev\NC\SapPostOutput\{}.{}", prog, "nc");
+    std::fs::rename(path, path.replace("SapPostOutput", "AtMachine"))?;
 
     Ok(())
 }
