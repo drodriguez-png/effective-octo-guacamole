@@ -1,5 +1,4 @@
 set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
-demo := "scripts/demo"
 
 [private]
 default:
@@ -7,6 +6,12 @@ default:
 
 demo target *args:
     python scripts/demo.py {{target}} {{args}}
+
+[working-directory: 'heatswap']
+heatswap:
+    cargo build --release
+    cp target/build/cleanup.exe \\hssieng\sndatadev\_simtrans
+    cp target/build/cleanup.exe \\hssieng\sndataqas\_simtrans
 
 gensql: clean
     python gen_proc.py
