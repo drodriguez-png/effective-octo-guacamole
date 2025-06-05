@@ -1,0 +1,8 @@
+[package]
+name = "simtrans-exec"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+smol = "2.0.2"
+tiberius = { version = "0.12.3", features = ["sql-browser-smol", "integrated-auth-gssapi"] }
