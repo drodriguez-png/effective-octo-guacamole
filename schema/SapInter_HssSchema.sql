@@ -84,8 +84,32 @@ GO
 -- ********************************************
 -- *    Interface 1: Demand                   *
 -- ********************************************
+CREATE TABLE sap.DemandQueue (
+	Id BIGINT IDENTITY(1,1) PRIMARY KEY,
+	SapEventId VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
+	SapPartName VARCHAR(18),
+
+	WorkOrder VARCHAR(50),
+	PartName VARCHAR(100),
+	Qty INT,
+	Matl VARCHAR(50),
+	OnHold BIT,
+
+	State VARCHAR(50),
+	Dwg VARCHAR(50),
+	Codegen VARCHAR(50),	-- autoprocess instruction
+	Job VARCHAR(50),
+	Shipment VARCHAR(50),
+	Op1 VARCHAR(50),	-- secondary operation 1
+	Op2 VARCHAR(50),	-- secondary operation 2
+	Op3 VARCHAR(50),	-- secondary operation 3
+	Mark VARCHAR(50),	-- part name (Material Master with job removed)
+	RawMaterialMaster VARCHAR(50),
+	DueDate DATE
+);
+GO
 CREATE TABLE sap.RenamedDemandAllocation (
-	Id INT IDENTITY(1,1) PRIMARY KEY,
+	Id BIGINT IDENTITY(1,1) PRIMARY KEY,
 	OriginalPartName VARCHAR(50),
 	NewPartName VARCHAR(50),
 	WorkOrderName VARCHAR(50),
@@ -95,6 +119,27 @@ CREATE TABLE sap.RenamedDemandAllocation (
 	--	in an endless recursive loop
 	CONSTRAINT PartNamesDiffer
 		CHECK (OriginalPartName != NewPartName)
+);
+GO
+
+-- ********************************************
+-- *    Interface 2: Inventory                *
+-- ********************************************
+CREATE TABLE sap.InventoryQueue (
+	Id BIGINT IDENTITY(1,1) PRIMARY KEY,
+	SapEventId VARCHAR(50),	-- SAP: numeric 20 positions, no decimal
+	SheetName VARCHAR(50),
+	SheetType VARCHAR(64),
+	Qty INT,
+	Matl VARCHAR(50),
+	Thk FLOAT,
+	Width FLOAT,
+	Length FLOAT,
+	MaterialMaster VARCHAR(50),
+	Notes1 VARCHAR(50),
+	Notes2 VARCHAR(50),
+	Notes3 VARCHAR(50),
+	Notes4 VARCHAR(50)
 );
 GO
 

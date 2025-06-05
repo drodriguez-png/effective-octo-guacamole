@@ -17,19 +17,28 @@ BEGIN
 END;
 GO
 
-CREATE OR ALTER PROCEDURE sap.CheckMaterialExists
-	@matl VARCHAR(50)
+CREATE OR ALTER PROCEDURE sap.AddNewMaterials
 AS
 BEGIN
-	IF @matl IS NULL
-		RETURN;
+	-- [0] log procedure call
+	INSERT INTO log.SapInventoryCalls(ProcCalled)
+	SELECT 'AddNewMaterials'
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
 
-	-- add SN60 to SimTrans if
-	--	- @matl is not in Sigmanest material list
+	-- [1] add SN60 to SimTrans if
+	--	- Material is not in Sigmanest material list
 	--	- an existing SN60 does not exist in the SimTrans
 	WITH
 		MatlNames AS (
-			SELECT @matl AS MaterialName
+			SELECT DISTINCT
+				Matl AS MaterialName
+			FROM (
+				SELECT Matl FROM sap.DemandQueue
+				UNION
+				SELECT Matl FROM sap.InventoryQueue
+			) AS Queues
+
 			EXCEPT SELECT MaterialType
 				FROM SNDBaseDev.dbo.Material
 			EXCEPT SELECT Material
@@ -37,7 +46,8 @@ BEGIN
 				WHERE TransType = 'SN60'
 		),
 		MildSteelData AS (
-			SELECT TOP 1 MatGroupName, DensityIn
+			SELECT TOP 1
+				MatGroupName, DensityIn
 			FROM SNDBaseDev.dbo.Material
 			INNER JOIN SNDBaseDev.dbo.MaterialGroup
 				ON Material.MatGroupID = MaterialGroup.MatGroupID
@@ -60,14 +70,10 @@ BEGIN
 END;
 GO
 
+
 -- ********************************************
 -- *    Interface 1: Demand                   *
 -- ********************************************
--- Note on SimTrans transactions used
---	- SN81B: sets the "qty to nest"
---	- SN82: remove the part from the work order
--- The use of the SN81B means that if the qty is 0, the part remains in the
---	work order with no demand.
 CREATE OR ALTER PROCEDURE sap.PushSapDemand
 	@sap_event_id VARCHAR(50) NULL,	-- SAP: numeric 20 positions, no decimal
 	@sap_part_name VARCHAR(18),
@@ -80,9 +86,9 @@ CREATE OR ALTER PROCEDURE sap.PushSapDemand
 
 	@state VARCHAR(50) = NULL,
 	@dwg VARCHAR(50) = NULL,
-	@codegen VARCHAR(50) = NULL,	-- autoprocess instruction
 	@job VARCHAR(50) = NULL,
 	@shipment VARCHAR(50) = NULL,
+	@codegen VARCHAR(50) = NULL,	-- autoprocess instruction
 	@op1 VARCHAR(50) = NULL,	-- secondary operation 1
 	@op2 VARCHAR(50) = NULL,	-- secondary operation 2
 	@op3 VARCHAR(50) = NULL,	-- secondary operation 3
@@ -92,7 +98,7 @@ CREATE OR ALTER PROCEDURE sap.PushSapDemand
 AS
 SET NOCOUNT ON
 BEGIN
-	-- log procedure call
+	-- [0] log procedure call
 	INSERT INTO log.SapDemandCalls (
 		ProcCalled,
 		sap_event_id,
@@ -137,75 +143,11 @@ BEGIN
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 
-	-- load SimTrans district from configuration
-	DECLARE @simtrans_district INT = (
-		SELECT TOP 1 SimTransDistrict
-		FROM sap.InterfaceConfig
-	);
-
-	-- load SimTrans heatswap keyword from configuration
-	DECLARE @heatswap_keyword VARCHAR(64) = (
-		SELECT TOP 1 HeatSwapKeyword
-		FROM sap.InterfaceConfig
-	);
-
-	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
-	-- The use of this as TransID is purely for diagnostic reasons,
-	-- 	so truncating it to the 10 least significant digits is OK.
-	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
-
-	-- set @mark by stripping @job from @part_name
+	-- [1] set @mark by stripping @job from @part_name
 	IF @mark IS NULL AND @part_name LIKE @job + '[-_]%'
 		SET @mark = SUBSTRING(@part_name,LEN(@job)+2,LEN(@part_name)-LEN(@job)-1);
 
-	-- Pre-event processing for any group of calls for the same @sap_event_id
-	-- Because of this `IF` statement, this will only do anything on the first
-	-- 	call for a given SAP event id (which should be for one material master).
-	IF @trans_id NOT IN (
-		SELECT DISTINCT TransID
-		FROM SNDBaseDev.dbo.TransAct
-		WHERE ItemName = @part_name
-	)
-	BEGIN
-		-- [1] Preemtively set all parts to be removed for the given @sap_part_name
-		-- This ensures that any demand in Sigmanest that is not in SAP is
-		-- 	removed since SAP will not always tell us that the demand
-		-- 	was removed.
-		WITH Parts AS (
-			SELECT PartName, WONumber
-			FROM SNDBaseDev.dbo.Part AS Parts
-			WHERE Data17 = @sap_part_name
-			-- keeps additional removal transactions from being inserted if the
-			--	SimTrans runs in the middle of a data push.
-			AND Data18 != @sap_event_id
-		)
-		INSERT INTO SNDBaseDev.dbo.TransAct (
-			TransType,
-			District,
-			TransID,	-- for logging purposes
-			OrderNo,
-			ItemName,
-			Qty,
-			ItemData18
-		)
-		SELECT
-			'SN81B',	-- Modify part in work order
-			@simtrans_district,
-			@trans_id,
-			Parts.WONumber,
-			Parts.PartName,
-			0,
-			@sap_event_id
-		FROM Parts;
-	END;
-
-	-- handle on-hold
-	DECLARE @onhold BIT = CASE @process
-		WHEN 'DTE' THEN 1
-		ELSE 0
-	END;
-
-	-- reduce by renamed demand
+	-- [2] reduce by renamed demand
 	SET @qty = @qty - ISNULL((
 		SELECT SUM(Qty)
 		FROM sap.RenamedDemandAllocation
@@ -213,152 +155,54 @@ BEGIN
 		AND WorkOrderName  = @work_order
 	), 0);
 
-	-- @qty = 0 means SAP has no demand for that material master, so all demand
-	-- 	with the same @part_name needs to be removed from Sigmanest.
-	-- 	-> handled by [1]
-	IF @qty > 0
-	BEGIN
-		-- [2] Delete any staged SimTrans transactions that would
-		-- 	delete this demand before it is added/updated.
-		-- This removes transactions added in [1] that are not necessary.
-		-- This step is optional, but it helps the performance of the SimTrans.
-		DELETE FROM SNDBaseDev.dbo.TransAct
-		WHERE OrderNo = CONCAT(@work_order, CHOOSE(@onhold, '-onhold'))
-		AND ItemName = @part_name
-		AND ItemData18 = @sap_event_id;
+	-- [3] Add/Update demand via SimTrans
+	INSERT INTO sap.DemandQueue (
+		SapEventId,
+		SapPartName,
 
-		-- [3.1] Check if material exists in Sigmanest
-		EXEC sap.CheckMaterialExists @matl;
+		WorkOrder,
+		PartName,
+		Qty,
+		Matl,
+		OnHold,
 
-		-- [3.2] Add/Update demand via SimTrans
-		INSERT INTO SNDBaseDev.dbo.TransAct (
-			TransType,  -- `SN81B`
-			District,
-			TransID,	-- for logging purposes
-			OrderNo,	-- work order name
-			ItemName,	-- Material Master (part name)
-			OnHold,		-- part is available for nesting
-			DueDate,
-			Qty,
-			Material,	-- {spec}-{grade}{test}
-			Customer,	-- State(occurrence)
-			DwgNumber,	-- Drawing name
-			Remark,		-- autoprocess instruction
-			ItemData1,	-- Job(project)
-			ItemData2,	-- Shipment
-			ItemData3,	-- Raw material master (from BOM, if exists)
-			ItemData4,	-- secondary operation 1
-			ItemData5,	-- secondary operation 2
-			ItemData6,	-- secondary operation 3
-			ItemData9,	-- part name (Material Master with job removed)
-			ItemData10,	-- HeatSwap keyword
-			ItemData17,	-- SAP Part Name (for when PartName needs changed)
-			ItemData18	-- SAP event id
+		State,
+		Dwg,
+		Codegen,
+		Job,
+		Shipment,
+		Op1,
+		Op2,
+		Op3,
+		Mark,
+		RawMaterialMaster,
+		DueDate
+	)
+	VALUES (
+		@sap_event_id,
+		@sap_part_name,
 
-			-- Part Data schema
-			--	- Data1-9: Primary nesting processes data
-			--	- Data10-15: Secondary nesting data (automation required)
-			--	- Data16-18: SAP/Ops required metadata
-			--	Data1 : Job
-			--	Data2 : Shipment
-			--	Data3 : Raw material master (from BOM, if exists)
-			--	Data4 : Secondary operation 1
-			--	Data5 : Secondary operation 2
-			--	Data6 : Secondary operation 3
-			--	Data7 : <unused>
-			--	Data8 : <unused>
-			--	Data9 : Part name (Material Master with job removed)
-			--	Data10: HeatSwap keyword
-			--	Data11: Part requires secondary check (carried from parts list)
-			--	Data12: ChildPart relationship (for slabs)
-			--	Data13: ChildPart relationship (continued)
-			--	Data14: <unused>
-			--	Data15: <unused>
-			--	Data16: <unused>
-			--	Data17: SAP Part Name
-			--	Data18: SAP event id
+		@work_order,
+		@part_name,
+		@qty,
+		@matl,
+		CASE @process
+			WHEN 'DTE' THEN 1
+			ELSE 0
+		END,
 
-			-- Data{19,20} limitations (as of Sigmanest/SimTrans 24.4)
-			--	- exist in database
-			--	- cannot be interacted with using SimTrans or the Sigmanest GUI
-			--	- cannot be added as auto text on nests
-			--	Data19: <unused>
-			--	Data20: <unused>
-		)
-		VALUES (
-			'SN81B',
-			@simtrans_district,
-			@trans_id,
-
-			-- put on-hold parts in their own work order, since on-hold is a
-			--	work order level option
-			CONCAT(@work_order, CHOOSE(@onhold, '-onhold')),
-			@part_name,
-			@onhold,
-			@due_date,
-			@qty,
-			@matl,
-
-			@state,
-			@dwg,
-			@codegen,	-- autoprocess instruction
-			@job,
-			@shipment,
-			@raw_mm,
-			@op1,	-- secondary operation 1
-			@op2,	-- secondary operation 2
-			@op3,	-- secondary operation 3
-			@mark,	-- part name (Material Master with job removed)
-			@heatswap_keyword,
-			@sap_part_name,
-			@sap_event_id
-		);
-	END;
-
-	-- recursively call procedure for Renamed Demand
-	DECLARE RenamedDemandCursor CURSOR
-		LOCAL FORWARD_ONLY READ_ONLY
-	FOR
-		SELECT
-			NewPartName,
-			WorkOrderName,
-			Qty
-		FROM sap.RenamedDemandAllocation
-		WHERE OriginalPartName = @part_name
-		AND WorkOrderName = @work_order;
-
-	OPEN RenamedDemandCursor;
-	FETCH NEXT FROM RenamedDemandCursor
-		INTO @part_name, @work_order, @qty;
-
-	WHILE @@FETCH_STATUS = 0
-	BEGIN
-		EXEC sap.PushSapDemand
-			@sap_event_id,
-			@sap_part_name,
-			@work_order,
-			@part_name,
-			@qty,
-			@matl,
-			NULL,	-- Process: we don't want these on hold
-			@state,
-			@dwg,
-			@codegen,
-			@job,
-			@shipment,
-			@op1,
-			@op2,
-			@op3,
-			@mark,
-			@raw_mm,
-			@due_date;
-
-		FETCH NEXT FROM RenamedDemandCursor
-			INTO @part_name, @work_order, @qty;
-	END;
-
-	CLOSE RenamedDemandCursor;
-	DEALLOCATE RenamedDemandCursor;
+		@state,
+		@dwg,
+		@codegen,	-- autoprocess instruction
+		@job,
+		@shipment,
+		@op1,	-- secondary operation 1
+		@op2,	-- secondary operation 2
+		@op3,	-- secondary operation 3
+		@mark,	-- part name (Material Master with job removed)
+		@raw_mm,
+		@due_date
+	);
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.PushRenamedDemand
@@ -415,10 +259,10 @@ BEGIN
 	SELECT TOP 1
 		'Demand', 0, Data17
 	FROM SNDBaseDev.dbo.Part
-	LEFT JOIN sap.FeedbackQueue
-		ON FeedbackQueue.PartName = Part.Data17
 	WHERE Part.PartName = @original_part_name
-		AND FeedbackQueue.FeedBackId IS NULL;
+	EXCEPT
+	SELECT DataSet, ArchivePacketId, PartName
+		FROM sap.FeedbackQueue;
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.RemoveRenamedDemand
@@ -449,10 +293,202 @@ BEGIN
 	FROM SNDBaseDev.dbo.Part
 	INNER JOIN RenamedDemandAllocation AS Alloc
 		ON Part.PartName = Alloc.OriginalPartName
-	LEFT JOIN sap.FeedbackQueue
-		ON FeedbackQueue.PartName = Part.Data17
 	WHERE Alloc.Id = @id
-		AND FeedbackQueue.FeedBackId IS NULL;
+	EXCEPT
+	SELECT DataSet, ArchivePacketId, PartName
+		FROM sap.FeedbackQueue;
+END;
+GO
+CREATE OR ALTER PROCEDURE sap.DemandPreExec
+AS
+BEGIN
+	-- called before the SimTrans runs to
+	--	[1] consolidate staged data
+	--	[2] delete parts in Sigmanest but not Queue
+	--	[3] delete Queue items with no work order
+	--	[4] push data into the SimTrans
+	--	[5] clear queue
+
+	-- Note on SimTrans transactions used
+	--	- SN81B: sets the "qty to nest"
+	--	- SN82: remove the part from the work order
+	-- The use of the SN81B means that if the qty is 0, the part remains in the
+	--	work order with no demand.
+
+	-- [0] log procedure call
+	INSERT INTO log.SapDemandCalls(ProcCalled)
+	SELECT 'DemandPreExec'
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+	
+	-- place all this in a transaction for consistency
+	BEGIN TRANSACTION
+	
+		--	[1] remove queued items with a superceded SapEventId
+		DELETE FROM sap.DemandQueue
+		WHERE SapEventId NOT IN (
+			SELECT MAX(SapEventId) AS MaxId
+			FROM sap.DemandQueue
+			GROUP BY SapPartName
+		);
+
+		--	[2] push items not in queue for deletion
+		WITH ForDeletion AS (
+			SELECT WONumber, PartName
+			FROM SNDBaseDev.dbo.Part
+			WHERE QtyOrdered > 0
+			AND Data17 IN (
+				SELECT SapPartName FROM sap.DemandQueue
+			)
+			EXCEPT
+			SELECT WorkOrder, PartName
+			FROM sap.DemandQueue
+		),
+		IdMap AS (
+			SELECT DISTINCT
+				SapEventId,
+				Part.PartName AS IdPartName
+			FROM sap.DemandQueue
+			INNER JOIN SNDBaseDev.dbo.Part
+				ON Part.Data17=DemandQueue.SapPartName
+		)
+		INSERT INTO sap.DemandQueue(
+			SapEventId,
+			WorkOrder,
+			PartName,
+			Qty
+		)
+		SELECT
+			SapEventId,
+			WONumber,
+			PartName,
+			0
+		FROM ForDeletion
+		LEFT JOIN IdMap
+			ON IdMap.IdPartName=ForDeletion.PartName;
+
+		--	[3] delete items with no work order (Qty=0 items from SAP)
+		DELETE FROM sap.DemandQueue WHERE WorkOrder IS NULL;
+	
+		--	[4] push data into the SimTrans
+		WITH DemandAndAlloc AS (
+			SELECT
+				SapEventId,
+				SapPartName,
+
+				ISNULL(Alloc.WorkOrderName, DemandQueue.WorkOrder) AS WorkOrder,
+				ISNULL(Alloc.NewPartName, DemandQueue.PartName) AS PartName,
+				ISNULL(Alloc.Qty, DemandQueue.Qty) AS Qty,
+				Matl,
+				OnHold,
+
+				State,
+				Dwg,
+				Codegen,
+				Job,
+				Shipment,
+				Op1,
+				Op2,
+				Op3,
+				Mark,
+				RawMaterialMaster,
+				DueDate
+			FROM sap.DemandQueue
+			LEFT JOIN sap.RenamedDemandAllocation AS Alloc
+				ON Alloc.OriginalPartName=DemandQueue.PartName
+				AND Alloc.WorkOrderName=DemandQueue.WorkOrder
+		)
+		INSERT INTO SNDBaseDev.dbo.TransAct (
+			TransType,  -- `SN81B`
+			District,
+			TransID,	-- for logging purposes
+			OrderNo,	-- work order name
+			ItemName,	-- Material Master (part name)
+			OnHold,		-- part is available for nesting
+			DueDate,
+			Qty,
+			Material,	-- {spec}-{grade}{test}
+			Customer,	-- State(occurrence)
+			DwgNumber,	-- Drawing name
+			Remark,		-- autoprocess instruction
+			ItemData1,	-- Job(project)
+			ItemData2,	-- Shipment
+			ItemData3,	-- Raw material master (from BOM, if exists)
+			ItemData4,	-- secondary operation 1
+			ItemData5,	-- secondary operation 2
+			ItemData6,	-- secondary operation 3
+			ItemData9,	-- part name (Material Master with job removed)
+			ItemData10,	-- HeatSwap keyword
+			ItemData17,	-- SAP Part Name (for when PartName needs changed)
+			ItemData18	-- SAP event id
+
+			-- Part Data schema
+			--	- Data1-9: Primary nesting processes data
+			--	- Data10-15: Secondary nesting data (automation required)
+			--	- Data16-18: SAP/Ops required metadata
+			--	Data1 : Job
+			--	Data2 : Shipment
+			--	Data3 : Raw material master (from BOM, if exists)
+			--	Data4 : Secondary operation 1
+			--	Data5 : Secondary operation 2
+			--	Data6 : Secondary operation 3
+			--	Data7 : <unused>
+			--	Data8 : <unused>
+			--	Data9 : Part name (Material Master with job removed)
+			--	Data10: HeatSwap keyword
+			--	Data11: Part requires secondary check (carried from parts list)
+			--	Data12: ChildPart relationship (for slabs)
+			--	Data13: ChildPart relationship (continued)
+			--	Data14: <unused>
+			--	Data15: <unused>
+			--	Data16: <unused>
+			--	Data17: SAP Part Name
+			--	Data18: SAP event id
+
+			-- Data{19,20} limitations (as of Sigmanest/SimTrans 24.4)
+			--	- exist in database
+			--	- cannot be interacted with using SimTrans or the Sigmanest GUI
+			--	- cannot be added as auto text on nests
+			--	Data19: <unused>
+			--	Data20: <unused>
+		)
+		SELECT
+			'SN81B',
+			SimTransDistrict,
+			-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
+			-- The use of this as TransID is purely for diagnostic reasons,
+			-- 	so truncating it to the 10 least significant digits is OK.
+			RIGHT(SapEventId, 10),
+
+			-- put on-hold parts in their own work order, since on-hold is a
+			--	work order level option
+			CONCAT(WorkOrder, CHOOSE(OnHold, '-onhold')),
+			PartName,
+			OnHold,
+			DueDate,
+			Qty,
+			Matl,
+
+			State,
+			Dwg,
+			Codegen,	-- autoprocess instruction
+			Job,
+			Shipment,
+			RawMaterialMaster,
+			Op1,	-- secondary operation 1
+			Op2,	-- secondary operation 2
+			Op3,	-- secondary operation 3
+			Mark,	-- part name (Material Master with job removed)
+			HeatSwapKeyword,
+			SapPartName,
+			SapEventId
+		FROM DemandAndAlloc, sap.InterfaceConfig;
+
+		--	[5] clear queue
+		DELETE FROM sap.DemandQueue;
+	
+	-- end transaction
+	COMMIT TRANSACTION;
 END;
 GO
 
@@ -477,7 +513,7 @@ CREATE OR ALTER PROCEDURE sap.PushSapInventory
 AS
 SET NOCOUNT ON
 BEGIN
-	-- log procedure call
+	-- [0] log procedure call
 	INSERT INTO log.SapInventoryCalls(
 		ProcCalled,
 		sap_event_id,
@@ -512,14 +548,8 @@ BEGIN
 	FROM sap.InterfaceConfig
 	WHERE LogProcedureCalls = 1;
 
-	-- load SimTrans district from configuration
-	DECLARE @simtrans_district INT = (
-		SELECT TOP 1 SimTransDistrict
-		FROM sap.InterfaceConfig
-	);
-
-	-- load dxf path template from configuration and interpolate @sheet_name
-	DECLARE @dxf_file VARCHAR(255);
+	-- [1] validate SheetName for building DXF path at pre-SimTrans
+	--	this way we get errors for Boomi on what will fail later
 	IF @sheet_type IN ('Remnant', 'Planned Remnant')
 	BEGIN
 		-- Having an invalid filepath character in @sheet_name is catastrophic
@@ -536,82 +566,123 @@ BEGIN
 			--	and we still want to log the transaction call
 			RETURN;
 		END;
-
-		SET @dxf_file = (
-			SELECT TOP 1
-				-- CONCAT(RemnantDxfPath, '\', @sheet_name, '.dxf')
-				CONCAT(RemnantDxfPath, CHAR(92), @sheet_name, '.dxf')
-			FROM sap.InterfaceConfig
-		);
 	END;
-	 
 
-	-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
-	-- The use of this as TransID is purely for diagnostic reasons,
-	-- 	so truncating it to the 10 least significant digits is OK.
-	DECLARE @trans_id VARCHAR(10) = RIGHT(@sap_event_id, 10);
+	-- [2] Queue sheet for SimTrans PreExec
+	INSERT INTO sap.InventoryQueue(
+		SapEventId,
+		SheetName,	-- SheetName
+		SheetType,
+		Qty,
+		Matl,	-- {spec}-{grade}{test}
+		Thk,	-- Thickness batch characteristic
+		Width,
+		Length,
+		MaterialMaster,	-- Material Master
+		Notes1,	-- Notes line 1
+		Notes2,	-- Notes line 2
+		Notes3,	-- Notes line 3
+		Notes4	-- Notes line 4
+	)
+	VALUES (
+		@sap_event_id,
 
-	-- Pre-event processing for any group of calls for the same @sap_event_id
-	-- Because of this `IF` statement, this will only do anything on the first
-	-- 	call for a given SAP event id (which should be for one material master).
-	IF @trans_id NOT IN (SELECT DISTINCT TransID FROM SNDBaseDev.dbo.TransAct)
-	BEGIN
-		-- [1] Preemtively set all sheets to be removed for the given @mm
-		-- (excluding any sheets that are part of active nests). This makes
-		-- sure any sheets in Sigmanest that are not in SAP are removed since
-		-- SAP will not always tell us that those sheets were removed.
-		INSERT INTO SNDBaseDev.dbo.TransAct (
-			TransType,
-			District,
-			TransID,	-- for logging purposes
-			ItemName,
-			Qty,
-			Material,
-			Thickness,
-			Length,
-			Width
-		)
-		SELECT
-			'SN91A',
-			@simtrans_district,
-			@trans_id,
-			Stock.SheetName,
-			ISNULL(InProcess.QtyInProcess, 0),
-			Material,
-			Thickness,
-			Length,
-			Width
-		FROM SNDBaseDev.dbo.Stock
-		LEFT JOIN (
+		@sheet_name,
+		@sheet_type,
+		@qty,
+		@matl,
+		@thk,
+		@wid,
+		@len,
+		@mm,
+
+		-- SAP short text notes
+		@notes1,
+		@notes2,
+		@notes3,
+		@notes4
+	);
+END;
+GO
+CREATE OR ALTER PROCEDURE sap.InventoryPreExec
+AS
+BEGIN
+	-- called before the SimTrans runs to
+	--	[1] consolidate staged data
+	--	[2] (add to Queue) delete sheets in Sigmanest but not SimTrans
+	--	[3] delete Queue items with no SheetName
+	--	[4] delete compatible materials for sheet deletions
+	--	[5] push data into the SimTrans
+	--	[6] clear queue
+
+	-- [0] log procedure call
+	INSERT INTO log.SapInventoryCalls(ProcCalled)
+	SELECT 'InventoryPreExec'
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
+	-- place all this in a transaction for consistency
+	BEGIN TRANSACTION
+
+		-- [1] remove queued items with a superceded SapEventId
+		DELETE FROM sap.InventoryQueue
+		WHERE SapEventId NOT IN (
+			SELECT MAX(SapEventId) AS MaxId
+			FROM sap.InventoryQueue
+			GROUP BY MaterialMaster
+		);
+
+		-- [2] push items not in queue for deletion
+		WITH ForDeletion AS (
 			SELECT
 				SheetName,
-				SUM(QtyInProcess) AS QtyInProcess
-			FROM SNDBaseDev.dbo.SIP
-			GROUP BY SheetName
-		) AS InProcess
-			ON Stock.SheetName=InProcess.SheetName
-		WHERE SNDBaseDev.dbo.Stock.PrimeCode = @mm
-		-- keeps transactions from being inserted if the SimTrans runs
-		--	in the middle of a data push.
-		AND SNDBaseDev.dbo.Stock.BinNumber != @sap_event_id
-	END;
+				Material,
+				Thickness
+			FROM SNDBaseDev.dbo.Stock
+			WHERE PrimeCode IN (
+				SELECT MaterialMaster FROM sap.InventoryQueue
+			)
+			AND NOT EXISTS (
+				SELECT 1 FROM sap.InventoryQueue
+				WHERE InventoryQueue.SheetName=Stock.SheetName
+				OR InventoryQueue.SapEventId=Stock.BinNumber
+			)
+		),
+		IdMap AS (
+			SELECT DISTINCT
+				SapEventId,
+				Stock.SheetName AS IdSheetName
+			FROM sap.InventoryQueue
+			INNER JOIN SNDBaseDev.dbo.Stock
+				ON Stock.PrimeCode=InventoryQueue.MaterialMaster
+		)
+		INSERT INTO sap.InventoryQueue(
+			SapEventId, SheetName, Qty, Matl, Thk
+		)
+		SELECT
+			SapEventId,
+			SheetName,
+			0,
+			Material,	-- required for 'SN91A'
+			Thickness	-- required for 'SN91A'
+		FROM ForDeletion
+		LEFT JOIN IdMap
+			ON IdMap.IdSheetName=ForDeletion.SheetName;
 
-	-- @sheet_name is Null and @qty = 0 means SAP has no inventory for that
-	-- 	material master, so all inventory with the same @mm needs to be removed
-	-- 	from Sigmanest.
-	-- 	-> handled by [1]
-	IF @qty > 0
-	BEGIN
-		-- [2] Delete any staged SimTrans transactions that would delete/update
-		-- this sheet before it is added/updated.
-		-- This removes transactions added in [1] that are not necessary.
-		-- This step is optional, but it helps the performance of the SimTrans.
-		DELETE FROM SNDBaseDev.dbo.TransAct WHERE ItemName = @sheet_name;
+		--	[3] delete items with no sheet name (Qty=0 items from SAP)
+		DELETE FROM sap.InventoryQueue WHERE SheetName IS NULL;
 
-		-- [3.1] Check if material exists in Sigmanest
-		EXEC sap.CheckMaterialExists @matl;
+		-- [4] clear stock compatability for removals
+		--	'SN91A' becomes 'SN92' if Qty=0, and 'SN92' fails
+		--		if there are compatible materials set
+		DELETE from SNDBaseDev.dbo.StockCompatibility
+		WHERE SheetName in (
+			SELECT SheetName
+			FROM sap.InventoryQueue
+			WHERE Qty=0
+		);
 
-		-- [3.2] Add/Update stock via SimTrans
+		-- [5] push queued items to SimTrans
 		INSERT INTO SNDBaseDev.dbo.TransAct (
 			TransType,	-- `SN91A or SN97`
 			District,
@@ -630,36 +701,73 @@ BEGIN
 			ItemData4,	-- Notes line 4
 			FileName	-- {remnant geometry folder}\{SheetName}.dxf
 		)
-		VALUES (
+		SELECT
 			-- SimTrans transaction
-			CASE @sheet_type
-				WHEN 'Remnant' THEN 'SN97'
-				WHEN 'Planned Remnant' THEN 'SN97'
+			CASE
+				WHEN SheetType IN ('Remnant', 'Planned Remnant') THEN 'SN97'
 				-- SN91A works for everything, but requires special SimTrans options
-				ELSE 'SN91A' -- fails if @qty=0, which is handled by IF statement
+				ELSE 'SN91A' -- fails if @qty=0
 			END,
-			@simtrans_district,
-			@trans_id,
+			SimTransDistrict,
+			-- TransID is VARCHAR(10), but @sap_event_id is 20-digits
+			-- The use of this as TransID is purely for diagnostic reasons,
+			-- 	so truncating it to the 10 least significant digits is OK.
+			RIGHT(SapEventId, 10),
 
-			@sheet_name,
-			@qty,
-			@matl,
-			@thk,
-			@wid,
-			@len,
-			@mm,
-			@sap_event_id,
+			SheetName,
+			Qty,
+			Matl,
+			Thk,
+			Width,
+			Length,
+			MaterialMaster,
+			SapEventId,
 
 			-- SAP short text notes
-			@notes1,
-			@notes2,
-			@notes3,
-			@notes4,
+			Notes1,
+			Notes2,
+			Notes3,
+			Notes4,
 
 			-- sheet geometry DXF file (remnants only)
-			@dxf_file
-		);
-	END;
+			CASE
+				WHEN SheetType IN ('Remnant', 'Planned Remnant')
+					THEN CONCAT(RemnantDxfPath, CHAR(92), SheetName, '.dxf')
+				ELSE NULL
+			END
+		FROM sap.InventoryQueue, sap.InterfaceConfig;
+
+		-- [6] clear queue
+		DELETE FROM sap.InventoryQueue;
+	
+	-- end transaction
+	COMMIT TRANSACTION;
+END;
+GO
+CREATE OR ALTER PROCEDURE sap.InventoryPostExec
+AS
+BEGIN
+	-- [0] log procedure call
+	INSERT INTO log.SapInventoryCalls(ProcCalled)
+	SELECT 'InventoryPostExec'
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
+	-- [1] add material compatability for sheets
+	INSERT INTO SNDBaseDev.dbo.StockCompatibility (SheetName, Material)
+	SELECT SheetName, MatlCompatTable.ChildMatl
+	FROM SNDBaseDev.dbo.Stock
+	INNER JOIN sap.MatlCompatTable
+		ON MatlCompatTable.ParentMatl=Stock.Material
+	EXCEPT
+	SELECT SheetName, Material
+	FROM SNDBaseDev.dbo.StockCompatibility;
+
+	-- [2] delete orphaned StockCompatibility
+	DELETE FROM SNDBaseDev.dbo.StockCompatibility
+	WHERE SheetName NOT IN (
+		SELECT SheetName FROM SNDBaseDev.dbo.Stock
+	);
 END;
 GO
 
@@ -1143,5 +1251,21 @@ BEGIN
 		ISNULL(@username, CURRENT_USER)
 	FROM sap.ProgramId
 	WHERE ProgramId.ArchivePacketId = @archive_packet_id;
+END;
+GO
+
+-- ***************************************************
+-- *    SimTrans: Runs before SimTrans runs          *
+-- ***************************************************
+CREATE OR ALTER PROCEDURE sap.SimTransPreExec
+AS BEGIN
+	EXEC sap.AddNewMaterials;
+	EXEC sap.DemandPreExec;
+	EXEC sap.InventoryPreExec;
+END;
+GO
+CREATE OR ALTER PROCEDURE sap.SimTransPostExec
+AS BEGIN
+	EXEC sap.InventoryPostExec;
 END;
 GO
