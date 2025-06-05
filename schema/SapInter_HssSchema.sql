@@ -41,7 +41,45 @@ VALUES
 		@do_logging
 	);
 GO
-SELECT * FROM sap.InterfaceConfig;
+
+CREATE TABLE sap.MatlCompatMap (
+	Id INT IDENTITY(1,1) PRIMARY KEY,
+	ParentMatl VARCHAR(50),
+	ChildMatl VARCHAR(50),
+	UseIntermediateCompat BIT,
+	IsBidirectional BIT,
+
+	CONSTRAINT ParentChildDiffer
+		CHECK (ParentMatl != ChildMatl)
+);
+INSERT INTO sap.MatlCompatMap (
+	ParentMatl, ChildMatl, UseIntermediateCompat, IsBidirectional
+)
+VALUES
+	('50/50WF2',   'A709-50WF2', 1, 0),
+	('50/50WF2',   'A709-50F2',  1, 0),
+	('50/50WF2',   '50/50WT2',   0, 0),
+
+	('50/50WT2',   'A709-50WT2', 1, 0),
+	('50/50WT2',   'A709-50T2',  1, 0),
+	('50/50WT2',   '50/50W',     0, 0),
+
+	('50/50W',     'A709-50W',   1, 0),
+	('50/50W',     'A709-50',    1, 0),
+
+	('A709-50WF2', 'A709-50WT2', 1, 0),
+	('A709-50WT2', 'A709-50W',   1, 0),
+	('A709-50F2',  'A709-50T2',  1, 0),
+	('A709-50T2',  'A709-50',    1, 0),
+
+	-- A709 -> M270
+	('A709-50WF2', 'M270-50WF2', 1, 1),
+	('A709-50WT2', 'M270-50WT2', 1, 1),
+	('A709-50W',   'M270-50W',   1, 1),
+	('A709-50F2',  'M270-50F2',  1, 1),
+	('A709-50T2',  'M270-50T2',  1, 1),
+	('A709-50',    'M270-50',    1, 1);
+GO
 
 -- ********************************************
 -- *    Interface 1: Demand                   *

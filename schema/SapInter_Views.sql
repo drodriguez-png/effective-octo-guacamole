@@ -1,6 +1,60 @@
 USE SNInterDev;
 GO
 
+
+CREATE OR ALTER VIEW sap.MatlCompatTable AS
+	-- Recusively builds mapping of parent to child
+	--       (table)       ->        (view)
+	-- +--------+-------+      +--------+-------+
+	-- | Parent | Child |      | Parent | Child |
+	-- +--------+-------+      +--------+-------+
+	-- |   a    |   b   |  ->  |   a    |   b   |
+	-- |   b    |   c   |      |   a    |   c   |
+	-- +--------+-------+      |   b    |   c   |
+	--                         +--------+-------+
+	
+	WITH
+		WithM270Map AS (
+			SELECT
+				ParentMatl,
+				ChildMatl,
+				UseIntermediateCompat,
+				1 AS UseRecursion
+			FROM sap.MatlCompatMap
+			UNION
+			SELECT
+				ChildMatl,
+				ParentMatl,
+				UseIntermediateCompat,
+				0 AS UseRecursion
+			FROM sap.MatlCompatMap
+			WHERE IsBidirectional = 1
+		),
+		ExpandedCompat AS (
+			SELECT
+				ParentMatl,
+				ChildMatl,
+				UseRecursion
+			FROM WithM270Map
+			-- so that we can keep intermediate grades from exporting
+			WHERE UseIntermediateCompat = 1
+			UNION ALL
+			SELECT
+				BaseCompat.ParentMatl,
+				RecursiveCompat.ChildMatl,
+				BaseCompat.UseRecursion
+			FROM WithM270Map AS BaseCompat
+			INNER JOIN ExpandedCompat AS RecursiveCompat
+				ON BaseCompat.ChildMatl = RecursiveCompat.ParentMatl
+			WHERE BaseCompat.ParentMatl != RecursiveCompat.ChildMatl
+			AND RecursiveCompat.UseRecursion = 1
+		)
+	SELECT DISTINCT
+		ParentMatl,
+		ChildMatl
+	FROM ExpandedCompat;
+GO
+
 CREATE OR ALTER VIEW sap.ProgramId
 AS
 	SELECT DISTINCT
@@ -94,7 +148,7 @@ AS
 		ON Program.ProgramGUID=ChildPlate.ProgramGUID
 	INNER JOIN WorkOrderParts
 		ON WorkOrderParts.ProgramName=ChildPlate.ChildNestProgramName
-		AND WorkOrderParts.RepeatID=ChildPlate.ChildNestRepeatID
+		AND WorkOrderParts.RepeatID=ChildPlate.ChildNestRepeatID;
 GO
 
 CREATE OR ALTER VIEW sap.RenamedDemandAllocationInProcess
