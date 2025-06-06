@@ -10,14 +10,17 @@ ENV_CONFIG = {
         ("Qas", 4, True),
         ("Dev", 3, True),
     ],
-    "Prd": [
+    # "Prd": [
+    #     ("Prd", 5, False),
+    # ],
+    "91": [
         ("Prd", 5, False),
     ],
 }
 
 INTER_DB = re.compile("SNInterDev")
-SIGMA_DB = re.compile(r"(SNDBase)Dev(\.\w+\.(?!TransAct)\w+)")
-SIMTRANS_DB = re.compile(r"(SNDBase)Dev(\.dbo\.TransAct)")
+SIMTRANS_DB = re.compile(r"SNDBaseDev(\.dbo\.TransAct)")
+SIGMA_DB = re.compile(r"SNDBaseDev(\.\w+\.(?!TransAct)\w+)")
 CONFIG_DISTRICT = re.compile(r"(DECLARE @district INT =) 1;")
 CONFIG_LOGGING = re.compile(r"(DECLARE @do_logging BIT =) 0;")
 CONFIG_ENV = re.compile(r"(DECLARE @env_name VARCHAR\(8\) =) 'Qas';")
@@ -35,8 +38,8 @@ def generate(env, district, do_logging, simtrans):
             sql = sql_file.read()
 
         sql = INTER_DB.sub(f"SNInter{env}", sql)
-        sql = SIGMA_DB.sub(f"\\1{env}\\2", sql)
-        sql = SIMTRANS_DB.sub(f"\\1{simtrans}\\2", sql)
+        sql = SIMTRANS_DB.sub(f"SNDBase{simtrans}\\1", sql)
+        sql = SIGMA_DB.sub(f"SNDBase{env}\\1", sql)
 
         if f == "SapInter_HssSchema.sql":
             sql = CONFIG_DISTRICT.sub(f"\\1 {district};", sql)
