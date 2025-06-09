@@ -3,3 +3,5 @@
 SQLQuery*.sql
 patches/*.sql
 tests/*.sql
+
+*Migrations.sql
