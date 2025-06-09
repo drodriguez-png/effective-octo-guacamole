@@ -30,7 +30,9 @@ BEGIN
 	--	- Material is not in Sigmanest material list
 	--	- an existing SN60 does not exist in the SimTrans
 	WITH
+		-- Material names to add
 		MatlNames AS (
+			-- get materials in Queues
 			SELECT DISTINCT
 				Matl AS MaterialName
 			FROM (
@@ -39,12 +41,17 @@ BEGIN
 				SELECT Matl FROM sap.InventoryQueue
 			) AS Queues
 
+			-- exclude existing materials in Sigmanest
 			EXCEPT SELECT MaterialType
 				FROM SNDBaseDev.dbo.Material
+
+			-- exclude conflicting material additions already in the SimTrans
 			EXCEPT SELECT Material
 				FROM SNDBaseDev.dbo.TransAct
 				WHERE TransType = 'SN60'
 		),
+
+		-- Assume mild steel: get group name and density
 		MildSteelData AS (
 			SELECT TOP 1
 				MatGroupName, DensityIn
@@ -57,8 +64,8 @@ BEGIN
 		TransType,
 		District,
 		Material,
-		ItemData1,
-		Param1
+		ItemData1,	-- material group name
+		Param1		-- material density
 	)
 	SELECT
 		'SN60',
