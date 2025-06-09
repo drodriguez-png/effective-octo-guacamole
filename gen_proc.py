@@ -63,7 +63,7 @@ def generate(env, district, do_logging, simtrans):
             sql_file.write(sql)
 
 
-def deploy(sqlfile, env):
+def deploy(sqlfile, env, success=None):
     """Deploys the generated SQL files to the database."""
 
     try:
@@ -81,7 +81,7 @@ def deploy(sqlfile, env):
             ],
             check=True,
         )
-        print(f"🚀 {sqlfile} 🎯 {env}")
+        print(success or f"🚀 {sqlfile} 🎯 {env}")
     except Exception as e:
         print(f"💥 {sqlfile} 💫 {env}")
 
@@ -112,10 +112,12 @@ def main():
         for env in envs:
             generate(*env, simtrans)
 
+
+
     for env in map(str.capitalize, args.env):
         if args.migrate:
             sql = path.join("dist", f"{env}_SapInter_Migrations.sql")
-            deploy(sql, env)
+            deploy(sql, env, success=f"✈️ {env} Migrations deployed successfully!")
         if args.deploy:
             for fn in DEPLOY_FILES:
                 sql = path.join("dist", f"{env}_{fn}")
