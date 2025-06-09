@@ -1,5 +1,7 @@
-from os import path, mkdir
+from argparse import ArgumentParser
 from glob import glob
+from os import path, mkdir
+import subprocess
 import re
 
 ENV_CONFIG = {
@@ -17,6 +19,16 @@ ENV_CONFIG = {
         ("Prd", 5, False),
     ],
 }
+DEPLOY_CONFIG = {
+    "Dev": "hiisqlserv6",
+    "Qas": "hiisqlserv6",
+    "Prd": "HSSSNData",
+}
+DEPLOY_FILES = [
+    "SapInter_DebugProc.sql",
+    "SapInter_Proc.sql",
+    "SapInter_Views.sql",
+]
 
 INTER_DB = re.compile("SNInterDev")
 SIMTRANS_DB = re.compile(r"SNDBaseDev(\.dbo\.TransAct)")
@@ -26,6 +38,7 @@ CONFIG_LOGGING = re.compile(r"(DECLARE @do_logging BIT =) 0;")
 CONFIG_ENV = re.compile(r"(DECLARE @env_name VARCHAR\(8\) =) 'Qas';")
 
 schema_dir = path.join(path.dirname(__file__), "schema")
+
 
 def generate(env, district, do_logging, simtrans):
     try:
@@ -50,10 +63,63 @@ def generate(env, district, do_logging, simtrans):
             sql_file.write(sql)
 
 
+def deploy(sqlfile, env):
+    """Deploys the generated SQL files to the database."""
+
+    try:
+        subprocess.run(
+            [
+                "sqlcmd",
+                "-S",   # SQL Server instance
+                DEPLOY_CONFIG[env],
+                "-E",   # Use Windows Authentication
+                "-b",   # return errorlevel 1 on error
+                "-i",   # Input file
+                sqlfile,
+                "-o",   # Output file
+                sqlfile.replace('dist', 'log').replace('.sql', '.log'),
+            ],
+            check=True,
+        )
+        print(f"🚀 {sqlfile} 🎯 {env}")
+    except Exception as e:
+        print(f"💥 {sqlfile} 💫 {env}")
+
+
 def main():
+    default_deploy = map(str.lower, DEPLOY_CONFIG.keys())
+
+    parser = ArgumentParser(
+        description="Generate and deploy SQL procedures for different environments."
+    )
+    parser.add_argument(
+        "--deploy",
+        action="store_true",
+        help="Deploy the generated SQL files to the database.",
+    )
+    parser.add_argument(
+        "--migrate", action="store_true", help="Deploy migration files."
+    )
+    parser.add_argument(
+        "env",
+        nargs="*",
+        default=list(default_deploy),
+        help="Specify the environments to deploy/migrate.",
+    )
+    args = parser.parse_args()
+
     for simtrans, envs in ENV_CONFIG.items():
         for env in envs:
             generate(*env, simtrans)
+
+    for env in map(str.capitalize, args.env):
+        if args.migrate:
+            sql = path.join("dist", f"{env}_SapInter_Migrations.sql")
+            deploy(sql, env)
+        if args.deploy:
+            for fn in DEPLOY_FILES:
+                sql = path.join("dist", f"{env}_{fn}")
+                deploy(sql, env)
 
 
 if __name__ == "__main__":

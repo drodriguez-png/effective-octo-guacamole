@@ -13,15 +13,20 @@ heatswap:
     cp target/build/cleanup.exe \\hssieng\sndatadev\_simtrans
     cp target/build/cleanup.exe \\hssieng\sndataqas\_simtrans
 
-gensql: clean
-    python gen_proc.py
+gensql *args: clean
+    uv run gen_proc.py {{args}}
 
-slab:
-    uv run schema/gen_slab.py
+sql env *cmd:
+    @sqlcmd -S {{ if env == "prd" { "HSSSNData" } else { "hiisqlserv6" } }} -E -d SNInter{{capitalize(env)}} -b -Q {{quote(cmd)}}
+cfg env:
+    @just sql {{env}} "select * from sap.InterCfgState"
+view env *view:
+    @just sql {{env}} "select * from {{view}}"
 
 convert *args: clean
     uv run convert_bom.py {{args}}
 
-clean:
+@clean:
+    rm log/*
     rm dist/*_SapInter_*.sql
     rm conversion/output/*.ready
