@@ -109,7 +109,6 @@ BEGIN
 	-- [0] log procedure call
 	-- [1] set @mark by stripping @job from @part_name
 	-- [2] Queue demand for SimTrans PreExec
-	-- [3] push SimTrans trigger transaction
 
 	-- [0] log procedure call
 	INSERT INTO log.SapDemandCalls (
@@ -208,15 +207,6 @@ BEGIN
 		@raw_mm,
 		@due_date
 	);
-
-	-- [3] push SimTrans trigger transaction
-	-- the SimTrans will not trigger for a district without any transactions
-	--	(pre-exec will not be called)
-	INSERT INTO SNDBaseDev.dbo.TransAct (TransType, District)
-	SELECT 'TRIGGER', SimTransDistrict
-	FROM sap.InterfaceConfig
-	EXCEPT
-	SELECT TransType, District FROM SNDBaseDev.dbo.TransAct
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.PushRenamedDemand
@@ -325,7 +315,7 @@ CREATE OR ALTER PROCEDURE sap.DemandPreExec
 AS
 BEGIN
 	-- called before the SimTrans runs to
-	-- [1] consolidate staged data
+	-- [1] add material grades to Sigmanest
 	-- [2] delete parts in Sigmanest but not Queue
 	-- [3] delete Queue items with no work order
 	-- [4] reduce by renamed demand
@@ -346,14 +336,8 @@ BEGIN
 	
 	-- place all this in a transaction for consistency
 	BEGIN TRANSACTION
-	
-		-- [1] remove queued items with a superceded SapEventId
-		DELETE FROM sap.DemandQueue
-		WHERE SapEventId NOT IN (
-			SELECT MAX(SapEventId) AS MaxId
-			FROM sap.DemandQueue
-			GROUP BY SapPartName
-		);
+		-- [1] add material grades to Sigmanest
+		EXEC sap.AddNewMaterials;
 
 		-- [2] push items not in queue for deletion
 		WITH ForDeletion AS (
@@ -540,7 +524,6 @@ BEGIN
 	-- [0] log procedure call
 	-- [1] validate SheetName for building DXF path at pre-SimTrans
 	-- [2] Queue sheet for SimTrans PreExec
-	-- [3] push SimTrans trigger transaction
 
 	-- [0] log procedure call
 	INSERT INTO log.SapInventoryCalls(
@@ -631,22 +614,13 @@ BEGIN
 		@notes3,
 		@notes4
 	);
-
-	-- [3] push SimTrans trigger transaction
-	-- the SimTrans will not trigger for a district without any transactions
-	--	(pre-exec will not be called)
-	INSERT INTO SNDBaseDev.dbo.TransAct (TransType, District)
-	SELECT 'TRIGGER', SimTransDistrict
-	FROM sap.InterfaceConfig
-	EXCEPT
-	SELECT TransType, District FROM SNDBaseDev.dbo.TransAct
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.InventoryPreExec
 AS
 BEGIN
 	-- called before the SimTrans runs to
-	-- [1] consolidate staged data
+	-- [1] add material grades to Sigmanest
 	-- [2] (add to Queue) delete sheets in Sigmanest but not SimTrans
 	-- [3] delete Queue items with no SheetName
 	-- [4] delete compatible materials for sheet deletions
@@ -661,14 +635,8 @@ BEGIN
 
 	-- place all this in a transaction for consistency
 	BEGIN TRANSACTION
-
-		-- [1] remove queued items with a superceded SapEventId
-		DELETE FROM sap.InventoryQueue
-		WHERE SapEventId NOT IN (
-			SELECT MAX(SapEventId) AS MaxId
-			FROM sap.InventoryQueue
-			GROUP BY MaterialMaster
-		);
+		-- [1] add material grades to Sigmanest
+		EXEC sap.AddNewMaterials;
 
 		-- [2] push items not in queue for deletion
 		WITH ForDeletion AS (
@@ -1311,16 +1279,9 @@ GO
 -- ***************************************************
 CREATE OR ALTER PROCEDURE sap.SimTransPreExec
 AS BEGIN
-	EXEC sap.AddNewMaterials;
-	EXEC sap.DemandPreExec;
-	EXEC sap.InventoryPreExec;
-	
-	-- remove SimTrans trigger transaction
-	DELETE FROM SNDBaseDev.dbo.TransAct
-	WHERE TransType = 'TRIGGER'
-	AND District IN (
-		SELECT SimTransDistrict FROM sap.InterfaceConfig
-	);
+	-- moved to Boomi
+	-- TODO: remove from SimTrans configuration
+	SELECT 1;
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.SimTransPostExec
