@@ -42,6 +42,19 @@ VALUES
 	);
 GO
 
+CREATE TABLE sap.InterfaceVersion (
+	Lock TINYINT NOT NULL DEFAULT 1,
+	CONSTRAINT PK_VERSION PRIMARY KEY (Lock),
+	CONSTRAINT CK_VERSION_LOCKED CHECK (Lock = 1),
+	-- semver <major>.<minor>.<patch>
+	Major INT NOT NULL,
+	Minor INT NOT NULL,
+	Patch INT NOT NULL
+);
+INSERT INTO sap.InterfaceVersion (Major, Minor, Patch)
+VALUES (0, 0, 0);
+GO
+
 CREATE TABLE sap.MatlCompatMap (
 	Id INT IDENTITY(1,1) PRIMARY KEY,
 	ParentMatl VARCHAR(50),

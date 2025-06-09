@@ -1,6 +1,14 @@
 USE SNInterDev;
 GO
 
+CREATE OR ALTER VIEW sap.InterCfgState
+AS
+	SELECT
+		CONCAT('v', Major, '.', Minor, '.', Patch) AS Version,
+		SimTransDistrict,
+		LogProcedureCalls
+	FROM sap.InterfaceConfig, sap.InterfaceVersion;
+GO
 
 CREATE OR ALTER VIEW sap.MatlCompatTable AS
 	-- Recusively builds mapping of parent to child
