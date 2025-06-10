@@ -9,12 +9,13 @@ gumdrop = "0.8.1"
 log = "0.4.27"
 regex = "1.11.1"
 simplelog = "0.12.2"
+spex = "0.2.2"
 thiserror = "2.0.3"
 
 [[bin]]
 name = "heatswap"
-path = "src/heatswap.rs"
+path = "src/bin/heatswap.rs"
 
 [[bin]]
 name = "heatswap-cleanup"
-path = "src/cleanup.rs"
+path = "src/bin/cleanup.rs"

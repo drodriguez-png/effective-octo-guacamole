@@ -1,4 +1,3 @@
-
 use log;
 use simplelog::{
     ColorChoice, CombinedLogger, Config, LevelFilter, TermLogger, TerminalMode, WriteLogger,
@@ -9,6 +8,8 @@ use std::fs::OpenOptions;
 use gumdrop::Options;
 use regex::Regex;
 
+// TODO: 4a/4b executables
+
 /// Heat Swap NC code interface
 #[derive(Debug, gumdrop::Options)]
 struct Cli {
@@ -18,6 +19,9 @@ struct Cli {
     /// name of the NC program
     #[options(free)]
     program: String,
+    /// heat number(s) of the selected batch(es)
+    #[options(free)]
+    heat: String,
 
     /// print help message
     help: bool,
@@ -31,6 +35,10 @@ enum ValidationError {
     InvalidMachine,
     #[error("Invalid program name")]
     InvalidProgramName,
+    #[error("At least 1 heat number must be provided")]
+    NoHeatNumbers,
+    #[error("Heat numbers could not be parsed")]
+    HeatNumbersParsingError,
     #[error("I/O Error")]
     IoError(#[from] std::io::Error),
 }
@@ -39,34 +47,48 @@ enum ValidationError {
 struct Program {
     machine: String,
     name: String,
+    heat: Vec<String>,
 }
 
 impl Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} -> at {}",
+            "{} -> [{}] at {}",
             self.name,
+            self.heat.join("|"),
             self.machine
         )
     }
 }
 
 impl Cli {
-    fn validate(self) -> Result<Program, ValidationError> {
-        // TODO: validate program name (file exists)
+    fn validate(&self) -> Result<Program, ValidationError> {
         if self.program == "invalid" {
             return Err(ValidationError::InvalidProgramName);
         }
 
-        // TODO: validate machine from config
         if self.machine == "invalid" {
             return Err(ValidationError::InvalidMachine);
         }
 
+        if self.heat.is_empty() {
+            return Err(ValidationError::NoHeatNumbers);
+        }
+
+        let template = Regex::new(r"(?:\(\w+\))+").unwrap();
+        if !template.is_match(&self.heat) {
+            return Err(ValidationError::HeatNumbersParsingError);
+        }
+
+        let words = Regex::new(r"\w+").unwrap();
         Ok(Program {
-            machine: self.machine,
-            name: self.program,
+            machine: self.machine.clone(),
+            name: self.program.clone(),
+            heat: words
+                .find_iter(&self.heat)
+                .map(|m| String::from(m.as_str()))
+                .collect(),
         })
     }
 }
@@ -93,22 +115,20 @@ fn main() -> Result<(), ValidationError> {
                 .write(true)
                 .append(true)
                 .create(true)
-                .open("cleanup.log")?,
+                .open("heatswap.log")?,
         ),
     ]);
 
     log::debug!("{:?}", args);
-    let prog = args.validate()?;
-
-    move_code_4p(prog)
-}
-
-fn move_code_4b(prog: &Program) -> io::Result<()> {
-    // TODO: path from OYS HeatSwap config (QAS/DEV)
-    let src_files = glob(format!(r"\\hssieng\SNDataDev\NC\AtMachine\{}*", program.name)).unwrap();
-    for src in src_files {
-        fs::rename(src, src.replace("AtMachine", "Archive"))?;
+    match args.validate() {
+        Ok(prog) => log::info!("{}", prog),
+        Err(e) => log::error!("Error: {}", e),
     }
+
+    // TODO: move file to production folder
+    // TODO: get extension
+    let path = format!(r"\\hssieng\SNDataDev\NC\SapPostOutput\{}.{}", &args.program, "nc");
+    std::fs::rename(&path, &path.replace("SapPostOutput", "AtMachine"))?;
 
     Ok(())
 }
