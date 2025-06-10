@@ -36,7 +36,7 @@ def tsv_wrapper(func):
         line = func(self, line)
         if line:
             line = [s or '' for s in line]
-            return "\t".join(line) + "\n"
+            return "\t".join(line)
         return ''
 
     return wrapper
@@ -91,12 +91,13 @@ class ReadyFile(object):
         with open(os.path.join(FOLDER, 'input', self.file_name), "r") as file:
             lines = file.readlines()
 
+
         with open(os.path.join(FOLDER, 'output', self.file_name.replace('.ready', '_Conv.ready')), "w") as file:
             if self.has_header():
-                file.write(self.convert_header(lines.pop(0)))
+                file.write(self.convert_header(lines.pop(0)) + "\n")
 
-            for line in lines:
-                file.write(self.convert_line(line))
+            lines = "\n".join(map(self.convert_line, lines))
+            file.write(lines)
 
     @tsv_wrapper
     def convert_header(self, line):
