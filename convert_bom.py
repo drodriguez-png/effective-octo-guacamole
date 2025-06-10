@@ -97,7 +97,9 @@ class ReadyFile(object):
             if self.has_header():
                 file.write(self.convert_header(lines.pop(0)) + "\n")
 
-            lines = "\n".join(map(self.convert_line, lines))
+            lines = map(self.convert_line, lines)
+            lines = filter(lambda x: x, lines)
+            lines = "\n".join(lines)
             file.write(lines)
 
     @tsv_wrapper
@@ -115,10 +117,13 @@ class ReadyFile(object):
 
         match = STOCK_MM.match(mm)
         if match:
-            grade, inches, frac = match.groups()
+            grade, inches, frac, suffix = match.groups()
+
+            if grade == "50/50W":
+                grade = "50/50WT2"
 
             inches = int(inches) + float(frac) / 16
-            return "{}-{:.3f}".format(grade, inches).rstrip("0").rstrip(".")
+            return "{}-{:.3f}".format(grade, inches).rstrip("0").rstrip(".") + suffix
 
         if self.test_id:
             mm[3] = str(self.test_id)
