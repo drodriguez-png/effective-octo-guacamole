@@ -13,6 +13,7 @@ from fractions import Fraction
 import csv
 import os
 import re
+from types import SimpleNamespace
 
 CONE_BOM = re.compile(r"ConeBOM_\d{7}[A-Z]\d{2}\.ready")
 CONE_MAT = re.compile(r"ConeMAT_\d{7}[A-Z]\d{2}\.ready")
@@ -240,55 +241,109 @@ class ProjMM(ReadyFile):
         line[17:20] = part_grades.setdefault(line[1], [None] * 3)
 
         return line
+    
+class ZFileParser(object):
+    """
+    Base class for ZHPP009 and ZHMM002 parsers.
+    Provides a common interface for parsing and generating files.
+    """
+
+    def parse_header(self, sheet):
+        """
+        Parse the header of the Excel sheet.
+        This method should be overridden by subclasses.
+        """
+        raise NotImplementedError("Subclasses must implement parse_header method.")
+    
+    def parse_row(self, row):
+        """
+        Parse a single row of the Excel sheet.
+        This method should be overridden by subclasses.
+        """
+        namespace = SimpleNamespace()
+
+        for k, v in self.h.__dict__.items():
+            setattr(namespace, k, row[v])
         
-class ZHPP009Parser:
+        return namespace
+    
+    def rows(self, sheet):
+        """
+        Generate rows from the Excel sheet.
+        This method should be overridden by subclasses.
+        """
+        self.parse_header(sheet)
+
+        end = max(self.h.__dict__.values()) + 1
+        for row in sheet.range((2,1), (2, end)).expand("down").value:
+            yield self.parse_row(row)
+
+    def write_ready_file(self, filename, lines):
+        text = "\n".join("\t".join(map(str, line)) for line in lines)
+        with open(os.path.join(FOLDER, 'input', filename), "w") as file:
+            file.write(text)
+        print(f"Generated {len(lines)} lines for {filename} in input folder.")
+
+class ZHPP009Parser(ZFileParser):
     """
     This class is used to parse ZHPP009 files.
     generates lines that pass the test:
         - UoM is IN2 or FT2
     """
 
+    def __init__(self):
+        self.reset()
+    
+    def reset(self):
+        self.h = SimpleNamespace()
+        self.bom = list()
+
     def matches_filename(self, workbook):
         return "ZHPP009" in workbook.name.upper()
+    
+    def parse_header(self, sheet):
+        header = sheet.range("A1").expand("right").value
+        self.h.matl = header.index("Material")
+        self.h.raw_mm = header.index("Component")
+        self.h.area = header.index("Quantity")
+        self.h.unit = header.index("Un")
+        self.h.scrap = header.index("C.scrap")
+
+    def generate_row(self, row):
+        self.bom.append([
+            row.matl,    # PartName
+            row.raw_mm,  # RawMM
+            row.area,    # Area
+            row.unit,    # UoM
+            "", "", "",   # placeholders
+            row.scrap    # Scrap
+        ])
+
+    def export(self, basename):
+        if self.bom:
+            name = f"{basename}_BOM.ready"
+            self.write_ready_file(name, self.bom)
+            ConeBOM(name).convert()
 
     def generate_from_xl(self, workbook):
         """
         Generate a ConeBOM file from a ZHPP009 export Excel file.
         """
-        sheet = workbook.sheets.active
 
-        header = sheet.range("A1").expand("right").value
-        matl = header.index("Material")
-        raw_mm = header.index("Component")
-        area = header.index("Quantity")
-        unit = header.index("Un")
-        scrap = header.index("C.scrap")
-        
         # format: PartName, RawMM, Area, UoM, <blank>, <blank>, <blank>, Scrap
-        lines = []
-        end = max(matl, raw_mm, area, unit, scrap) + 1
-        for row in sheet.range((2,1), (2, end)).expand("down").value:
-            if row[unit] not in ("IN2", "FT2"):
+        sheet = workbook.sheets.active
+        for row in self.rows(sheet):
+            if row.matl in (None, ""):
+                continue
+            if row.unit not in ("IN2", "FT2"):
                 continue
 
-            lines.append([
-                row[matl],    # PartName
-                row[raw_mm],  # RawMM
-                row[area],    # Area
-                row[unit],    # UoM
-                "", "", "",   # placeholders
-                row[scrap]    # Scrap
-            ])
+            self.generate_row(row)
 
-        if lines:
-            name = "{}_BOM.ready".format(workbook.name.split('.')[0])
-            with open(os.path.join(FOLDER, 'input', name), "w") as file:
-                for line in lines:
-                    file.write("\t".join(str(x) for x in line) + "\n")
-                print(f"Generated {len(lines)} lines for {name} in input folder.")
-            ConeBOM(name).convert()
+        self.export(workbook.name.split('.')[0])
+        self.reset()  # Reset for next file
 
-class ZHMM002Parser:
+class ZHMM002Parser(ZFileParser):
     """
     This class is used to parse ZHMM002 files.
     Project MM files are generated for lines that pass the test:
@@ -302,122 +357,139 @@ class ZHMM002Parser:
         - Material Description starts with PL, MISC, or SHEET
     """
 
-    @staticmethod
-    def matches_filename(workbook):
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.h = SimpleNamespace()
+        self.skipped = dict()
+        self.exported = list()
+        self.mm = list()
+        self.mat = list()
+
+        self.mm.append("PARTTYPE	MM	DESCRIPTION	UOM	WEIGHT	ALTDIM	ALTUOM	VOLUME	LENGTH	WIDTH	HEIGHT	ROUTING	DOCUMENT	PURCHTEXT	DOCNAME	DOCPATH	INDUSTRYSTD	SPEC	GRADE	TEST	ASSYMETHOD	DOCNO".split("\t"))
+        
+
+    def matches_filename(self, workbook):
         return "ZHMM002" in workbook.name.upper()
-
-    @staticmethod
-    def generate_from_xl(workbook):
-        """
-        Generate a ZHMM002 file from a ZHMM002 export Excel file.
-        """
-        
-        sheet = workbook.sheets.active
-
-        header = sheet.range("A1").expand("right").value
-        matl = header.index("Material")
-        desc = header.index("Material Description")
-        matl_type = header.index("MTyp")
-        size = header.index("Size/dimensions")
-        grade = header.index("Industry Std Desc.")
-        uom = header.index("BUn")
-        pdt = header.index("PDT")
-        weight = header.index("Gross Weight")
-        doc = header.index("Document")
-
-        def parse_size(size):
-            t,w,l = map(lambda x: round(float(x), 3), size.split(' X '))
-
-            return [l, w, t]
-
-        def generate_mm(row):
-            assert row[uom] == "EA", "UoM is not EA"
-            if row[matl][:8] == row[doc][:8]:
-                return None
-
-            part_type = "PART"
-            if WEB_PART.match(row[matl]):
-                part_type = "WEB"
-            elif FLG_PART.match(row[matl]):
-                part_type = "FLANGE"
-
-            return [
-                part_type,  # PartType
-                row[matl],  # MM
-                row[desc],  # Description
-                row[uom],  # UOM
-                row[weight],  # Weight
-                "",  # AltDim
-                "",  # AltUOM
-                "",  # Volume
-                *parse_size(row[size]),  # Length, Width, Height
-                "HS PARTS",  # Routing
-                "",  # Document (will be moved later)
-                "",  # PurchText
-                row[doc],  # DocName
-                "",  # DocPath
-                row[grade],  # IndustryStd
-            ]
-
-        def generate_mat(row):
-            if row[uom] not in ("IN2", "FT2"):
-                return None
-
-            _type = "RawDetail"
-            if WEB_MM.match(row[matl]):
-                _type = "RawWeb"
-            elif FLG_MM.match(row[matl]):
-                _type = "RawFlange"
-
-            return [
-                row[matl],  # RawMM
-                row[desc],  # Description
-                _type,  # Type
-                *parse_size(row[size]),  # Length, Width, Thickness
-                row[weight],  # UnitWeight in FT2
-                row[uom],  # UoM
-                row[grade],  # Grade
-                104152,  # Vendor (hardcoded)
-                "",  # Price
-                row[pdt],  # DeliveryTime
-            ]
-        
     
-        mm, mat = [], []
-        mm.append("PARTTYPE	MM	DESCRIPTION	UOM	WEIGHT	ALTDIM	ALTUOM	VOLUME	LENGTH	WIDTH	HEIGHT	ROUTING	DOCUMENT	PURCHTEXT	DOCNAME	DOCPATH	INDUSTRYSTD	SPEC	GRADE	TEST	ASSYMETHOD	DOCNO".split("\t"))
-        end = max(matl, desc, matl_type, size, grade, uom, pdt, weight, doc) + 1
-        for row in sheet.range((2,1), (2, end)).expand("down").value:
-            if row[desc].split(' ')[0].upper() not in ('PL', 'MISC', 'SHEET'):
-                continue
+    def parse_header(self, sheet):
+        header = sheet.range("A1").expand("right").value
+        self.h.matl = header.index("Material")
+        self.h.desc = header.index("Material Description")
+        self.h.matl_type = header.index("MTyp")
+        self.h.size = header.index("Size/dimensions")
+        self.h.grade = header.index("Industry Std Desc.")
+        self.h.uom = header.index("BUn")
+        self.h.pdt = header.index("PDT")
+        self.h.weight = header.index("Gross Weight")
+        self.h.doc = header.index("Document")
+        self.h.length = header.index("Length")
+        self.h.width = header.index("Width")
+        self.h.thickness = header.index("Height")
 
-            match row[matl_type]:
-                case "HALB":
-                    line = generate_mm(row)
-                    if line:
-                        mm.append(line)
-                case "ZROH":
-                    line = generate_mat(row)
-                    if line:
-                        mat.append(line)
-        
-        def write_ready_file(filename, lines):
-            with open(os.path.join(FOLDER, 'input', filename), "w") as file:
-                for line in lines:
-                    file.write("\t".join(str(x) for x in line) + "\n")
-            print(f"Generated {len(lines)} lines for {filename} in input folder.")
+    def parse_size(self, size):
+        t,w,l = map(lambda x: round(float(x), 3), size.split(' X '))
 
+        return [l, w, t]
+    
+    def generate_mm(self, row):
+        assert row.uom == "EA", "UoM is not EA"
+        if row.matl[:8] == row.doc[:8]:
+            return
+
+        part_type = "PART"
+        if WEB_PART.match(row.matl):
+            part_type = "WEB"
+        elif FLG_PART.match(row.matl):
+            part_type = "FLANGE"
+
+        self.mm.append([
+            part_type,  # PartType
+            row.matl,  # MM
+            row.desc,  # Description
+            row.uom,  # UOM
+            row.weight,  # Weight
+            "",  # AltDim
+            "",  # AltUOM
+            "",  # Volume
+            *self.parse_size(row.size),  # Length, Width, Height
+            "HS PARTS",  # Routing
+            "",  # Document (will be moved later)
+            "",  # PurchText
+            row.doc,  # DocName
+            "",  # DocPath
+            row.grade,  # IndustryStd
+        ])
+
+    def generate_mat(self, row):
+        if row.uom not in ("IN2", "FT2"):
+            return None
+
+        _type = "RawDetail"
+        if WEB_MM.match(row.matl):
+            _type = "RawWeb"
+        elif FLG_MM.match(row.matl):
+            _type = "RawFlange"
+
+        self.mat.append([
+            row.matl,  # RawMM
+            row.desc,  # Description
+            _type,  # Type
+            *self.parse_size(row.size),  # Length, Width, Thickness
+            row.weight,  # UnitWeight in FT2
+            row.uom,  # UoM
+            row.grade,  # Grade
+            104152,  # Vendor (hardcoded)
+            "",  # Price
+            row.pdt,  # DeliveryTime
+        ])
+    
+    def generate_row(self, row):
+        match row.matl_type:
+            case "HALB":
+                line = self.generate_mm(row)
+            case "ZROH":
+                line = self.generate_mat(row)
+            case _:
+                return
+            
+        self.exported.append(row.matl)
+
+    def export(self, basename):
         # Project MM
-        if len(mm) > 1:
-            name = "{}_MM.ready".format(workbook.name.split('.')[0])
-            write_ready_file(name, mm)
+        if len(self.mm) > 1:
+            name = f"{basename}_MM.ready"
+            self.write_ready_file(name, self.mm)
             ProjMM(name).convert()
 
         # Cone MAT
-        if mat:
-            name = "{}_MAT.ready".format(workbook.name.split('.')[0])
-            write_ready_file(name, mat)
+        if self.mat:
+            name = f"{basename}_MAT.ready"
+            self.write_ready_file(name, self.mat)
             ConeMAT(name).convert()
+
+    def generate_from_xl(self, workbook):
+        """
+        Generate a ZHMM002 file from a ZHMM002 export Excel file.
+        """
+
+        sheet = workbook.sheets.active
+        for row in self.rows(sheet):            
+            if row.desc.split(' ')[0].upper() not in ('PL', 'MISC', 'SHEET'):
+                continue
+            if not all([row.length, row.width, row.thickness]):
+                self.skipped[row.matl] = row
+                continue
             
+            self.generate_row(row)
+        
+        for mm, row in self.skipped.items():
+            if mm not in self.exported:
+                self.generate_row(row)  # process skipped rows
+        
+        self.export(workbook.name.split('.')[0])
+        self.reset() 
 
 
 def main():
