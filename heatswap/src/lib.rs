@@ -1,15 +1,34 @@
 
+use std::fmt::Display;
 use std::{fs, io};
+use std::path::PathBuf;
 use spex::parsing::XmlReader;
 
-// TODO: SAP env
-const CONFIG_PATH: &str = r"\\hssieng\SNDataDev\OYSPlugins\SAPPost\Settings.XML";
+const CONFIG_PATH: &str = "Settings.XML";
 
-pub fn get_machine_post_folder(name: &str) -> Result<String, io::Error> {
+enum MachineAttr {
+    PostFolder,
+    ProductionFolder,
+    ArchiveFolder,
+    Extension,
+}
+
+impl MachineAttr {
+    fn xml_tag(&self) -> &'static str {
+        match self {
+            MachineAttr::PostFolder => "PostNCFolder",
+            MachineAttr::ProductionFolder => "ProductionNCFolder",
+            MachineAttr::ArchiveFolder => "ArchiveNCFolder",
+            MachineAttr::Extension => "NCExtension",
+        }
+    }
+}
+
+fn get_machine_config(name: &str, attr: MachineAttr) -> io::Result<String> {
     let file = fs::File::open(CONFIG_PATH)?;
     let doc = XmlReader::parse_auto(file)?;
 
-    println!("Finding machine: {}", name);
+    log::debug!("Finding machine: {}", name);
 
     let root = doc.root();
 
@@ -20,12 +39,63 @@ pub fn get_machine_post_folder(name: &str) -> Result<String, io::Error> {
         .all("SNMachine")
         .iter()
         .filter(|m| m.req("SNMachineName").text() == Ok(name))
-        .map(|m| m.req("ProductionNCFolder").text())
+        .map(|m| m.req(attr.xml_tag()).text())
         .next();
-
+    
     log::debug!("machine folder: {:?}", folder);
     match folder {
         Some(Ok(f)) => Ok(f.to_string()),
         _ => Err(io::Error::new(io::ErrorKind::NotFound, format!("Machine {} not found in configuration", name))),
     }
 }
+
+pub fn get_machine_extension(name: &str) -> Result<String, io::Error> {
+    get_machine_config(name, MachineAttr::Extension)
+}
+
+#[derive(Debug)]
+pub struct Program {
+    pub machine: String,
+    pub name: String,
+    pub heat: Vec<String>,
+}
+
+impl Program {
+    fn move_code(&self, src: MachineAttr, dest: MachineAttr) -> io::Result<()> {
+        let mut src = get_machine_config(&self.machine, src).map(PathBuf::from)?;
+        let mut dest = get_machine_config(&self.machine, dest).map(PathBuf::from)?;
+        let ext = get_machine_extension(&self.machine)?;
+
+        let file = format!("{}{}", &self.name, ext);
+        src.push(&file);
+        dest.push(&file);
+        log::info!("Moving file from {} to {}", src.display(), dest.display());
+        std::fs::rename(&src, &dest)?;
+        log::info!("File moved successfully");
+
+        Ok(())
+    }
+
+    pub fn move_code_to_prod(&self) -> io::Result<()> {
+        self.move_code(MachineAttr::PostFolder, MachineAttr::ProductionFolder)
+    }
+    
+    /// archive the code after it has been burned
+    pub fn archive_code(&self) -> io::Result<()> {
+        self.move_code(MachineAttr::ProductionFolder, MachineAttr::ArchiveFolder)
+    }
+}
+
+impl Display for Program {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} -> [{}] at {}",
+            self.name,
+            self.heat.join("|"),
+            self.machine
+        )
+    }
+}
+
+

@@ -2,13 +2,10 @@ use log;
 use simplelog::{
     ColorChoice, CombinedLogger, Config, LevelFilter, TermLogger, TerminalMode, WriteLogger,
 };
-use std::fmt::Display;
 use std::fs::OpenOptions;
-
+use heatswap::Program;
 use gumdrop::Options;
 use regex::Regex;
-
-// TODO: 4a/4b executables
 
 /// Heat Swap NC code interface
 #[derive(Debug, gumdrop::Options)]
@@ -43,24 +40,7 @@ enum ValidationError {
     IoError(#[from] std::io::Error),
 }
 
-#[derive(Debug)]
-struct Program {
-    machine: String,
-    name: String,
-    heat: Vec<String>,
-}
 
-impl Display for Program {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} -> [{}] at {}",
-            self.name,
-            self.heat.join("|"),
-            self.machine
-        )
-    }
-}
 
 impl Cli {
     fn validate(&self) -> Result<Program, ValidationError> {
@@ -76,7 +56,7 @@ impl Cli {
             return Err(ValidationError::NoHeatNumbers);
         }
 
-        let template = Regex::new(r"(?:\(\w+\))+").unwrap();
+        let template = Regex::new(r"(?:\w+,?)+").unwrap();
         if !template.is_match(&self.heat) {
             return Err(ValidationError::HeatNumbersParsingError);
         }
@@ -115,20 +95,18 @@ fn main() -> Result<(), ValidationError> {
                 .write(true)
                 .append(true)
                 .create(true)
-                .open("heatswap.log")?,
+                .open("LogData\\heatswap.log")?,
         ),
     ]);
-
+    
     log::debug!("{:?}", args);
     match args.validate() {
-        Ok(prog) => log::info!("{}", prog),
+        Ok(prog) => {
+            log::info!("{}", prog);
+            prog.move_code_to_prod()?;
+        },
         Err(e) => log::error!("Error: {}", e),
     }
-
-    // TODO: move file to production folder
-    // TODO: get extension
-    let path = format!(r"\\hssieng\SNDataDev\NC\SapPostOutput\{}.{}", &args.program, "nc");
-    std::fs::rename(&path, &path.replace("SapPostOutput", "AtMachine"))?;
 
     Ok(())
 }
