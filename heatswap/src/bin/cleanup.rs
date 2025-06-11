@@ -66,7 +66,7 @@ fn main() -> Result<(), AppError> {
 
 async fn get_programs(client: &mut Client<net::TcpStream>) -> tiberius::Result<Vec<Program>> {
     client
-        .simple_query("SELECT * FROM sap.MoveCodeQueue").await?
+        .simple_query("SELECT ProgramName, MachineName FROM sap.MoveCodeQueue").await?
         .into_first_result().await?
         .iter()
         .map(TryFrom::try_from)
