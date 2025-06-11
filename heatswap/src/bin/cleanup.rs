@@ -26,7 +26,7 @@ fn main() -> Result<(), AppError> {
             simplelog::ColorChoice::Auto,
         ),
         WriteLogger::new(
-            simplelog::LevelFilter::Trace,
+            simplelog::LevelFilter::Debug,
             simplelog::Config::default(),
             fs::OpenOptions::new()
                 .write(true)
