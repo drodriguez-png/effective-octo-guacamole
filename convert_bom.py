@@ -400,8 +400,6 @@ class ZHMM002Parser(ZFileParser):
     
     def generate_mm(self, row):
         assert row.uom == "EA", "UoM is not EA"
-        if row.matl[:8] == row.doc[:8]:
-            return
 
         part_type = "PART"
         if WEB_PART.match(row.matl):
