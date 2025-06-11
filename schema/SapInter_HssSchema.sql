@@ -193,3 +193,13 @@ CREATE TABLE sap.FeedbackQueue (
 	IsRectangular CHAR
 );
 GO
+
+-- ********************************************
+-- *    Interface 4: Move Code                *
+-- ********************************************
+CREATE TABLE sap.MoveCodeQueue (
+	Id BIGINT IDENTITY(1,1) PRIMARY KEY,
+	MachineName VARCHAR(50),
+	ProgramName VARCHAR(50)
+);
+GO

@@ -1109,6 +1109,7 @@ BEGIN
 	-- [2] Update program (child programs in case of a slab)
 	-- [3] delete slab sheet (if slab)
 	-- [4] Push a new entry into oys.Status with SigmanestStatus = 'Updated'
+	-- [5] add to move queue
 
 	-- Expected Condition:
 	-- 	It is expected that the program with the given AutoId exists.
@@ -1216,6 +1217,21 @@ BEGIN
 		ISNULL(@username, CURRENT_USER)
 	FROM sap.ProgramId
 	WHERE ArchivePacketId = @archive_packet_id;
+
+	-- [5] add to move queue
+	-- TODO: finish and test
+	INSERT INTO sap.MoveCodeQueue (
+		MachineName,
+		ProgramName
+	)
+	SELECT
+		MachineName,
+		ChildNestId.ProgramName
+	FROM sap.ChildNestId
+	INNER JOIN oys.Program
+		ON Program.ProgramGUID=ChildNestId.ProgramGUID
+	WHERE ArchivePacketId = @archive_packet_id
+
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.DeleteProgram

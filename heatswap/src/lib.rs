@@ -98,4 +98,53 @@ impl Display for Program {
     }
 }
 
+impl TryFrom<&tiberius::Row> for Program {
+    type Error = tiberius::error::Error;
 
+    fn try_from(row: &tiberius::Row) -> Result<Self, Self::Error> {
+        let machine: String = row.get::<&str, _>("MachineName").unwrap_or_default().to_string();
+        let name: String = row.get::<&str, _>("ProgramName").unwrap_or_default().to_string();
+
+        Ok(Program {
+            machine,
+            name,
+            heat: Vec::new(),
+        })
+    }
+}
+
+pub fn get_database_config() -> io::Result<tiberius::Config> {
+    let file = fs::File::open(CONFIG_PATH)?;
+    let doc = XmlReader::parse_auto(file)?;
+
+    let root = doc.root();
+    let db_config = root
+        .req("SN_SAP_INTConnectionStr")
+        .text()
+        .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Database configuration not found"))?;
+
+    let mut cfg = tiberius::Config::new();
+    cfg.authentication(tiberius::AuthMethod::Integrated); 
+    cfg.trust_cert();
+
+    let attrs = db_config.split(';')
+        .filter_map(|s| {
+            let mut parts = s.split('=');
+            match (parts.next(), parts.next()) {
+                (Some(key), Some(value)) => Some((key.trim(), value.trim())),
+                _ => None,
+            }
+        });
+
+    log::debug!("Database configuration attributes: {:?}", attrs);
+
+    for (key, value) in attrs {
+        match key {
+            "Data Source" => cfg.host(value),
+            "Initial Catalog" => cfg.database(value),
+            _ => log::debug!("Ignoring unknown database config key: {} -> {}", key, value),
+        }
+    }
+
+    Ok(cfg)
+}

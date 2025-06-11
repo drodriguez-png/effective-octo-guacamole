@@ -1,124 +1,74 @@
 
-use heatswap::get_machine_post_folder;
+use heatswap::Program;
 use log;
 use simplelog::{
-    ColorChoice, CombinedLogger, Config, LevelFilter, TermLogger, TerminalMode, WriteLogger,
+    CombinedLogger, TermLogger, WriteLogger,
 };
-use std::fmt::Display;
-use std::fs::{self, OpenOptions};
-use std::io;
+use std::{fs, io};
 
-use gumdrop::Options;
-use glob::glob;
-
-/// Heat Swap NC code interface
-#[derive(Debug, gumdrop::Options)]
-struct Cli {
-    /// name of the program's machine
-    #[options(free)]
-    machine: String,
-    /// name of the NC program
-    #[options(free)]
-    program: String,
-
-    /// print help message
-    help: bool,
-    #[options(count, help = "show more output")]
-    verbose: u32,
-}
+use smol::net;
+use tiberius::{self, Client};
 
 #[derive(Debug, thiserror::Error)]
-enum ValidationError {
-    #[error("Invalid machine")]
-    InvalidMachine,
-    #[error("Invalid program name")]
-    InvalidProgramName,
+enum AppError {
     #[error("I/O Error")]
     IoError(#[from] std::io::Error),
+    #[error("Database Error")]
+    DatabaseError(#[from] tiberius::error::Error),
 }
 
-#[derive(Debug)]
-struct Program {
-    machine: String,
-    name: String,
-}
-
-impl Display for Program {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} -> at {}",
-            self.name,
-            self.machine
-        )
-    }
-}
-
-impl Cli {
-    fn validate(self) -> Result<Program, ValidationError> {
-        // TODO: validate program name (file exists)
-        if self.program == "invalid" {
-            return Err(ValidationError::InvalidProgramName);
-        }
-
-        // TODO: validate machine from config
-        if self.machine == "invalid" {
-            return Err(ValidationError::InvalidMachine);
-        }
-
-        Ok(Program {
-            machine: self.machine,
-            name: self.program,
-        })
-    }
-}
-
-fn main() -> Result<(), ValidationError> {
-    let args = Cli::parse_args_default_or_exit();
-
-    let mut term_level = LevelFilter::Warn;
-    if args.verbose > 0 {
-        term_level = LevelFilter::Info;
-    }
-
+fn main() -> Result<(), AppError> {
     let _ = CombinedLogger::init(vec![
         TermLogger::new(
-            term_level,
-            Config::default(),
-            TerminalMode::Mixed,
-            ColorChoice::Auto,
+            simplelog::LevelFilter::Warn,
+            simplelog::Config::default(),
+            simplelog::TerminalMode::Mixed,
+            simplelog::ColorChoice::Auto,
         ),
         WriteLogger::new(
-            LevelFilter::Trace,
-            Config::default(),
-            OpenOptions::new()
+            simplelog::LevelFilter::Trace,
+            simplelog::Config::default(),
+            fs::OpenOptions::new()
                 .write(true)
                 .append(true)
                 .create(true)
-                .open("cleanup.log")?,
+                .open("LogData/cleanup.log")?,
         ),
     ]);
 
-    log::debug!("{:?}", args);
-    let prog = args.validate()?;
+    // TODO: what happens for programs with a repeat?
+    let cfg = heatswap::get_database_config()?;
 
-    let cfg = get_machine_post_folder(&prog.machine)
-        .map_err(|_| ValidationError::InvalidMachine)?;
+    smol::block_on(async {
+        // connect to database and call stored procedure
+        let tcp = net::TcpStream::connect(cfg.get_addr()).await?;
+        log::debug!("Connected to database at {}", cfg.get_addr());
 
-    log::info!("{}", cfg);
-    // move_code_4p(prog)
+        let mut client = Client::connect(cfg, tcp)
+            .await
+            .expect("failed to build SQL client");
+        log::debug!("Connected to SQL client");
 
-    Ok(())
+        for program in get_programs(&mut client).await? {
+            log::info!("Processing program: {}", program);
+
+            match program.archive_code() {
+                Ok(_) => log::info!("Successfully archived code for program: {}", program),
+                Err(ref e) if e.kind() == io::ErrorKind::NotFound =>
+                    log::warn!("NC for Program {} not found. Skipping archive.", program),
+                Err(e) => log::error!("Failed to archive code for program {}: {}", program, e),
+            }
+        }
+
+        Ok(())
+    })
 }
 
-#[allow(dead_code)]
-fn move_code_4b(prog: &Program) -> io::Result<()> {
-    // TODO: path from OYS HeatSwap config (QAS/DEV)
-    let src_files = glob(&format!(r"\\hssieng\SNDataDev\NC\AtMachine\{}*", prog.name)).unwrap();
-    for src in src_files {
-        let src = src.unwrap();
-        fs::rename(&src, &src.to_str().unwrap().replace("AtMachine", "Archive"))?;
-    }
-
-    Ok(())
+async fn get_programs(client: &mut Client<net::TcpStream>) -> tiberius::Result<Vec<Program>> {
+    client
+        .simple_query("SELECT * FROM sap.MoveCodeQueue").await?
+        .into_first_result().await?
+        .iter()
+        .map(TryFrom::try_from)
+        .collect()
 }

@@ -4,18 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-glob = "0.3.2"
 gumdrop = "0.8.1"
 log = "0.4.27"
 regex = "1.11.1"
 simplelog = "0.12.2"
+smol = "2.0.2"
 spex = "0.2.2"
 thiserror = "2.0.3"
+tiberius = { version = "0.12.3", features = ["sql-browser-smol", "integrated-auth-gssapi"] }
 
 [[bin]]
 name = "heatswap"
 path = "src/bin/heatswap.rs"
 
 [[bin]]
-name = "heatswap-cleanup"
+name = "archive-code"
 path = "src/bin/cleanup.rs"
