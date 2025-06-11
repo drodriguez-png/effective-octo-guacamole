@@ -33,10 +33,11 @@ part_grades = dict()
 
 def tsv_wrapper(func):
     def wrapper(self, line):
-        line = line.replace("\n", "").split("\t")
+        if type(line) is str:
+            line = line.replace("\n", "").split("\t")
         line = func(self, line)
         if line:
-            line = [s or '' for s in line]
+            line = map(str, [s or '' for s in line])
             return "\t".join(line)
         return ''
 
@@ -67,11 +68,14 @@ class ReadyFile(object):
         self.file_name = file_name
         self.test_id = test_id
 
+        self.lines = []
+        self.converted = []
+
     @staticmethod
     def matches_filename(file_name) -> bool:
         return False
 
-    def process(self, file_name=None):
+    def infer_process(self, file_name=None):
         if file_name:
             self.file_name = file_name
 
@@ -90,17 +94,35 @@ class ReadyFile(object):
         assert self.file_name is not None, "File name is not set"
 
         with open(os.path.join(FOLDER, 'input', self.file_name), "r") as file:
-            lines = file.readlines()
+            self.lines = file.readlines()
 
+        self.process()
+        self.write_file()
 
-        with open(os.path.join(FOLDER, 'output', self.file_name.replace('.ready', '_Conv.ready')), "w") as file:
-            if self.has_header():
-                file.write(self.convert_header(lines.pop(0)) + "\n")
+    def write_file(self, filename=None):
+        if filename is None:
+            filename = os.path.join(FOLDER, 'output', self.file_name)
 
-            lines = map(self.convert_line, lines)
-            lines = filter(lambda x: x, lines)
-            lines = "\n".join(lines)
-            file.write(lines)
+        with open(filename, "w") as file:
+            file.write("\n".join(self.converted))
+        
+        print("Converted {} lines in {}".format(len(self.converted), self.file_name))
+        self.converted.clear()
+
+    def process(self, data=None, name=None):
+        if data:
+            self.lines = data
+
+        rows = iter(self.lines)
+        if self.has_header():
+            self.converted.append(self.convert_header(next(rows)))
+
+        for line in rows:
+            converted_line = self.convert_line(line)
+            if converted_line:
+                self.converted.append(converted_line)
+        
+        self.write_file(name)
 
     @tsv_wrapper
     def convert_header(self, line):
@@ -198,8 +220,12 @@ class ConeMAT(ReadyFile):
         # generate description to match new format
         length, wid, thk = [fmt_inches(x) for x in line[3:6]]
         grade, test = line[-2:]
-        line[1] = f"PL {thk} x {wid} x {length} {grade}{test}"
-
+        if line[1].startswith("PL"):
+            prefix = f"PL {thk}"
+        else:
+            prefix = line[1].split(' x ')[0]
+        line[1] = f"{prefix} x {wid} x {length} {grade}{test}"
+        
         return line
     
 class ProjMM(ReadyFile):
@@ -327,8 +353,8 @@ class ZHPP009Parser(ZFileParser):
     def export(self, basename):
         if self.bom:
             name = f"{basename}_BOM.ready"
-            self.write_ready_file(name, self.bom)
-            ConeBOM(name).convert()
+            # self.write_ready_file(name, self.bom)
+            ConeBOM(name).process(self.bom, name)
 
     def generate_from_xl(self, workbook):
         """
@@ -345,7 +371,7 @@ class ZHPP009Parser(ZFileParser):
 
             self.generate_row(row)
 
-        self.export(workbook.name.split('.')[0])
+        self.export(os.path.splitext(workbook.fullname)[0])
         self.reset()  # Reset for next file
 
 class ZHMM002Parser(ZFileParser):
@@ -451,9 +477,9 @@ class ZHMM002Parser(ZFileParser):
     def generate_row(self, row):
         match row.matl_type:
             case "HALB":
-                line = self.generate_mm(row)
+                self.generate_mm(row)
             case "ZROH":
-                line = self.generate_mat(row)
+                self.generate_mat(row)
             case _:
                 return
             
@@ -463,14 +489,14 @@ class ZHMM002Parser(ZFileParser):
         # Project MM
         if len(self.mm) > 1:
             name = f"{basename}_MM.ready"
-            self.write_ready_file(name, self.mm)
-            ProjMM(name).convert()
+            # self.write_ready_file(name, self.mm)
+            ProjMM(name).process(self.mm, name)
 
         # Cone MAT
         if self.mat:
             name = f"{basename}_MAT.ready"
-            self.write_ready_file(name, self.mat)
-            ConeMAT(name).convert()
+            # self.write_ready_file(name, self.mat)
+            ConeMAT(name).process(self.mat, name)
 
     def generate_from_xl(self, workbook):
         """
@@ -492,7 +518,7 @@ class ZHMM002Parser(ZFileParser):
             if mm not in self.exported:
                 self.generate_row(row)  # process skipped rows
         
-        self.export(workbook.name.split('.')[0])
+        self.export(os.path.splitext(workbook.fullname)[0])
         self.reset() 
 
 
@@ -519,7 +545,7 @@ def main():
 
     converter = ReadyFile(test_id=args.id)
     for f in os.listdir(os.path.join(FOLDER, "input")):
-        converter.process(f)
+        converter.infer_process(f)
 
 
 def generate_bom_files():
