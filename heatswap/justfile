@@ -1,6 +1,19 @@
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 
+[private]
+default:
+    @just --list
 
 test:
-    cargo run -- mach1 123 "(test1)(w34x)(456)"
-    cat heatswap.log
+    cargo run --bin heatswap -- Kinetic_K5000XMC 123 "test1,w34x,456"
+    cat LogData/heatswap.log
 
+deploy:
+    cargo build --release
+    @just deploy_env "Dev"
+    @just deploy_env "Qas"
+    @just deploy_env "Prd"
+
+deploy_env {env}:
+    cp target\release\heatswap.exe \\hssieng\SNData{env}\OYSPlugins\HeatSwap\heatswap.exe
+    cp target\release\archive-code.exe \\hssieng\SNData{env}\OYSPlugins\HeatSwap\archive-code.exe
