@@ -13,7 +13,8 @@ deploy:
     @just deploy_env "Dev"
     @just deploy_env "Qas"
     @just deploy_env "Prd"
+    @just deploy_env "\SNDataPrdNew"
 
-deploy_env {env}:
-    cp target\release\heatswap.exe \\hssieng\SNData{env}\OYSPlugins\HeatSwap\heatswap.exe
-    cp target\release\archive-code.exe \\hssieng\SNData{env}\OYSPlugins\HeatSwap\archive-code.exe
+deploy_env env:
+    cp target\release\heatswap.exe \\hssieng\SNData{{env}}\OYSPlugins\HeatSwap\heatswap.exe
+    cp target\release\archive-code.exe \\hssieng\SNData{{env}}\OYSPlugins\HeatSwap\archive-code.exe
