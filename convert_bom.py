@@ -480,9 +480,10 @@ class ZHMM002Parser(ZFileParser):
         """
 
         sheet = workbook.sheets.active
-        for row in self.rows(sheet):            
-            if row.desc.split(' ')[0].upper() not in ('PL', 'MISC', 'SHEET'):
+        for row in self.rows(sheet):
+            if row.desc.split(' ')[0].upper() not in ('PL', 'MISC', 'SHEET', 'SHT'):
                 continue
+
             if not all([row.length, row.width, row.thickness]):
                 self.skipped[row.matl] = row
                 continue
