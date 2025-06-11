@@ -1,6 +1,6 @@
 
-DECLARE @job VARCHAR(8) = '1220169B'
-DECLARE @shipment INT = 2;
+DECLARE @_job VARCHAR(8) = '1240114A';
+DECLARE @_ship INT = 1;
 
 DECLARE @name VARCHAR(50);
 DECLARE @mm VARCHAR(50);
@@ -16,8 +16,8 @@ FOR
 		SELECT
 			PrimeCode AS OldMM,
 			CASE
-				WHEN PrimeCode LIKE '%-0%' THEN REPLACE(PrimeCode, '-0', '-9')
-				-- TODO: Stock MM
+				WHEN PrimeCode LIKE CONCAT(@_job, FORMAT(@_ship, '00'), '-0%')
+					THEN REPLACE(PrimeCode, '-0', '-9')
 				ELSE PrimeCode
 			END AS MatlMaster,
 			SUM(Qty) AS Qty
@@ -43,7 +43,7 @@ FOR
 	FROM mm
 	LEFT JOIN MmData
 		ON MmData.MM=mm.OldMM
-	WHERE MatlMaster LIKE CONCAT(@job, FORMAT(@shipment, '00'), '%');
+	WHERE MatlMaster LIKE CONCAT(@_job, FORMAT(@_ship, '00'), '%');
 
 OPEN cur_stock;
 

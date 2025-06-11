@@ -1,6 +1,8 @@
 
-DECLARE @_job VARCHAR(8) = '1220169B';
-DECLARE @_ship INT = 2;
+DECLARE @_job VARCHAR(8) = '1240114A';
+DECLARE @_ship INT = 1;
+
+DECLARE @wo VARCHAR(50) = CONCAT('D-', LEFT(@_job, 7), '-', FORMAT(@_ship, '00'))
 
 DECLARE @sap_name VARCHAR(50);
 DECLARE @name VARCHAR(50);
@@ -44,7 +46,7 @@ INTO @name, @sap_name, @matl, @qty, @job, @ship, @mark, @mm, @ap, @op1, @op2, @o
 
 WHILE @@FETCH_STATUS = 0
 BEGIN
-	EXEC sap.PushSapDemand 'preload1', @sap_name, 'D-1220169-02', @name, @qty, @matl, null, null, null, @job, @ship, @ap, @op1, @op2, @op3, @mark, @mm;
+	EXEC sap.PushSapDemand 'preload1', @sap_name, @wo, @name, @qty, @matl, null, null, null, @job, @ship, @ap, @op1, @op2, @op3, @mark, @mm;
 
 	FETCH NEXT FROM cur_demand
 	INTO @name, @sap_name, @matl, @qty, @job, @ship, @mark, @mm, @ap, @op1, @op2, @op3;
@@ -56,6 +58,6 @@ DEALLOCATE cur_demand;
 
 EXEC sap.DemandPreExec;
 INSERT INTO SNDBase91.dbo.TransAct (TransType, District, OrderNo, ItemData1)
-VALUES ('SN87', 5, 'D-1220169-02', 'preload from SNDBase91');
+VALUES ('SN87', 5, @wo, 'preload from SNDBase91');
 
 EXEC sap.DebugDemand;
