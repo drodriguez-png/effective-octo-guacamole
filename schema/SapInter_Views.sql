@@ -4,6 +4,7 @@ GO
 CREATE OR ALTER VIEW sap.InterCfgState
 AS
 	SELECT
+		CAST(REPLACE(DB_NAME(), 'SNInter', '') AS VARCHAR(3)) AS Environment,
 		CONCAT('v', Major, '.', Minor, '.', Patch) AS Version,
 		SimTransDistrict,
 		LogProcedureCalls
