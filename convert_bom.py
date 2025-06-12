@@ -28,6 +28,7 @@ WEB_PART = re.compile(r"\d{7}[A-Z]\d{0,2}-\w+\d+\w*-[NF]?W\d+")
 FLG_PART = re.compile(r"\d{7}[A-Z]\d{0,2}-\w+\d+\w*-[TB]\d+")
 
 FOLDER = "conversion"
+CONVERT_DESC = False
 
 part_grades = dict()
 
@@ -218,13 +219,14 @@ class ConeMAT(ReadyFile):
             line[7] = 'FT2'
 
         # generate description to match new format
-        length, wid, thk = [fmt_inches(x) for x in line[3:6]]
-        grade, test = line[-2:]
-        if line[1].startswith("PL"):
-            prefix = f"PL {thk}"
-        else:
-            prefix = line[1].split(' x ')[0]
-        line[1] = f"{prefix} x {wid} x {length} {grade}{test}"
+        if CONVERT_DESC:
+            length, wid, thk = [fmt_inches(x) for x in line[3:6]]
+            grade, test = line[-2:]
+            if line[1].startswith("PL"):
+                prefix = f"PL {thk}"
+            else:
+                prefix = line[1].split(' x ')[0]
+            line[1] = f"{prefix} x {wid} x {length} {grade}{test}"
         
         return line
     
@@ -270,6 +272,10 @@ class ProjMM(ReadyFile):
 
         # get Spec, Grade, Test
         line[17:20] = part_grades.setdefault(line[1], [None] * 3)
+
+        # TODO: description generation
+        if CONVERT_DESC:
+            pass
 
         return line
     
@@ -508,6 +514,8 @@ class ZHMM002Parser(ZFileParser):
             if row.desc.split(' ')[0].upper() not in ('PL', 'MISC', 'SHEET', 'SHT'):
                 continue
 
+            if row.matl in self.exported:
+                continue
             if not all([row.length, row.width, row.thickness]):
                 self.skipped[row.matl] = row
                 continue
@@ -526,9 +534,13 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("--id", type=int, help="Id for renaming project")
     parser.add_argument("--gen-parts-grades", action="store_true", help="Generate part grades")
-    parser.add_argument("--min-project", type=int, default=0, help="Floor for filtering projects")
     parser.add_argument("--gen-bom-files", action="store_true", help="generate BOM files from SAP export")
+    parser.add_argument("--gen-desc", action="store_true", help="generate descriptions in ConeMAT files")
+    parser.add_argument("--min-project", type=int, default=0, help="Floor for filtering projects")
     args = parser.parse_args()
+
+    global CONVERT_DESC
+    CONVERT_DESC = args.gen_desc
 
     if args.min_project:
         args.min_project = int(str(args.min_project).ljust(7, '0'))
