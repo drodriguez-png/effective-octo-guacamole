@@ -23,6 +23,14 @@ cfg env:
 view env *view:
     @just sql {{env}} "select * from {{view}}"
 
+deploy:
+    @just gensql --deploy --migrate dev
+    @just cfg dev
+    @just gensql --deploy --migrate qas
+    @just cfg qas
+    @just gensql --deploy --migrate prd
+    @just cfg prd
+
 convert *args: clean
     uv run convert_bom.py {{args}}
 
