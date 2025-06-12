@@ -41,6 +41,10 @@ BEGIN
 				SELECT Matl FROM sap.InventoryQueue
 			) AS Queues
 
+			-- exclude blank materials
+			EXCEPT SELECT NULL
+			EXCEPT SELECT ''
+
 			-- exclude existing materials in Sigmanest
 			EXCEPT SELECT MaterialType
 				FROM SNDBaseDev.dbo.Material
