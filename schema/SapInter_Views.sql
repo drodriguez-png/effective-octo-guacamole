@@ -94,7 +94,7 @@ AS
 		AND ProgramId.RepeatId=ChildPlate.ChildNestRepeatID;
 GO
 
-CREATE OR ALTER VIEW oys.ActivePrograms
+CREATE OR ALTER VIEW sap.ActivePrograms
 AS
 	WITH ActiveGUID AS (
 		SELECT ProgramGUID FROM oys.Status
