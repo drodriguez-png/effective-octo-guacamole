@@ -28,7 +28,7 @@ fn get_machine_config(name: &str, attr: MachineAttr) -> io::Result<String> {
     let file = fs::File::open(CONFIG_PATH)?;
     let doc = XmlReader::parse_auto(file)?;
 
-    log::debug!("Finding machine: {}", name);
+    log::trace!("Finding machine: {}", name);
 
     let root = doc.root();
 
@@ -69,7 +69,7 @@ impl Program {
         let file = format!("{}{}", &self.name, ext);
         src.push(&file);
         dest.push(&file);
-        log::info!("Moving file from {} to {}", src.display(), dest.display());
+        log::debug!("Moving file from {} to {}", src.display(), dest.display());
         std::fs::rename(&src, &dest)?;
         log::info!("File moved successfully");
 
