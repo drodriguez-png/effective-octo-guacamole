@@ -105,7 +105,10 @@ fn main() -> Result<(), ValidationError> {
             log::info!("{}", prog);
             prog.move_code_to_prod()?;
         },
-        Err(e) => log::error!("Error: {}", e),
+        Err(e) => {
+            log::error!("Error: {}", e);
+            std::process::exit(20);
+        },
     }
 
     Ok(())
