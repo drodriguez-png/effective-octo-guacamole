@@ -38,7 +38,7 @@ fn get_machine_config(name: &str, attr: MachineAttr) -> io::Result<String> {
         .first("SNMachineList")
         .all("SNMachine")
         .iter()
-        .filter(|m| m.req("SNMachineName").text() == Ok(name))
+        .filter(|m| m.req("SNMachineName").text().map(|s| s.to_ascii_uppercase()) == Ok(name.to_ascii_uppercase()))
         .map(|m| m.req(attr.xml_tag()).text())
         .next();
     
