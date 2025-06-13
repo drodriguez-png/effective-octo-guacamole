@@ -14,6 +14,7 @@ deploy:
     @just deploy_env "Qas"
     @just deploy_env "Prd"
     @just deploy_env "\SNDataPrdNew"
+    cp target\release\heatswap.exe \\hiifileserv1\SigmanestDEV\test\heatswap.exe
 
 deploy_env env:
     cp target\release\heatswap.exe \\hssieng\SNData{{env}}\OYSPlugins\HeatSwap\heatswap.exe
