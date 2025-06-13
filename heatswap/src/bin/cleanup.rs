@@ -60,6 +60,7 @@ fn main() -> Result<(), AppError> {
             }
         }
 
+        // TODO: move this into loop above per each program
         client.execute("DELETE FROM sap.MoveCodeQueue;", &[]).await?;
         log::info!("Successfully deleted all entries from sap.MoveCodeQueue");
 
