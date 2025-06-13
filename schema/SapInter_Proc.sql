@@ -507,7 +507,7 @@ BEGIN
 
 		-- [6] clear queue
 		DELETE FROM sap.DemandQueue;
-	
+
 	-- end transaction
 	COMMIT TRANSACTION;
 END;
@@ -756,10 +756,10 @@ BEGIN
 				ELSE NULL
 			END
 		FROM sap.InventoryQueue, sap.InterfaceConfig;
-	
+
 		-- [6] clear queue
 		DELETE FROM sap.InventoryQueue;
-	
+
 	-- end transaction
 	COMMIT TRANSACTION;
 END;
@@ -904,7 +904,7 @@ BEGIN
 		SELECT ProgramGUID FROM oys.Status
 		WHERE SapStatus IN ('Sent', 'Complete')
 	);
- 
+
 	-- sheet(s)
 	INSERT INTO sap.FeedbackQueue (
 		DataSet,
@@ -1067,7 +1067,7 @@ SET NOCOUNT ON
 BEGIN
 	-- [0] log procedure call
 	-- [1] Push a new entry into oys.Status with SigmanestStatus = 'Released'
-	
+
 	-- [0] log procedure call
 	INSERT INTO log.UpdateProgramCalls (
 		ProcCalled, archive_packet_id, source, username
