@@ -103,7 +103,7 @@ AS
 		WHERE SigmanestStatus IN ('Updated', 'Deleted') 
 	)
 	SELECT
-		Program.AutoId AS ArchivePacketId,
+		ProgramId.ArchivePacketId,
 		Program.ProgramGUID,
 		Program.ProgramName,
 		Program.MachineName,
@@ -119,9 +119,9 @@ AS
 	INNER JOIN oys.Program
 		ON Program.ProgramGUID=ActiveGUID.ProgramGUID
 	INNER JOIN oys.Status
-		ON Status.ProgramGUID=Program.ProgramGUID;
-GO
-
+		ON Status.ProgramGUID=Program.ProgramGUID
+	INNER JOIN sap.ProgramId
+		ON ProgramId.ProgramGUID=Program.ProgramGUID;
 GO
 
 CREATE OR ALTER VIEW sap.RenamedDemandAllocationInProcess
