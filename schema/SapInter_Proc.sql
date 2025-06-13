@@ -1199,6 +1199,14 @@ BEGIN
 		SheetName
 	FROM SlabNests, sap.InterfaceConfig
 	WHERE ArchivePacketId=@archive_packet_id
+	-- Delete compatible materials
+	DELETE FROM SNDBaseDev.dbo.StockCompatibility
+	WHERE SheetName IN (
+		SELECT DISTINCT ItemName
+		FROM SNDBaseDev.dbo.TransAct, sap.InterfaceConfig
+		WHERE TransType='SN92'
+		AND District=SimTransDistrict
+	)
 
 	-- [4] Push a new entry into oys.Status with SigmanestStatus = 'Updated'
 	--	to simulate a program update
