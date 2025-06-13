@@ -122,42 +122,6 @@ AS
 		ON Status.ProgramGUID=Program.ProgramGUID;
 GO
 
-CREATE OR ALTER VIEW oys.PartsOnProgram
-AS
-	WITH WorkOrderParts AS (
-		SELECT
-			WONumber,
-			PartName,
-			ProgramName,
-			RepeatID
-		FROM SNDBaseDev.dbo.PIP
-		UNION
-		SELECT
-			WONumber,
-			PartName,
-			ProgramName,
-			RepeatID
-		FROM SNDBaseDev.dbo.PIPArchive
-		WHERE TransType='SN102'
-	)
-	SELECT
-		ChildPart.AutoId AS ChildPartId,
-		ChildPart.SAPPartName,
-		WorkOrderParts.WONumber,
-		ChildPart.SNPartName,
-		ChildPart.QtyProgram,
-
-		Program.AutoId AS ArchivePacketId,
-		Program.ProgramName,
-		Program.MachineName
-	FROM oys.ChildPart
-	INNER JOIN oys.ChildPlate
-		ON ChildPlate.ChildPlateGUID=ChildPart.ChildPlateGUID
-	INNER JOIN oys.Program
-		ON Program.ProgramGUID=ChildPlate.ProgramGUID
-	INNER JOIN WorkOrderParts
-		ON WorkOrderParts.ProgramName=ChildPlate.ChildNestProgramName
-		AND WorkOrderParts.RepeatID=ChildPlate.ChildNestRepeatID;
 GO
 
 CREATE OR ALTER VIEW sap.RenamedDemandAllocationInProcess
