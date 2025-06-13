@@ -51,8 +51,9 @@ BEGIN
 
 			-- exclude conflicting material additions already in the SimTrans
 			EXCEPT SELECT Material
-				FROM SNDBaseDev.dbo.TransAct
+				FROM SNDBaseDev.dbo.TransAct, sap.InterfaceConfig
 				WHERE TransType = 'SN60'
+				AND District=SimTransDistrict
 		),
 
 		-- Assume mild steel: get group name and density
