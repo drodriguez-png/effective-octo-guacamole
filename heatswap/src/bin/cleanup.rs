@@ -55,7 +55,7 @@ fn main() -> Result<(), AppError> {
             match program.archive_code() {
                 Ok(_) => log::info!("Successfully archived code for program: {}", program),
                 Err(ref e) if e.kind() == io::ErrorKind::NotFound =>
-                    log::warn!("NC for Program {} not found. Skipping archive.", program),
+                    log::warn!("NC for Program {} not found. Skipping archive.", program.name),
                 Err(e) => log::error!("Failed to archive code for program {}: {}", program, e),
             }
         }
