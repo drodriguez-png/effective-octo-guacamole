@@ -27,6 +27,7 @@ CREATE TABLE sap.InterfaceConfig (
 	-- Placehold word used heat swap (inserted into Data14 in interface 1).
 	-- This might be hardcoded in the Sigmanest post, so check before changing.
 	-- Changing this also requires changing the HeatSwap configuration.
+	-- NOTE: this cannot be more than 12 characters because of the Gemini.
 	HeatSwapKeyword VARCHAR(64),
 	-- Log procedure calls to log schema for debugging
 	LogProcedureCalls BIT
