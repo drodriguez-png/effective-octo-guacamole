@@ -145,13 +145,24 @@ pub fn get_database_config() -> io::Result<tiberius::Config> {
 
     log::debug!("Database configuration attributes: {:?}", attrs);
 
+    let mut user = None;
+    let mut password = None;
     for (key, value) in attrs {
         match key {
             "Data Source" => cfg.host(value),
             "Initial Catalog" => cfg.database(value),
+            "User ID" => user = Some(value),
+            "Password" => password = Some(value),
             _ => log::debug!("Ignoring unknown database config key: {} -> {}", key, value),
         }
     }
+
+    cfg.authentication(
+        match (user, password) {
+            (Some(user), Some(pwd)) => tiberius::AuthMethod::sql_server(user, pwd),
+            _ => tiberius::AuthMethod::Integrated,
+        }
+    );
 
     Ok(cfg)
 }
