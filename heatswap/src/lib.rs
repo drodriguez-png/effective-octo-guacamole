@@ -61,9 +61,26 @@ pub struct Program {
 }
 
 impl Program {
-    fn move_code(&self, src: MachineAttr, dest: MachineAttr) -> io::Result<()> {
-        let mut src = get_machine_config(&self.machine, src).map(PathBuf::from)?;
-        let mut dest = get_machine_config(&self.machine, dest).map(PathBuf::from)?;
+    /// burn the code to the machine
+    pub fn move_code_to_prod(&self) -> io::Result<()> {
+        let mut src = get_machine_config(&self.machine, MachineAttr::PostFolder).map(PathBuf::from)?;
+        let mut dest = get_machine_config(&self.machine, MachineAttr::ProductionFolder).map(PathBuf::from)?;
+        let ext = get_machine_extension(&self.machine)?;
+
+        let file = format!("{}{}", &self.name, ext);
+        src.push(&file);
+        dest.push(&file);
+        log::debug!("Moving file from {} to {}", src.display(), dest.display());
+        std::fs::copy(&src, &dest)?;
+        log::info!("File moved successfully");
+
+        Ok(())
+    }
+    
+    /// archive the code after it has been burned
+    pub fn archive_code(&self) -> io::Result<()> {
+        let mut src = get_machine_config(&self.machine, MachineAttr::ProductionFolder).map(PathBuf::from)?;
+        let mut dest = get_machine_config(&self.machine, MachineAttr::ArchiveFolder).map(PathBuf::from)?;
         let ext = get_machine_extension(&self.machine)?;
 
         let file = format!("{}{}", &self.name, ext);
@@ -74,15 +91,6 @@ impl Program {
         log::info!("File moved successfully");
 
         Ok(())
-    }
-
-    pub fn move_code_to_prod(&self) -> io::Result<()> {
-        self.move_code(MachineAttr::PostFolder, MachineAttr::ProductionFolder)
-    }
-    
-    /// archive the code after it has been burned
-    pub fn archive_code(&self) -> io::Result<()> {
-        self.move_code(MachineAttr::ProductionFolder, MachineAttr::ArchiveFolder)
     }
 }
 
