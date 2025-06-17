@@ -4,7 +4,7 @@ use log;
 use simplelog::{
     CombinedLogger, TermLogger, WriteLogger,
 };
-use std::{fs, io};
+use std::{env, fs, io};
 
 use smol::net;
 use tiberius::{self, Client};
@@ -18,6 +18,12 @@ enum AppError {
 }
 
 fn main() -> Result<(), AppError> {
+    if !cfg!(debug_assertions) {
+        // try to set the current directory to the executable's parent
+        let _ = env::current_exe()
+            .map(|p| p.parent().map(|p| env::set_current_dir(p)));
+    }
+
     let _ = CombinedLogger::init(vec![
         TermLogger::new(
             simplelog::LevelFilter::Warn,
