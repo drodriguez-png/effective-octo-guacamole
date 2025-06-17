@@ -10,12 +10,7 @@ test:
 
 deploy:
     cargo build --release
-    @just deploy_env "Dev"
-    @just deploy_env "Qas"
-    @just deploy_env "Prd"
-    @just deploy_env "\SNDataPrdNew"
-    cp target\release\heatswap.exe \\hiifileserv1\SigmanestDEV\test\heatswap.exe
-
-deploy_env env:
-    cp target\release\heatswap.exe \\hssieng\SNData{{env}}\OYSPlugins\HeatSwap\heatswap.exe
-    cp target\release\archive-code.exe \\hssieng\SNData{{env}}\OYSPlugins\HeatSwap\archive-code.exe
+    cp target\release\archive-code.exe \\hssieng\SNDataDev\OYSPlugins\HeatSwap\archive-code.exe
+    cp target\release\archive-code.exe \\hssieng\SNDataQas\OYSPlugins\HeatSwap\archive-code.exe
+    cp target\release\archive-code.exe \\hssieng\SNDataPrd\OYSPlugins\HeatSwap\archive-code.exe
+    cp target\release\archive-code.exe \\hssieng\SNData\SNDataPrdNew\OYSPlugins\HeatSwap\archive-code.exe
