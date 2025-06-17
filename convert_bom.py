@@ -26,6 +26,7 @@ WEB_MM = re.compile(r"\d{7}[A-Z]\d{2}-[09]3\d{3}\w*")
 FLG_MM = re.compile(r"\d{7}[A-Z]\d{2}-[09]4\d{3}\w*")
 WEB_PART = re.compile(r"\d{7}[A-Z]\d{0,2}-\w+\d+\w*-[NF]?W\d+")
 FLG_PART = re.compile(r"\d{7}[A-Z]\d{0,2}-\w+\d+\w*-[TB]\d+")
+ANY_PART = re.compile(r"(\d{7}[A-Z])\d{0,2}-([\w-]+)")
 
 FOLDER = "conversion"
 CONVERT_DESC = False
@@ -267,14 +268,15 @@ class ProjMM(ReadyFile):
         while len(line) < self.HEADER_LEN:
             line.append(None)
 
+        job, mark = ANY_PART.match(line[1]).groups()
         line[-1] = line[12] # move DwgNo
-        line[12] = line[1].replace('-', '_', 1)  # copy PartName
+        line[12] = f"{job}_{mark}"  # copy PartName
 
         if self.test_id:
             line[1] = line[1].replace('0', str(self.test_id), 1)
 
         # get Spec, Grade, Test
-        line[17:20] = part_grades.setdefault(line[1], [None] * 3)
+        line[17:20] = part_grades.setdefault(f"{job}-{mark}", [None] * 3)
 
         # TODO: description generation
         if CONVERT_DESC:
