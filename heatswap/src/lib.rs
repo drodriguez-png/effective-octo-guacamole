@@ -124,7 +124,6 @@ pub fn get_database_config() -> io::Result<tiberius::Config> {
         .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Database configuration not found"))?;
 
     let mut cfg = tiberius::Config::new();
-    cfg.authentication(tiberius::AuthMethod::Integrated); 
     cfg.trust_cert();
 
     let attrs = db_config.split(';')
