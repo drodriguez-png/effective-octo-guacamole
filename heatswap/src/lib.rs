@@ -16,10 +16,10 @@ enum MachineAttr {
 impl MachineAttr {
     fn xml_tag(&self) -> &'static str {
         match self {
-            MachineAttr::PostFolder => "PostNCFolder",
-            MachineAttr::ProductionFolder => "ProductionNCFolder",
+            MachineAttr::PostFolder => "SourceNCFolder",
+            MachineAttr::ProductionFolder => "OutputNCFolder",
             MachineAttr::ArchiveFolder => "ArchiveNCFolder",
-            MachineAttr::Extension => "NCExtension",
+            MachineAttr::Extension => "NCFileExtension",
         }
     }
 }
