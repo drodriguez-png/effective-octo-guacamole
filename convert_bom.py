@@ -98,7 +98,6 @@ class ReadyFile(object):
             self.lines = file.readlines()
 
         self.process()
-        self.write_file()
 
     def write_file(self, filename=None):
         if filename is None:
