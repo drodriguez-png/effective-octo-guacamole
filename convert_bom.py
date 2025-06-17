@@ -104,6 +104,10 @@ class ReadyFile(object):
         if filename is None:
             filename = os.path.join(FOLDER, 'output', self.file_name)
 
+        if len(self.converted) == 0:
+            print("No lines to write for {}".format(self.file_name))
+            return
+
         with open(filename, "w") as file:
             file.write("\n".join(self.converted))
         
