@@ -38,7 +38,6 @@ fn main() -> Result<(), AppError> {
         ),
     ]);
 
-    // TODO: what happens for programs with a repeat?
     let cfg = heatswap::get_database_config()?;
 
     smol::block_on(async {
