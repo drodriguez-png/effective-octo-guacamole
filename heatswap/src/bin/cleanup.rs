@@ -1,8 +1,5 @@
-
-use heatswap::Program;
 use chrono::Utc;
 use log;
-use std::{env, fs, io};
 use simplelog::{CombinedLogger, TermLogger, WriteLogger};
 use std::{env, fs};
 
@@ -54,30 +51,25 @@ fn main() -> Result<(), AppError> {
             .expect("failed to build SQL client");
         log::debug!("Connected to SQL client");
 
-        for program in get_programs(&mut client).await? {
+        // try to log call
+        let _ = client.execute(
+            r#"
+INSERT INTO log.UpdateProgramCalls(ProcCalled)
+SELECT 'NcCodeCleanup'
+FROM sap.InterfaceConfig
+WHERE LogProcedureCalls = 1;
+        "#,
+            &[],
+        );
+
+        for program in heatswap::Program::get_programs(&mut client).await? {
             log::info!("Processing program: {}", program);
 
-            match program.archive_code() {
-                Ok(_) => log::info!("Successfully archived code for program: {}", program),
-                Err(ref e) if e.kind() == io::ErrorKind::NotFound =>
-                    log::warn!("NC for Program {} not found. Skipping archive.", program.name),
-                Err(e) => log::error!("Failed to archive code for program {}: {}", program, e),
-            }
+            if let Err(e) = program.archive_code(&mut client).await {
+                log::error!("Failed to archive code for program {program}: {e}");
+            };
         }
-
-        // TODO: move this into loop above per each program
-        client.execute("DELETE FROM sap.MoveCodeQueue;", &[]).await?;
-        log::info!("Successfully deleted all entries from sap.MoveCodeQueue");
 
         Ok(())
     })
-}
-
-async fn get_programs(client: &mut Client<net::TcpStream>) -> tiberius::Result<Vec<Program>> {
-    client
-        .simple_query("SELECT ProgramName, MachineName FROM sap.MoveCodeQueue").await?
-        .into_first_result().await?
-        .iter()
-        .map(TryFrom::try_from)
-        .collect()
 }

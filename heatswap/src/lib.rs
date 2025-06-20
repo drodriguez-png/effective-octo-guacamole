@@ -68,6 +68,17 @@ pub struct Program {
 }
 
 impl Program {
+    pub async fn get_programs(client: &mut DbClient) -> tiberius::Result<Vec<Self>> {
+        client
+            .simple_query("SELECT Id, ProgramName, MachineName FROM sap.MoveCodeQueue")
+            .await?
+            .into_first_result()
+            .await?
+            .iter()
+            .map(TryFrom::try_from)
+            .collect()
+    }
+
     /// burn the code to the machine
     pub fn move_code_to_prod(&self) -> io::Result<()> {
         let mut src =
@@ -96,12 +107,43 @@ impl Program {
 
         let file = format!("{}{}", &self.name, ext);
         src.push(&file);
+
+        // Find an available filename in the archive folder
+        let mut dest = archive_folder.clone();
         dest.push(&file);
+
+        let mut index = 0;
+        while dest.exists() {
+            index += 1;
+            let indexed_file = format!("{}_{}{}", &self.name, index, ext);
+            dest = archive_folder.clone();
+            dest.push(&indexed_file);
+        }
+
         log::debug!("Moving file from {} to {}", src.display(), dest.display());
-        std::fs::rename(&src, &dest)?;
+        match std::fs::rename(&src, &dest) {
+            Ok(_) => {
+                log::info!("Successfully archived code for program: {self}");
+                let _ = self.delete_from_queue(client).await;
+            }
+            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {
+                log::warn!("NC for Program {self} not found. Skipping archive.");
+                let _ = self.delete_from_queue(client).await;
+            }
+
+            Err(e) => log::error!("Failed to archive code for program {self}: {e}"),
+        };
         log::info!("File moved successfully");
 
         Ok(())
+    }
+
+    /// Delete this program from the MoveCodeQueue
+    pub async fn delete_from_queue(&self, client: &mut DbClient) -> tiberius::Result<()> {
+        client
+            .execute("DELETE FROM sap.MoveCodeQueue WHERE Id = @P1", &[&self.id])
+            .await
+            .map(|_| ())
     }
 }
 
