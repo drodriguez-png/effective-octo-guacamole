@@ -1,8 +1,7 @@
-
-use std::fmt::Display;
-use std::{fs, io};
-use std::path::PathBuf;
 use spex::parsing::XmlReader;
+use std::fmt::Display;
+use std::path::PathBuf;
+use std::{fs, io};
 
 const CONFIG_PATH: &str = "Settings.XML";
 
@@ -34,18 +33,26 @@ fn get_machine_config(name: &str, attr: MachineAttr) -> io::Result<String> {
 
     // Find the machine in the XML configuration
     // found at : ConfigSettings(root) > SNMachineList > SNMachine
-    let folder =  root
+    let folder = root
         .first("SNMachineList")
         .all("SNMachine")
         .iter()
-        .filter(|m| m.req("SNMachineName").text().map(|s| s.to_ascii_uppercase()) == Ok(name.to_ascii_uppercase()))
+        .filter(|m| {
+            m.req("SNMachineName")
+                .text()
+                .map(|s| s.to_ascii_uppercase())
+                == Ok(name.to_ascii_uppercase())
+        })
         .map(|m| m.req(attr.xml_tag()).text())
         .next();
-    
+
     log::debug!("machine folder: {:?}", folder);
     match folder {
         Some(Ok(f)) => Ok(f.to_string()),
-        _ => Err(io::Error::new(io::ErrorKind::NotFound, format!("Machine {} not found in configuration", name))),
+        _ => Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Machine {} not found in configuration", name),
+        )),
     }
 }
 
@@ -63,8 +70,10 @@ pub struct Program {
 impl Program {
     /// burn the code to the machine
     pub fn move_code_to_prod(&self) -> io::Result<()> {
-        let mut src = get_machine_config(&self.machine, MachineAttr::PostFolder).map(PathBuf::from)?;
-        let mut dest = get_machine_config(&self.machine, MachineAttr::ProductionFolder).map(PathBuf::from)?;
+        let mut src =
+            get_machine_config(&self.machine, MachineAttr::PostFolder).map(PathBuf::from)?;
+        let mut dest =
+            get_machine_config(&self.machine, MachineAttr::ProductionFolder).map(PathBuf::from)?;
         let ext = get_machine_extension(&self.machine)?;
 
         let file = format!("{}{}", &self.name, ext);
@@ -76,11 +85,13 @@ impl Program {
 
         Ok(())
     }
-    
+
     /// archive the code after it has been burned
-    pub fn archive_code(&self) -> io::Result<()> {
-        let mut src = get_machine_config(&self.machine, MachineAttr::ProductionFolder).map(PathBuf::from)?;
-        let mut dest = get_machine_config(&self.machine, MachineAttr::ArchiveFolder).map(PathBuf::from)?;
+    pub async fn archive_code(&self, client: &mut DbClient) -> io::Result<()> {
+        let mut src =
+            get_machine_config(&self.machine, MachineAttr::ProductionFolder).map(PathBuf::from)?;
+        let archive_folder =
+            get_machine_config(&self.machine, MachineAttr::ArchiveFolder).map(PathBuf::from)?;
         let ext = get_machine_extension(&self.machine)?;
 
         let file = format!("{}{}", &self.name, ext);
@@ -157,12 +168,10 @@ pub fn get_database_config() -> io::Result<tiberius::Config> {
         }
     }
 
-    cfg.authentication(
-        match (user, password) {
-            (Some(user), Some(pwd)) => tiberius::AuthMethod::sql_server(user, pwd),
-            _ => tiberius::AuthMethod::Integrated,
-        }
-    );
+    cfg.authentication(match (user, password) {
+        (Some(user), Some(pwd)) => tiberius::AuthMethod::sql_server(user, pwd),
+        _ => tiberius::AuthMethod::Integrated,
+    });
 
     Ok(cfg)
 }

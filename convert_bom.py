@@ -110,7 +110,7 @@ class ReadyFile(object):
 
         with open(filename, "w") as file:
             file.write("\n".join(self.converted))
-        
+
         print("Converted {} lines in {}".format(len(self.converted), self.file_name))
         self.converted.clear()
 
@@ -126,7 +126,7 @@ class ReadyFile(object):
             converted_line = self.convert_line(line)
             if converted_line:
                 self.converted.append(converted_line)
-        
+
         self.write_file(name)
 
     @tsv_wrapper
@@ -231,9 +231,9 @@ class ConeMAT(ReadyFile):
             else:
                 prefix = line[1].split(' x ')[0]
             line[1] = f"{prefix} x {wid} x {length} {grade}{test}"
-        
+
         return line
-    
+
 class ProjMM(ReadyFile):
     """
     this file has a header
@@ -283,7 +283,7 @@ class ProjMM(ReadyFile):
             pass
 
         return line
-    
+
 class ZFileParser(object):
     """
     Base class for ZHPP009 and ZHMM002 parsers.
@@ -296,7 +296,7 @@ class ZFileParser(object):
         This method should be overridden by subclasses.
         """
         raise NotImplementedError("Subclasses must implement parse_header method.")
-    
+
     def parse_row(self, row):
         """
         Parse a single row of the Excel sheet.
@@ -306,9 +306,9 @@ class ZFileParser(object):
 
         for k, v in self.h.__dict__.items():
             setattr(namespace, k, row[v])
-        
+
         return namespace
-    
+
     def rows(self, sheet):
         """
         Generate rows from the Excel sheet.
@@ -342,7 +342,7 @@ class ZHPP009Parser(ZFileParser):
 
     def matches_filename(self, workbook):
         return "ZHPP009" in workbook.name.upper()
-    
+
     def parse_header(self, sheet):
         header = sheet.range("A1").expand("right").value
         self.h.matl = header.index("Material")
@@ -410,11 +410,11 @@ class ZHMM002Parser(ZFileParser):
         self.mat = list()
 
         self.mm.append("PARTTYPE	MM	DESCRIPTION	UOM	WEIGHT	ALTDIM	ALTUOM	VOLUME	LENGTH	WIDTH	HEIGHT	ROUTING	DOCUMENT	PURCHTEXT	DOCNAME	DOCPATH	INDUSTRYSTD	SPEC	GRADE	TEST	ASSYMETHOD	DOCNO".split("\t"))
-        
+
 
     def matches_filename(self, workbook):
         return "ZHMM002" in workbook.name.upper()
-    
+
     def parse_header(self, sheet):
         header = sheet.range("A1").expand("right").value
         self.h.matl = header.index("Material")
@@ -434,7 +434,7 @@ class ZHMM002Parser(ZFileParser):
         t,w,l = map(lambda x: round(float(x), 3), size.split(' X '))
 
         return [l, w, t]
-    
+
     def generate_mm(self, row):
         assert row.uom == "EA", "UoM is not EA"
 
@@ -484,7 +484,7 @@ class ZHMM002Parser(ZFileParser):
             "",  # Price
             row.pdt,  # DeliveryTime
         ])
-    
+
     def generate_row(self, row):
         match row.matl_type:
             case "HALB":
@@ -493,7 +493,7 @@ class ZHMM002Parser(ZFileParser):
                 self.generate_mat(row)
             case _:
                 return
-            
+
         self.exported.append(row.matl)
 
     def export(self, basename):
@@ -524,13 +524,13 @@ class ZHMM002Parser(ZFileParser):
             if not all([row.length, row.width, row.thickness]):
                 self.skipped[row.matl] = row
                 continue
-            
+
             self.generate_row(row)
-        
+
         for mm, row in self.skipped.items():
             if mm not in self.exported:
                 self.generate_row(row)  # process skipped rows
-        
+
         self.export(os.path.splitext(workbook.fullname)[0])
         self.reset() 
 
