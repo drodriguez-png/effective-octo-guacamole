@@ -1,11 +1,14 @@
 use spex::parsing::XmlReader;
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
+use std::sync::{Mutex, OnceLock};
 use std::{fs, io};
 
-const CONFIG_PATH: &str = "Settings.XML";
-
 type DbClient = tiberius::Client<smol::net::TcpStream>;
+
+const CONFIG_PATH: &str = "Settings.XML";
+static CONFIG_CACHE: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
 
 enum MachineAttr {
     ProductionFolder,
@@ -24,10 +27,21 @@ impl MachineAttr {
 }
 
 fn get_machine_config(name: &str, attr: MachineAttr) -> io::Result<String> {
+    let cache_key = format!("{}_{}", name, attr.xml_tag());
+
+    // Check cache first
+    let cache = CONFIG_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Ok(cache_map) = cache.lock() {
+        if let Some(cached_value) = cache_map.get(&cache_key) {
+            log::debug!("Cache hit for {}", cache_key);
+            return Ok(cached_value.clone());
+        }
+    }
+
     let file = fs::File::open(CONFIG_PATH)?;
     let doc = XmlReader::parse_auto(file)?;
 
-    log::trace!("Finding machine: {}", name);
+    log::debug!("Finding machine: {}", name);
 
     let root = doc.root();
 
@@ -48,7 +62,15 @@ fn get_machine_config(name: &str, attr: MachineAttr) -> io::Result<String> {
 
     log::debug!("machine folder: {:?}", folder);
     match folder {
-        Some(Ok(f)) => Ok(f.to_string()),
+        Some(Ok(f)) => {
+            let result = f.to_string();
+            // Cache the result
+            if let Ok(mut cache_map) = cache.lock() {
+                log::debug!("Caching {} for {}", &cache_key, &result);
+                cache_map.insert(cache_key, result.clone());
+            }
+            Ok(result)
+        }
         _ => Err(io::Error::new(
             io::ErrorKind::NotFound,
             format!("Machine {} not found in configuration", name),
