@@ -2,6 +2,7 @@
 *.csv
 
 # generated files
+__pycache__/
 dist/
 log/
 conversion/
