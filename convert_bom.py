@@ -430,8 +430,12 @@ class ZHMM002Parser(ZFileParser):
         self.h.width = header.index("Width")
         self.h.thickness = header.index("Height")
 
-    def parse_size(self, size):
-        t,w,l = map(lambda x: round(float(x), 3), size.split(' X '))
+    def parse_size(self, row):
+        if all([row.length, row.width, row.thickness]):
+            # Use Length, Width, Thickness if available
+            return [round(float(x), 3) for x in (row.length, row.width, row.thickness)]
+
+        t,w,l = map(lambda x: round(float(x), 3), row.size.split(' X '))
 
         return [l, w, t]
 
@@ -453,7 +457,7 @@ class ZHMM002Parser(ZFileParser):
             "",  # AltDim
             "",  # AltUOM
             "",  # Volume
-            *self.parse_size(row.size),  # Length, Width, Height
+            *self.parse_size(row),  # Length, Width, Height
             "HS PARTS",  # Routing
             "",  # Document (will be moved later)
             "",  # PurchText
@@ -476,7 +480,7 @@ class ZHMM002Parser(ZFileParser):
             row.matl,  # RawMM
             row.desc,  # Description
             _type,  # Type
-            *self.parse_size(row.size),  # Length, Width, Thickness
+            *self.parse_size(row),  # Length, Width, Thickness
             row.weight,  # UnitWeight in FT2
             row.uom,  # UoM
             row.grade,  # Grade
