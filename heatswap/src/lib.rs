@@ -186,14 +186,13 @@ pub fn get_database_config() -> io::Result<tiberius::Config> {
     let mut cfg = tiberius::Config::new();
     cfg.trust_cert();
 
-    let attrs = db_config.split(';')
-        .filter_map(|s| {
-            let mut parts = s.split('=');
-            match (parts.next(), parts.next()) {
-                (Some(key), Some(value)) => Some((key.trim(), value.trim())),
-                _ => None,
-            }
-        });
+    let attrs = db_config.split(';').filter_map(|s| {
+        let mut parts = s.split('=');
+        match (parts.next(), parts.next()) {
+            (Some(key), Some(value)) => Some((key.trim(), value.trim())),
+            _ => None,
+        }
+    });
 
     log::debug!("Database configuration attributes: {:?}", attrs);
 
