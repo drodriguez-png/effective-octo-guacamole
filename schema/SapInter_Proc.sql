@@ -1237,13 +1237,13 @@ BEGIN
 		MachineName,
 		ProgramName
 	)
-	SELECT
-		MachineName,
-		ChildNestId.ProgramName
+	SELECT DISTINCT
+		Program.MachineName,
+		Program.ProgramName
 	FROM sap.ChildNestId
 	INNER JOIN oys.Program
 		ON Program.ProgramGUID=ChildNestId.ProgramGUID
-	WHERE ArchivePacketId = @archive_packet_id
+	WHERE ChildNestId.ArchivePacketId = @archive_packet_id
 
 END;
 GO
