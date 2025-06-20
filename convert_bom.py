@@ -66,7 +66,7 @@ def fmt_inches(val: str | float | int):
     return "{} {}".format(inches or "", frac or "").strip() or "0"
 
 class ReadyFile(object):
-    def __init__(self, file_name=None, test_id=None):
+    def __init__(self, file_name="default.ready", test_id=None):
         self.file_name = file_name
         self.test_id = test_id
 
@@ -268,15 +268,18 @@ class ProjMM(ReadyFile):
         while len(line) < self.HEADER_LEN:
             line.append(None)
 
-        job, mark = ANY_PART.match(line[1]).groups()
         line[-1] = line[12] # move DwgNo
-        line[12] = f"{job}_{mark}"  # copy PartName
+
+        any_match = ANY_PART.match(line[1])
+        if any_match:
+            job, mark = any_match.groups()
+            line[12] = f"{job}_{mark}"  # copy PartName
+
+            # get Spec, Grade, Test
+            line[17:20] = part_grades.setdefault(f"{job}-{mark}", [None] * 3)
 
         if self.test_id:
             line[1] = line[1].replace('0', str(self.test_id), 1)
-
-        # get Spec, Grade, Test
-        line[17:20] = part_grades.setdefault(f"{job}-{mark}", [None] * 3)
 
         # TODO: description generation
         if CONVERT_DESC:
@@ -435,9 +438,9 @@ class ZHMM002Parser(ZFileParser):
             # Use Length, Width, Thickness if available
             return [round(float(x), 3) for x in (row.length, row.width, row.thickness)]
 
-        t,w,l = map(lambda x: round(float(x), 3), row.size.split(' X '))
+        thk,wid,len = map(lambda x: round(float(x), 3), row.size.split(' X '))
 
-        return [l, w, t]
+        return [len, wid, thk]
 
     def generate_mm(self, row):
         assert row.uom == "EA", "UoM is not EA"
