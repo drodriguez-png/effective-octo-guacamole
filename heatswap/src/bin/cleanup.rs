@@ -20,21 +20,28 @@ fn main() -> Result<(), AppError> {
         let _ = env::current_exe().map(|p| p.parent().map(|p| env::set_current_dir(p)));
     }
 
+    let config = simplelog::ConfigBuilder::new()
+        .add_filter_ignore_str("tiberius")
+        .build();
+
     let _ = CombinedLogger::init(vec![
         TermLogger::new(
             simplelog::LevelFilter::Warn,
-            simplelog::Config::default(),
+            config.clone(),
             simplelog::TerminalMode::Mixed,
             simplelog::ColorChoice::Auto,
         ),
         WriteLogger::new(
             simplelog::LevelFilter::Debug,
-            simplelog::Config::default(),
+            config,
             fs::OpenOptions::new()
                 .write(true)
                 .append(true)
                 .create(true)
-                .open(format!("LogData/cleanup_{}.log", Utc::now().format("%Y-%m-%d")))?,
+                .open(format!(
+                    "LogData/cleanup_{}.log",
+                    Utc::now().format("%Y-%m-%d")
+                ))?,
         ),
     ]);
 
