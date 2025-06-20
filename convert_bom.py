@@ -290,6 +290,12 @@ class ZFileParser(object):
     Provides a common interface for parsing and generating files.
     """
 
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.h = SimpleNamespace()
+
     def parse_header(self, sheet):
         """
         Parse the header of the Excel sheet.
@@ -333,11 +339,8 @@ class ZHPP009Parser(ZFileParser):
         - UoM is IN2 or FT2
     """
 
-    def __init__(self):
-        self.reset()
-    
     def reset(self):
-        self.h = SimpleNamespace()
+        super().reset()
         self.bom = list()
 
     def matches_filename(self, workbook):
@@ -399,11 +402,8 @@ class ZHMM002Parser(ZFileParser):
         - Material Description starts with PL, MISC, or SHEET
     """
 
-    def __init__(self):
-        self.reset()
-
     def reset(self):
-        self.h = SimpleNamespace()
+        super().reset()
         self.skipped = dict()
         self.exported = list()
         self.mm = list()
@@ -532,7 +532,7 @@ class ZHMM002Parser(ZFileParser):
                 self.generate_row(row)  # process skipped rows
 
         self.export(os.path.splitext(workbook.fullname)[0])
-        self.reset() 
+        self.reset()
 
 
 def main():
