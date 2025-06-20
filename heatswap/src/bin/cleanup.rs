@@ -1,5 +1,6 @@
 
 use heatswap::Program;
+use chrono::Utc;
 use log;
 use simplelog::{
     CombinedLogger, TermLogger, WriteLogger,
@@ -38,7 +39,7 @@ fn main() -> Result<(), AppError> {
                 .write(true)
                 .append(true)
                 .create(true)
-                .open("LogData/cleanup.log")?,
+                .open(format!("LogData/cleanup_{}.log", Utc::now().format("%Y-%m-%d")))?,
         ),
     ]);
 
