@@ -270,9 +270,17 @@ class ProjMM(ReadyFile):
             line[17:20] = part_grades.setdefault(f"{job}-{mark}", [None] * 3)
 
 
-        # TODO: description generation
+        # generate description to match new format
         if CONVERT_DESC:
-            pass
+            length, wid, thk = [fmt_inches(x) for x in line[8:11]]
+            spec, grade, test = line[17:20]
+            grade_test = f"{grade or ''}{test or ''}"
+
+            if line[2] and line[2].startswith("PL"):
+                prefix = f"PL {thk}"
+            else:
+                prefix = line[2].split(' x ')[0]
+            line[2] = f"{prefix} x {wid} x {length} {grade_test}".strip()
 
         return line
 
