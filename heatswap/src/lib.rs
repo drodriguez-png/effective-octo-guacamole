@@ -8,7 +8,6 @@ const CONFIG_PATH: &str = "Settings.XML";
 type DbClient = tiberius::Client<smol::net::TcpStream>;
 
 enum MachineAttr {
-    PostFolder,
     ProductionFolder,
     ArchiveFolder,
     Extension,
@@ -17,7 +16,6 @@ enum MachineAttr {
 impl MachineAttr {
     fn xml_tag(&self) -> &'static str {
         match self {
-            MachineAttr::PostFolder => "SourceNCFolder",
             MachineAttr::ProductionFolder => "OutputNCFolder",
             MachineAttr::ArchiveFolder => "ArchiveNCFolder",
             MachineAttr::Extension => "NCFileExtension",
@@ -79,24 +77,6 @@ impl Program {
             .iter()
             .map(TryFrom::try_from)
             .collect()
-    }
-
-    /// burn the code to the machine
-    pub fn move_code_to_prod(&self) -> io::Result<()> {
-        let mut src =
-            get_machine_config(&self.machine, MachineAttr::PostFolder).map(PathBuf::from)?;
-        let mut dest =
-            get_machine_config(&self.machine, MachineAttr::ProductionFolder).map(PathBuf::from)?;
-        let ext = get_machine_extension(&self.machine)?;
-
-        let file = format!("{}{}", &self.name, ext);
-        src.push(&file);
-        dest.push(&file);
-        log::debug!("Moving file from {} to {}", src.display(), dest.display());
-        std::fs::copy(&src, &dest)?;
-        log::info!("File moved successfully");
-
-        Ok(())
     }
 
     /// archive the code after it has been burned
