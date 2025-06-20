@@ -74,6 +74,8 @@ WHERE LogProcedureCalls = 1;
             };
         }
 
+        log::debug!("================= done =================");
+
         Ok(())
     })
 }
