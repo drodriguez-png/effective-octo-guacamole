@@ -62,9 +62,9 @@ pub fn get_machine_extension(name: &str) -> Result<String, io::Error> {
 
 #[derive(Debug)]
 pub struct Program {
+    pub id: i32,
     pub machine: String,
     pub name: String,
-    pub heat: Vec<String>,
 }
 
 impl Program {
@@ -149,13 +149,7 @@ impl Program {
 
 impl Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} -> [{}] at {}",
-            self.name,
-            self.heat.join("|"),
-            self.machine
-        )
+        write!(f, "{} at {}", self.name, self.machine)
     }
 }
 
@@ -163,14 +157,17 @@ impl TryFrom<&tiberius::Row> for Program {
     type Error = tiberius::error::Error;
 
     fn try_from(row: &tiberius::Row) -> Result<Self, Self::Error> {
-        let machine: String = row.get::<&str, _>("MachineName").unwrap_or_default().to_string();
-        let name: String = row.get::<&str, _>("ProgramName").unwrap_or_default().to_string();
+        let id: i32 = row.get::<i32, _>("Id").unwrap_or_default();
+        let machine: String = row
+            .get::<&str, _>("MachineName")
+            .unwrap_or_default()
+            .to_string();
+        let name: String = row
+            .get::<&str, _>("ProgramName")
+            .unwrap_or_default()
+            .to_string();
 
-        Ok(Program {
-            machine,
-            name,
-            heat: Vec::new(),
-        })
+        Ok(Program { id, machine, name })
     }
 }
 
