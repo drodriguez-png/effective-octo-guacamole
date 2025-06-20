@@ -5,6 +5,8 @@ use std::{fs, io};
 
 const CONFIG_PATH: &str = "Settings.XML";
 
+type DbClient = tiberius::Client<smol::net::TcpStream>;
+
 enum MachineAttr {
     PostFolder,
     ProductionFolder,
