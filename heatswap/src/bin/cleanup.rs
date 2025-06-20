@@ -51,15 +51,20 @@ fn main() -> Result<(), AppError> {
         log::debug!("Connected to SQL client");
 
         // try to log call
-        let _ = client.execute(
-            r#"
+        if let Err(e) = client
+            .execute(
+                r#"
 INSERT INTO log.UpdateProgramCalls(ProcCalled)
 SELECT 'NcCodeCleanup'
 FROM sap.InterfaceConfig
 WHERE LogProcedureCalls = 1;
         "#,
-            &[],
-        );
+                &[],
+            )
+            .await
+        {
+            log::debug!("Failed to log call: {e}");
+        }
 
         for program in heatswap::Program::get_programs(&mut client).await? {
             log::info!("Processing program: {}", program);
