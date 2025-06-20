@@ -4,10 +4,6 @@ set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 default:
     @just --list
 
-test:
-    cargo run --bin heatswap -- Kinetic_K5000XMC 123 "test1,w34x,456"
-    cat LogData/heatswap.log
-
 deploy:
     cargo build --release
     cp target\release\archive-code.exe \\hssieng\SNDataDev\OYSPlugins\HeatSwap\archive-code.exe

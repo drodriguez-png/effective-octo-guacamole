@@ -11,11 +11,10 @@ simplelog = "0.12.2"
 smol = "2.0.2"
 spex = "0.2.2"
 thiserror = "2.0.3"
-tiberius = { version = "0.12.3", features = ["sql-browser-smol", "integrated-auth-gssapi"] }
-
-[[bin]]
-name = "heatswap"
-path = "src/bin/heatswap.rs"
+tiberius = { version = "0.12.3", features = [
+    "sql-browser-smol",
+    "integrated-auth-gssapi",
+] }
 
 [[bin]]
 name = "archive-code"
