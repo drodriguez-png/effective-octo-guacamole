@@ -62,7 +62,7 @@ pub fn get_machine_extension(name: &str) -> Result<String, io::Error> {
 
 #[derive(Debug)]
 pub struct Program {
-    pub id: i32,
+    pub id: i64,
     pub machine: String,
     pub name: String,
 }
@@ -123,7 +123,10 @@ impl Program {
     /// Delete this program from the MoveCodeQueue
     pub async fn delete_from_queue(&self, client: &mut DbClient) -> tiberius::Result<()> {
         client
-            .execute("DELETE FROM sap.MoveCodeQueue WHERE Id = @P1", &[&self.id])
+            .execute(
+                "DELETE FROM sap.MoveCodeQueue WHERE Id = @P1",
+                &[&(self.id as i32)],
+            )
             .await
             .map(|_| ())
     }
@@ -139,7 +142,7 @@ impl TryFrom<&tiberius::Row> for Program {
     type Error = tiberius::error::Error;
 
     fn try_from(row: &tiberius::Row) -> Result<Self, Self::Error> {
-        let id: i32 = row.get::<i32, _>("Id").unwrap_or_default();
+        let id: i64 = row.get::<i64, _>("Id").unwrap_or_default();
         let machine: String = row
             .get::<&str, _>("MachineName")
             .unwrap_or_default()
