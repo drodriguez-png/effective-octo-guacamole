@@ -66,9 +66,8 @@ def fmt_inches(val: str | float | int):
     return "{} {}".format(inches or "", frac or "").strip() or "0"
 
 class ReadyFile(object):
-    def __init__(self, file_name="default.ready", test_id=None):
+    def __init__(self, file_name="default.ready"):
         self.file_name = file_name
-        self.test_id = test_id
 
         self.lines = []
         self.converted = []
@@ -84,7 +83,7 @@ class ReadyFile(object):
         variants = [ConeBOM, ConeMAT, ProjMM]
         for Variant in variants:
             if Variant.matches_filename(self.file_name):
-                Variant(self.file_name, self.test_id).convert()
+                Variant(self.file_name).convert()
                 break
         else:
             raise ValueError("No valid variant found for filename `{}`".format(self.file_name))
@@ -152,9 +151,6 @@ class ReadyFile(object):
             inches = int(inches) + float(frac) / 16
             return "{}{}-P{:.4f}{}".format(prefix, grade, inches, suffix)
 
-        if self.test_id:
-            mm[3] = str(self.test_id)
-
         return mm
 
 class ConeBOM(ReadyFile):
@@ -181,9 +177,6 @@ class ConeBOM(ReadyFile):
             line[2] = str(round(float(line[2]) / 144.0, 3))
             line[3] = "FT2"
 
-        if self.test_id:
-            for i in (0, 1):
-                line[i] = line[i].replace('0', str(self.test_id), 1)
 
         return line
 
@@ -214,8 +207,6 @@ class ConeMAT(ReadyFile):
         line[12:] = parse_grade(line[8])
         line[0] = self.fix_raw_mm(line[0])
 
-        if self.test_id:
-            line[0] = line[0].replace('0', str(self.test_id), 1)
 
         if line[7] == "IN2":
             # convert to FT2
@@ -278,8 +269,6 @@ class ProjMM(ReadyFile):
             # get Spec, Grade, Test
             line[17:20] = part_grades.setdefault(f"{job}-{mark}", [None] * 3)
 
-        if self.test_id:
-            line[1] = line[1].replace('0', str(self.test_id), 1)
 
         # TODO: description generation
         if CONVERT_DESC:
@@ -544,7 +533,6 @@ class ZHMM002Parser(ZFileParser):
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument("--id", type=int, help="Id for renaming project")
     parser.add_argument("--gen-parts-grades", action="store_true", help="Generate part grades")
     parser.add_argument("--gen-bom-files", action="store_true", help="generate BOM files from SAP export")
     parser.add_argument("--gen-desc", action="store_true", help="generate descriptions in ConeMAT files")
@@ -567,7 +555,7 @@ def main():
         generate_bom_files()
         return
 
-    converter = ReadyFile(test_id=args.id)
+    converter = ReadyFile()
     for f in os.listdir(os.path.join(FOLDER, "input")):
         converter.infer_process(f)
 
