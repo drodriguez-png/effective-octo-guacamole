@@ -1232,7 +1232,6 @@ BEGIN
 	WHERE ArchivePacketId = @archive_packet_id;
 
 	-- [5] add to move queue
-	-- TODO: finish and test
 	INSERT INTO sap.MoveCodeQueue (
 		MachineName,
 		ProgramName
