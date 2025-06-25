@@ -1,5 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { HttpStatusCode } from "@solidjs/start";
+import "~/styles/PageLayout.css";
 
 export default function NotFound() {
   return (

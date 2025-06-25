@@ -3,6 +3,7 @@ import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { Suspense, createSignal } from "solid-js";
 import "./app.css";
+import "./styles/AppLayout.css";
 
 function RootLayout(props) {
   const [isDropdownOpen, setIsDropdownOpen] = createSignal(false);

@@ -1,5 +1,6 @@
 import { Title } from "@solidjs/meta";
 import Counter from "~/components/Counter";
+import "~/styles/PageLayout.css";
 
 export default function Home() {
   return (
