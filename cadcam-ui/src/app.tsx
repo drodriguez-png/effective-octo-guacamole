@@ -4,6 +4,9 @@ import { FileRoutes } from "@solidjs/start/router";
 import { Suspense, createSignal } from "solid-js";
 import "./app.css";
 import "./styles/AppLayout.css";
+import "./styles/themes.css";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { ThemeToggle } from "./components/ThemeToggle";
 
 function RootLayout(props) {
   const [isDropdownOpen, setIsDropdownOpen] = createSignal(false);
@@ -22,25 +25,30 @@ function RootLayout(props) {
       <Title>SolidStart - Basic</Title>
       <div class="app-container" onClick={closeDropdown}>
         <nav class="app-nav">
-          {location.pathname !== '/' && <a href="/" class="nav-link">🏠</a>}
-          <div class="nav-dropdown">
-            <button 
-              class="dropdown-toggle" 
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleDropdown();
-              }}
-            >
-              ⚒️ Tools ▼
-            </button>
-            <div class={`dropdown-content ${isDropdownOpen() ? 'show' : ''}`}>
-              <a href="/cds" class="dropdown-item" onClick={closeDropdown}>📦 Code Delivery</a>
-              <a href="/part_ops" class="dropdown-item" onClick={closeDropdown}>⚙️ Part Operations</a>
-              <a href="/renamed_demand" class="dropdown-item" onClick={closeDropdown}>🔄 Renamed Demand</a>
-              <a href="/boomi" class="dropdown-item" onClick={closeDropdown}>🔗 Boomi</a>
+          <div class="nav-left">
+            {location.pathname !== '/' && <a href="/" class="nav-link">🏠</a>}
+            <div class="nav-dropdown">
+              <button 
+                class="dropdown-toggle" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleDropdown();
+                }}
+              >
+                ⚒️ Tools ▼
+              </button>
+              <div class={`dropdown-content ${isDropdownOpen() ? 'show' : ''}`}>
+                <a href="/cds" class="dropdown-item" onClick={closeDropdown}>📦 Code Delivery</a>
+                <a href="/part_ops" class="dropdown-item" onClick={closeDropdown}>⚙️ Part Operations</a>
+                <a href="/renamed_demand" class="dropdown-item" onClick={closeDropdown}>🔄 Renamed Demand</a>
+                <a href="/boomi" class="dropdown-item" onClick={closeDropdown}>🔗 Boomi</a>
+              </div>
             </div>
+            <a href="/fail" class="nav-link">Test</a>
           </div>
-          <a href="/fail" class="nav-link">Test</a>
+          <div class="nav-right">
+            <ThemeToggle />
+          </div>
         </nav>
         <main class="app-main">
           <Suspense>{props.children}</Suspense>
@@ -57,8 +65,10 @@ function RootLayout(props) {
 
 export default function App() {
   return (
-    <Router root={RootLayout}>
-      <FileRoutes />
-    </Router>
+    <ThemeProvider>
+      <Router root={RootLayout}>
+        <FileRoutes />
+      </Router>
+    </ThemeProvider>
   );
 }

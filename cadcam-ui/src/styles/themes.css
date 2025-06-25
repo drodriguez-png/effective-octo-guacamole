@@ -1,0 +1,60 @@
+/* Theme Variables */
+:root {
+  /* Light theme colors */
+  --color-background: #ffffff;
+  --color-surface: #f5f5f5;
+  --color-surface-hover: #e8e8e8;
+  --color-text-primary: #333333;
+  --color-text-secondary: #666666;
+  --color-text-muted: #999999;
+  --color-border: #dddddd;
+  --color-border-hover: #cccccc;
+  --color-nav-background: #f5f5f5;
+  --color-footer-background: #2c3e50;
+  --color-footer-text: #ffffff;
+  --color-dropdown-background: #ffffff;
+  --color-dropdown-shadow: rgba(0, 0, 0, 0.1);
+  --color-button-hover: rgba(0, 0, 0, 0.1);
+  
+  /* Page gradient colors */
+  --color-gradient-start: #667eea;
+  --color-gradient-end: #764ba2;
+}
+
+[data-theme="dark"] {
+  /* Dark theme colors */
+  --color-background: #121212;
+  --color-surface: #1e1e1e;
+  --color-surface-hover: #2a2a2a;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #b3b3b3;
+  --color-text-muted: #808080;
+  --color-border: #333333;
+  --color-border-hover: #444444;
+  --color-nav-background: #1e1e1e;
+  --color-footer-background: #0f1419;
+  --color-footer-text: #ffffff;
+  --color-dropdown-background: #2a2a2a;
+  --color-dropdown-shadow: rgba(0, 0, 0, 0.3);
+  --color-button-hover: rgba(255, 255, 255, 0.1);
+  
+  /* Page gradient colors for dark theme */
+  --color-gradient-start: #4a5568;
+  --color-gradient-end: #2d3748;
+}
+
+/* Theme Toggle Styles */
+.theme-toggle {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  color: var(--color-text-primary);
+}
+
+.theme-toggle:hover {
+  background: var(--color-button-hover);
+}

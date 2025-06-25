@@ -7,14 +7,29 @@
 
 .app-nav {
     padding: 1rem;
-    background: #f5f5f5;
-    border-bottom: 1px solid #ddd;
+    background: var(--color-nav-background);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
 }
 
 .nav-link {
     margin-right: 1rem;
     text-decoration: none;
-    color: #333;
+    color: var(--color-text-primary);
 }
 
 /* Dropdown Navigation */
@@ -27,7 +42,7 @@
 .dropdown-toggle {
     background: none;
     border: none;
-    color: #333;
+    color: var(--color-text-primary);
     cursor: pointer;
     padding: 0.5rem;
     font-size: 1rem;
@@ -37,7 +52,7 @@
 }
 
 .dropdown-toggle:hover {
-    background: rgba(0, 0, 0, 0.1);
+    background: var(--color-button-hover);
     border-radius: 4px;
 }
 
@@ -45,14 +60,15 @@
     position: absolute;
     top: 100%;
     left: 0;
-    background: white;
+    background: var(--color-dropdown-background);
     min-width: 200px;
     max-width: 300px;
     width: max-content;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 16px var(--color-dropdown-shadow);
     border-radius: 4px;
     z-index: 1000;
     display: none;
+    border: 1px solid var(--color-border);
 }
 
 .dropdown-content.show {
@@ -62,14 +78,14 @@
 .dropdown-item {
     display: block;
     padding: 0.75rem 1rem;
-    color: #333;
+    color: var(--color-text-primary);
     text-decoration: none;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--color-border);
     white-space: nowrap;
 }
 
 .dropdown-item:hover {
-    background: #f5f5f5;
+    background: var(--color-surface-hover);
 }
 
 .dropdown-item:last-child {
@@ -81,8 +97,8 @@
 }
 
 .app-footer {
-    background: #2c3e50;
-    color: white;
+    background: var(--color-footer-background);
+    color: var(--color-footer-text);
     text-align: center;
     padding: 0.25rem;
 }
