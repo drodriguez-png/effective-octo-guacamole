@@ -1,32 +1,84 @@
-# SolidStart
+# CAD/CAM UI
 
-Everything you need to build a Solid project, powered by [`solid-start`](https://start.solidjs.com);
+A SolidStart web application for the SigmaNest interface system, providing user interfaces for CAD/CAM operations and code delivery management.
 
-## Creating a project
+## Project Overview
 
-```bash
-# create a new project in the current directory
-npm init solid@latest
+This application is built with SolidJS and SolidStart, featuring:
 
-# create a new project in my-app
-npm init solid@latest my-app
+- **Home Page**: Main landing page with interactive counter component
+- **Code Delivery System**: Interface for managing code delivery operations
+- **Responsive Design**: CSS-based styling with component-level styles
+
+## Tech Stack
+
+- **Framework**: SolidJS with SolidStart
+- **Router**: @solidjs/router for client-side routing
+- **Meta Management**: @solidjs/meta for SEO and document head management
+- **Build Tool**: Vinxi
+- **Runtime**: Node.js 22+
+
+## Project Structure
+
+```
+src/
+├── app.tsx          # Root application component with routing
+├── app.css          # Global application styles
+├── components/      # Reusable UI components
+│   ├── Counter.tsx  # Interactive counter component
+│   └── Counter.css  # Counter component styles
+├── routes/          # Page components
+│   ├── index.tsx    # Home page
+│   ├── cds.tsx      # Code Delivery System page
+│   └── [...404].tsx # 404 error page
+└── entry-*.tsx      # Application entry points
 ```
 
-## Developing
+## Getting Started
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+### Prerequisites
+
+- Node.js 22 or higher
+- bun or other js toolchain
+
+### Installation
 
 ```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+# Install dependencies
+bun install
 ```
 
-## Building
+### Development
 
-Solid apps are built with _presets_, which optimise your project for deployment to different environments.
+```bash
+# Start development server
+bun run dev
 
-By default, `npm run build` will generate a Node app that you can run with `npm start`. To use a different preset, add it to the `devDependencies` in `package.json` and specify in your `app.config.js`.
+# Start with auto-open browser
+bun run dev -- --open
+```
 
-## This project was created with the [Solid CLI](https://github.com/solidjs-community/solid-cli)
+The application will be available at `http://localhost:3000`
+
+### Building
+
+```bash
+# Build for production
+bun run build
+
+# Start production server
+bun start
+```
+
+## Available Routes
+
+- `/` - Home page with welcome message and counter
+- `/cds` - Code Delivery System interface
+- `/*` - 404 error page for unmatched routes
+
+## Scripts
+
+- `bun run dev` - Start development server
+- `bun run build` - Build for production
+- `bun run start` - Start production server
+- `bun run version` - Show version information
