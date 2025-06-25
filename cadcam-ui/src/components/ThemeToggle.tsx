@@ -1,4 +1,5 @@
 import { useTheme } from '../contexts/ThemeContext';
+import { Dropdown } from './Dropdown';
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -12,21 +13,54 @@ export function ThemeToggle() {
     }
   };
 
-  const cycleTheme = () => {
-    const modes = ['light', 'dark', 'system'] as const;
-    const currentIndex = modes.indexOf(theme());
-    const nextIndex = (currentIndex + 1) % modes.length;
-    setTheme(modes[nextIndex]);
+  const getThemeLabel = () => {
+    switch (theme()) {
+      case 'light': return 'Light';
+      case 'dark': return 'Dark';
+      case 'system': return 'System';
+      default: return 'System';
+    }
   };
 
-  return (
+  const selectTheme = (newTheme: 'light' | 'dark' | 'system') => {
+    setTheme(newTheme);
+  };
+
+  const triggerButton = (
     <button
-      onClick={cycleTheme}
       class="theme-toggle"
       title={`Current theme: ${theme()}`}
-      aria-label={`Switch theme (current: ${theme()})`}
+      aria-label={`Theme selector (current: ${theme()})`}
     >
-      {getThemeIcon()}
+      {getThemeIcon()} {getThemeLabel()} ▼
     </button>
+  );
+
+  return (
+    <Dropdown 
+      trigger={triggerButton}
+      class="theme-dropdown"
+      contentClass="theme-dropdown-content"
+      alignRight={true}
+    >
+      <button 
+        class={`theme-dropdown-item ${theme() === 'light' ? 'active' : ''}`}
+        onClick={() => selectTheme('light')}
+      >
+        ☀️ Light
+      </button>
+      <button 
+        class={`theme-dropdown-item ${theme() === 'dark' ? 'active' : ''}`}
+        onClick={() => selectTheme('dark')}
+      >
+        🌙 Dark
+      </button>
+      <button 
+        class={`theme-dropdown-item ${theme() === 'system' ? 'active' : ''}`}
+        onClick={() => selectTheme('system')}
+      >
+        💻 System
+      </button>
+    </Dropdown>
   );
 }
