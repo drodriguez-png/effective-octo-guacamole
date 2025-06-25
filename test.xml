@@ -1,0 +1,239 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SNPart>
+  <SourceUnits>IN</SourceUnits>
+  <TargetUnits>IN</TargetUnits>
+  <PartName>1240066A_G25C-b1</PartName>
+  <WorkOrderNumber />
+  <DrawingNumber />
+  <RevisionNumber />
+  <Material>M270-50T2</Material>
+  <Thickness>1.5</Thickness>
+  <Customer />
+  <Quantity>1</Quantity>
+  <ProgrammedBy />
+  <DueDate>2025-06-24</DueDate>
+  <Priority>10</Priority>
+  <NoNotNestInInternalContours>false</NoNotNestInInternalContours>
+  <FillerPart>false</FillerPart>
+  <PartData1>1240066A</PartData1>
+  <PartData2>1</PartData2>
+  <PartData3 />
+  <PartData4 />
+  <PartData5 />
+  <PartData6 />
+  <PartData7 />
+  <PartData8 />
+  <PartData9>G25C-b1</PartData9>
+  <PartData10 />
+  <PartData11 />
+  <PartData12 />
+  <PartData13 />
+  <PartData14>HighHeatNum</PartData14>
+  <PartData15 />
+  <PartData16 />
+  <PartData17 />
+  <PartData18 />
+  <Remark>Blank</Remark>
+  <DefaultMachineName>Plant2Farley</DefaultMachineName>
+  <IntSameAsExt>false</IntSameAsExt>
+  <CenterSameAsEdge>false</CenterSameAsEdge>
+  <MaterialLookup>true</MaterialLookup>
+  <LeadinsByProcess>false</LeadinsByProcess>
+  <BHQLookup>false</BHQLookup>
+  <Mirror>Not Allowed</Mirror>
+  <GrainConstraint>Use Grain</GrainConstraint>
+  <Angle>Incremental</Angle>
+  <AngleIncrement>90</AngleIncrement>
+  <AbsAngles>180</AbsAngles>
+  <CommonCutPart>false</CommonCutPart>
+  <SmallPart>false</SmallPart>
+  <PartSavePath>\\hssieng\SNDataPrdNew\Parts\Prenesting</PartSavePath>
+  <GeometryGroupList>
+    <GeometryGroup>
+      <Process>CUT</Process>
+      <GeometryList>
+        <Line>
+          <StartX>-0.553375244140625</StartX>
+          <StartY>6.0625</StartY>
+          <EndX>-0.553375244140625</EndX>
+          <EndY>-6.0625</EndY>
+        </Line>
+        <Line>
+          <StartX>-0.553375244140625</StartX>
+          <StartY>6.0625</StartY>
+          <EndX>681.446685791016</EndX>
+          <EndY>6.0625</EndY>
+        </Line>
+        <Line>
+          <StartX>-0.553375244140625</StartX>
+          <StartY>-6.0625</StartY>
+          <EndX>681.446685791016</EndX>
+          <EndY>-6.0625</EndY>
+        </Line>
+        <Line>
+          <StartX>681.446685791016</StartX>
+          <StartY>6.0625</StartY>
+          <EndX>681.446685791016</EndX>
+          <EndY>-6.0625</EndY>
+        </Line>
+      </GeometryList>
+    </GeometryGroup>
+    <GeometryGroup>
+      <Process>PRIMARYMARK</Process>
+      <GeometryList>
+        <Line>
+          <StartX>0</StartX>
+          <StartY>0</StartY>
+          <EndX>3</EndX>
+          <EndY>0</EndY>
+        </Line>
+        <Line>
+          <StartX>1.83690953073357E-16</StartX>
+          <StartY>3</StartY>
+          <EndX>1.83690953073357E-16</EndX>
+          <EndY>-3</EndY>
+        </Line>
+        <Arc>
+          <CenterX>1</CenterX>
+          <CenterY>5.0625</CenterY>
+          <Radius>1</Radius>
+          <StartAngle>90</StartAngle>
+          <EndAngle>180</EndAngle>
+          <DirCCW>true</DirCCW>
+        </Arc>
+        <Line>
+          <StartX>1</StartX>
+          <StartY>6.0625</StartY>
+          <EndX>3</EndX>
+          <EndY>6.0625</EndY>
+        </Line>
+        <Arc>
+          <CenterX>3</CenterX>
+          <CenterY>5.5625</CenterY>
+          <Radius>0.5</Radius>
+          <StartAngle>60</StartAngle>
+          <EndAngle>90</EndAngle>
+          <DirCCW>true</DirCCW>
+        </Arc>
+        <Arc>
+          <CenterX>1</CenterX>
+          <CenterY>-5.0625</CenterY>
+          <Radius>1</Radius>
+          <StartAngle>180</StartAngle>
+          <EndAngle>270</EndAngle>
+          <DirCCW>true</DirCCW>
+        </Arc>
+        <Line>
+          <StartX>1</StartX>
+          <StartY>-6.0625</StartY>
+          <EndX>3</EndX>
+          <EndY>-6.0625</EndY>
+        </Line>
+        <Arc>
+          <CenterX>3</CenterX>
+          <CenterY>-5.5625</CenterY>
+          <Radius>0.5</Radius>
+          <StartAngle>270</StartAngle>
+          <EndAngle>300</EndAngle>
+          <DirCCW>true</DirCCW>
+        </Arc>
+        <Arc>
+          <CenterX>340.446655273438</CenterX>
+          <CenterY>0</CenterY>
+          <Radius>2</Radius>
+          <StartAngle>45</StartAngle>
+          <EndAngle>315</EndAngle>
+          <DirCCW>true</DirCCW>
+        </Arc>
+        <Line>
+          <StartX>340.446655273438</StartX>
+          <StartY>3</StartY>
+          <EndX>340.446655273438</EndX>
+          <EndY>-3</EndY>
+        </Line>
+        <Line>
+          <StartX>680.893310546875</StartX>
+          <StartY>0</StartY>
+          <EndX>677.893310546875</EndX>
+          <EndY>-2.62268340011186E-07</EndY>
+        </Line>
+        <Line>
+          <StartX>680.893310809143</StartX>
+          <StartY>-2.99999999999999</StartY>
+          <EndX>680.893310284607</EndX>
+          <EndY>2.99999999999999</EndY>
+        </Line>
+        <Arc>
+          <CenterX>679.893310989453</CenterX>
+          <CenterY>-5.06250008742276</CenterY>
+          <Radius>1</Radius>
+          <StartAngle>270.000005008956</StartAngle>
+          <EndAngle>360.000005008956</EndAngle>
+          <DirCCW>true</DirCCW>
+        </Arc>
+        <Line>
+          <StartX>679.893311076876</StartX>
+          <StartY>-6.06250008742276</StartY>
+          <EndX>677.893311076876</EndX>
+          <EndY>-6.06250026226832</EndY>
+        </Line>
+        <Arc>
+          <CenterX>677.893311033164</CenterX>
+          <CenterY>-5.56250026226832</CenterY>
+          <Radius>0.5</Radius>
+          <StartAngle>240.000005008956</StartAngle>
+          <EndAngle>270.000005008956</EndAngle>
+          <DirCCW>true</DirCCW>
+        </Arc>
+        <Arc>
+          <CenterX>679.893310104297</CenterX>
+          <CenterY>5.0624999125772</CenterY>
+          <Radius>1</Radius>
+          <StartAngle>360.000005008956</StartAngle>
+          <EndAngle>450.000005008956</EndAngle>
+          <DirCCW>true</DirCCW>
+        </Arc>
+        <Line>
+          <StartX>679.893310016874</StartX>
+          <StartY>6.0624999125772</StartY>
+          <EndX>677.893310016874</EndX>
+          <EndY>6.06249973773164</EndY>
+        </Line>
+        <Arc>
+          <CenterX>677.893310060586</CenterX>
+          <CenterY>5.56249973773164</CenterY>
+          <Radius>0.5</Radius>
+          <StartAngle>450.000005008956</StartAngle>
+          <EndAngle>480.000005008956</EndAngle>
+          <DirCCW>true</DirCCW>
+        </Arc>
+        <Note>
+          <LowerLeftX>6</LowerLeftX>
+          <LowerLeftY>3</LowerLeftY>
+          <NoteString>1240066A_G25C-b1</NoteString>
+          <NoteAngle>0</NoteAngle>
+          <NoteSize>2</NoteSize>
+        </Note>
+        <Note>
+          <LowerLeftX>6</LowerLeftX>
+          <LowerLeftY>0</LowerLeftY>
+          <NoteString>HighHeatNum</NoteString>
+          <NoteAngle>0</NoteAngle>
+          <NoteSize>2</NoteSize>
+        </Note>
+      </GeometryList>
+    </GeometryGroup>
+    <GeometryGroup>
+      <Process>NOCUT</Process>
+      <GeometryList>
+        <Note>
+          <LowerLeftX>330.446655273438</LowerLeftX>
+          <LowerLeftY>0</LowerLeftY>
+          <NoteString>1240066A_G25C-b1</NoteString>
+          <NoteAngle>0</NoteAngle>
+          <NoteSize>6</NoteSize>
+        </Note>
+      </GeometryList>
+    </GeometryGroup>
+  </GeometryGroupList>
+</SNPart>
