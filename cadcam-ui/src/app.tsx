@@ -21,7 +21,6 @@ function RootLayout(props) {
           <div class="nav-left">
             {location.pathname !== '/' && <a href="/" class="nav-link">🏠</a>}
             <ToolsDropdown />
-            <a href="/fail" class="nav-link">Test</a>
           </div>
           <div class="nav-right">
             <ThemeToggle />
