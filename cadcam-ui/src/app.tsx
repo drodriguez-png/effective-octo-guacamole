@@ -1,5 +1,5 @@
 import { MetaProvider, Title } from "@solidjs/meta";
-import { Router } from "@solidjs/router";
+import { Router, useLocation } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { Suspense, createSignal } from "solid-js";
 import "./app.css";
@@ -7,6 +7,7 @@ import "./styles/AppLayout.css";
 
 function RootLayout(props) {
   const [isDropdownOpen, setIsDropdownOpen] = createSignal(false);
+  const location = useLocation();
 
   const toggleDropdown = () => {
     setIsDropdownOpen(!isDropdownOpen());
@@ -21,7 +22,7 @@ function RootLayout(props) {
       <Title>SolidStart - Basic</Title>
       <div class="app-container" onClick={closeDropdown}>
         <nav class="app-nav">
-          <a href="/" class="nav-link">Home</a>
+          {location.pathname !== '/' && <a href="/" class="nav-link">🏠</a>}
           <div class="nav-dropdown">
             <button 
               class="dropdown-toggle" 
