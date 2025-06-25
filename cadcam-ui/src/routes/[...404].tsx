@@ -3,17 +3,24 @@ import { HttpStatusCode } from "@solidjs/start";
 
 export default function NotFound() {
   return (
-    <main>
-      <Title>Not Found</Title>
+    <main class="page-main">
+      <Title>404 - Lost in the CAD/CAM</Title>
       <HttpStatusCode code={404} />
-      <h1>Page Not Found</h1>
-      <p>
-        Visit{" "}
-        <a href="https://start.solidjs.com" target="_blank">
-          start.solidjs.com
-        </a>{" "}
-        to learn how to build SolidStart apps.
+      <div class="page-icon-large">
+        🔧
+      </div>
+      <h1 class="page-title">
+        404 - Page Not Found
+      </h1>
+      <p class="page-description">
+        Looks like this page got lost in the machining process! The requested
+        resource couldn't be located in our CAD/CAM system.
       </p>
+      <div class="button-container">
+        <a href="/" class="button-primary">
+          🏠 Back to Home
+        </a>
+      </div>
     </main>
   );
 }

@@ -3,17 +3,28 @@ import Counter from "~/components/Counter";
 
 export default function Home() {
   return (
-    <main>
-      <Title>Hello World</Title>
-      <h1>Hello world!</h1>
-      <Counter />
-      <p>
-        Visit{" "}
-        <a href="https://start.solidjs.com" target="_blank">
-          start.solidjs.com
-        </a>{" "}
-        to learn how to build SolidStart apps.
+    <main class="page-main">
+      <Title>CAD/CAM Interface System</Title>
+      <div class="page-icon">🏭</div>
+      <h1 class="page-title">CAD/CAM Interface System</h1>
+      <p class="page-description">
+        Welcome to the SAP-Sigmanest interface system. Choose a module below to
+        get started.
       </p>
+      <div class="button-container">
+        <a href="/cds" class="button-primary">
+          📦 Code Delivery
+        </a>
+        <a href="/part_ops" class="button-primary">
+          ⚙️ Part Operations
+        </a>
+        <a href="/renamed_demand" class="button-primary">
+          🔄 Renamed Demand
+        </a>
+        <a href="/boomi" class="button-primary">
+          🔗 Boomi
+        </a>
+      </div>
     </main>
   );
 }
