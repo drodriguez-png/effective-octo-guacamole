@@ -44,7 +44,6 @@ function RootLayout(props) {
                 <a href="/boomi" class="dropdown-item" onClick={closeDropdown}>🔗 Boomi</a>
               </div>
             </div>
-            <a href="/fail" class="nav-link">Test</a>
           </div>
           <div class="nav-right">
             <ThemeToggle />
