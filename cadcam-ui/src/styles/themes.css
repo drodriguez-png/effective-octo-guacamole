@@ -39,8 +39,8 @@
   --color-button-hover: rgba(255, 255, 255, 0.1);
   
   /* Page gradient colors for dark theme */
-  --color-gradient-start: #4a5568;
-  --color-gradient-end: #2d3748;
+  --color-gradient-start: #667eea;
+  --color-gradient-end: #764ba2;
 }
 
 /* Theme Toggle Styles */
