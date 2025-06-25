@@ -5,7 +5,7 @@ import { Suspense } from "solid-js";
 import "./app.css";
 import "./styles/AppLayout.css";
 import "./styles/themes.css";
-import "./styles/Dropdown.css";
+import "./components/Dropdown.css";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { ToolsDropdown } from "./components/ToolsDropdown";
