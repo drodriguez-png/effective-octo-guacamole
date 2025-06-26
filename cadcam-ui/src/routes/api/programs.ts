@@ -1,9 +1,10 @@
 import { APIEvent } from "@solidjs/start/server";
 import { DatabaseService } from "~/lib/database";
-import { Program, ApiResponse } from "~/lib/types";
+import { Program } from "~/lib/types";
+import { handleApiRequest } from "~/lib/api-handler";
 
 export async function GET(event: APIEvent): Promise<Response> {
-  try {
+  return handleApiRequest(async () => {
     const db = new DatabaseService();
     
     const query = `
@@ -21,35 +22,6 @@ export async function GET(event: APIEvent): Promise<Response> {
     `;
 
     const result = await db.query<Program>(query);
-    
-    const response: ApiResponse<Program[]> = {
-      data: result.recordset,
-      success: true,
-      message: `Retrieved ${result.recordset.length} programs`
-    };
-
-    return new Response(JSON.stringify(response), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache'
-      }
-    });
-
-  } catch (error) {
-    console.error('Error fetching programs:', error);
-    
-    const errorResponse: ApiResponse<Program[]> = {
-      data: [],
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    };
-
-    return new Response(JSON.stringify(errorResponse), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-  }
+    return result.recordset;
+  }, `Retrieved programs successfully`);
 }
