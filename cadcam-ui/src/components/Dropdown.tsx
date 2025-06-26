@@ -1,4 +1,4 @@
-import { createSignal, JSX, ParentComponent } from 'solid-js';
+import { createSignal, JSX, onCleanup, ParentComponent } from 'solid-js';
 
 interface DropdownProps {
   trigger: JSX.Element;
@@ -6,6 +6,14 @@ interface DropdownProps {
   contentClass?: string;
   alignRight?: boolean;
 }
+
+// stolen from https://www.solidjs.com/tutorial/bindings_directives
+const clickOutside = (el, accessor) => {
+  const onClick = (e) => !el.contains(e.target) && accessor()?.();
+  document.body.addEventListener("click", onClick);
+
+  onCleanup(() => document.body.removeEventListener("click", onClick));
+};
 
 export const Dropdown: ParentComponent<DropdownProps> = (props) => {
   const [isOpen, setIsOpen] = createSignal(false);
@@ -24,7 +32,7 @@ export const Dropdown: ParentComponent<DropdownProps> = (props) => {
   };
 
   return (
-    <div class={props.class || "dropdown"}>
+    <div class={props.class || "dropdown"} use:clickOutside={() => setIsOpen(false)}>
       <div onClick={handleTriggerClick}>
         {props.trigger}
       </div>
