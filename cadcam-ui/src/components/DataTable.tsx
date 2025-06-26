@@ -5,9 +5,13 @@ export interface TableColumn<T> {
   key: keyof T;
   header: string;
   render?: (value: any, row: T) => JSX.Element;
+  // TODO: hover render
   className?: string;
 }
 
+// TODO: static T.renderHeader()
+// TODO: T.renderRow()
+// TODO: T.renderRowDetails()
 interface DataTableProps<T> {
   data: Resource<T[]>;
   columns: TableColumn<T>[];

@@ -8,6 +8,12 @@ export interface Program {
   SigmanestStatus: string;
   SAPStatus: string;
   UserName: string;
+
+  changeStatus: async () => {
+    // if SigmanestStatus === 'Created': 'Released'
+    // if SigmanestStatus === 'Released': 'Created' if SAPStatus == null
+    // TODO: call db.execute('sap.ChangeProgramStatus')
+  }
 }
 
 export interface ApiResponse<T> {

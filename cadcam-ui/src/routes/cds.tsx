@@ -16,14 +16,19 @@ async function fetchPrograms(): Promise<Program[]> {
 }
 
 const programColumns: TableColumn<Program>[] = [
-  { key: 'ArchivePacketId', header: 'Archive ID' },
+  { key: 'ArchivePacketId', header: 'ID' },
   { key: 'ProgramName', header: 'Program Name', className: 'program-name' },
   { key: 'MachineName', header: 'Machine' },
   { key: 'TaskName', header: 'Task' },
-  { key: 'WSName', header: 'Workstation' },
+  { key: 'WSName', header: 'Workspace' },
   { key: 'NestType', header: 'Nest Type' },
-  { key: 'SigmanestStatus', header: 'Sigmanest Status', className: 'status sigmanest-status' },
-  { key: 'SAPStatus', header: 'SAP Status', className: 'status sap-status' },
+  {
+    key: 'SigmanestStatus',
+    header: 'Sigmanest Status',
+    className: 'status sigmanest-status',
+    // render: (value, row) => <button>{value}</button>
+    // TODO: onClick: call row.ChangeStatus
+  },
   { key: 'UserName', header: 'User' },
 ];
 
