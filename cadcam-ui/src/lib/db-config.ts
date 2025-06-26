@@ -1,4 +1,5 @@
 import { config } from 'mssql';
+import 'dotenv/config';
 
 export interface DatabaseConfig extends config {
   server: string;

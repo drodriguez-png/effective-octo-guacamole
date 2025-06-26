@@ -1,12 +1,12 @@
 import sql, { IResult, IRecordSet } from 'mssql';
-import { createDatabaseConfig, validateDatabaseConfig, DatabaseConfig } from './db-config';
+import { createDatabaseConfig, DatabaseConfig } from './db-config';
 
-const pool = new sql.ConnectionPool(createDatabaseConfig());
-pool.connect(err => console.error(err));
+const config = createDatabaseConfig();
 
 export class DatabaseService {
   async query<T = any>(queryText: string, parameters?: Record<string, any>): Promise<IResult<T>> {
     try {
+      await sql.connect(config);
       const request = new sql.Request();
       
       if (parameters) {
@@ -26,6 +26,7 @@ export class DatabaseService {
 
   async execute(procedureName: string, parameters?: Record<string, any>): Promise<IResult<any>> {
     try {
+      await sql.connect(config);
       const request = new sql.Request();
       
       if (parameters) {
