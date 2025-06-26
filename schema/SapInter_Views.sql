@@ -104,6 +104,7 @@ AS
 	)
 	SELECT
 		ProgramId.ArchivePacketId,
+		Program.DBEntryDateTime AS PostDateTime,
 		Program.ProgramGUID,
 		Program.ProgramName,
 		Program.MachineName,
