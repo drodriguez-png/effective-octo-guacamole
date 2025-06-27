@@ -125,8 +125,9 @@ impl Program {
         }
 
         log::debug!("Moving file from {} to {}", src.display(), dest.display());
-        match std::fs::rename(&src, &dest) {
-            Ok(_) => {
+        // do not use fs::rename in case src and dest are no different network disks
+        match fs::copy(&src, &dest).and_then(|_| fs::remove_file(&src)) {
+            Ok(()) => {
                 log::info!("Successfully archived code for program: {self}");
                 let _ = self.delete_from_queue(client).await;
             }
