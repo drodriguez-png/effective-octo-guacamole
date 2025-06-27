@@ -210,7 +210,8 @@ class ConeMAT(ReadyFile):
 
         if line[7] == "IN2":
             # convert to FT2
-            line[6] = str(round(float(line[5]) * 40.8333, 3))
+            # line[6] = str(round(float(line[5]) * 40.8333, 3))
+            line[6] = str(round(float(line[6]) * 144, 3))
             line[7] = 'FT2'
 
         # generate description to match new format
