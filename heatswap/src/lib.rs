@@ -33,7 +33,7 @@ fn get_machine_config(name: &str, attr: MachineAttr) -> io::Result<String> {
     let cache = CONFIG_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
     if let Ok(cache_map) = cache.lock() {
         if let Some(cached_value) = cache_map.get(&cache_key) {
-            log::debug!("Cache hit for {}", cache_key);
+            log::debug!("Cache hit for {cache_key}");
             return Ok(cached_value.clone());
         }
     }
@@ -41,7 +41,7 @@ fn get_machine_config(name: &str, attr: MachineAttr) -> io::Result<String> {
     let file = fs::File::open(CONFIG_PATH)?;
     let doc = XmlReader::parse_auto(file)?;
 
-    log::debug!("Finding machine: {}", name);
+    log::debug!("Finding machine: {name}");
 
     let root = doc.root();
 
@@ -60,7 +60,7 @@ fn get_machine_config(name: &str, attr: MachineAttr) -> io::Result<String> {
         .map(|m| m.req(attr.xml_tag()).text())
         .next();
 
-    log::debug!("machine folder: {:?}", folder);
+    log::debug!("machine folder: {folder:?}");
     match folder {
         Some(Ok(f)) => {
             let result = f.to_string();
@@ -73,7 +73,7 @@ fn get_machine_config(name: &str, attr: MachineAttr) -> io::Result<String> {
         }
         _ => Err(io::Error::new(
             io::ErrorKind::NotFound,
-            format!("Machine {} not found in configuration", name),
+            format!("Machine {name} not found in configuration"),
         )),
     }
 }
@@ -200,7 +200,7 @@ pub fn get_database_config() -> io::Result<tiberius::Config> {
         }
     });
 
-    log::debug!("Database configuration attributes: {:?}", attrs);
+    log::debug!("Database configuration attributes: {attrs:?}");
 
     let mut user = None;
     let mut password = None;
@@ -210,7 +210,7 @@ pub fn get_database_config() -> io::Result<tiberius::Config> {
             "Initial Catalog" => cfg.database(value),
             "User ID" => user = Some(value),
             "Password" => password = Some(value),
-            _ => log::debug!("Ignoring unknown database config key: {} -> {}", key, value),
+            _ => log::debug!("Ignoring unknown database config key: {key} -> {value}"),
         }
     }
 
