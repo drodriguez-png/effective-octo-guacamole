@@ -375,15 +375,17 @@ class ZHPP009Parser(ZFileParser):
         Generate a ConeBOM file from a ZHPP009 export Excel file.
         """
 
+        exported = [None, ""]
         # format: PartName, RawMM, Area, UoM, <blank>, <blank>, <blank>, Scrap
         sheet = workbook.sheets.active
         for row in self.rows(sheet):
-            if row.matl in (None, ""):
+            if row.matl in exported:
                 continue
             if row.unit not in ("IN2", "FT2"):
                 continue
 
             self.generate_row(row)
+            exported.append(row.matl)
 
         self.export(os.path.splitext(workbook.fullname)[0])
         self.reset()  # Reset for next file
@@ -426,15 +428,8 @@ class ZHMM002Parser(ZFileParser):
         self.h.pdt = header.index("PDT")
         self.h.weight = header.index("Gross Weight")
         self.h.doc = header.index("Document")
-        self.h.length = header.index("Length")
-        self.h.width = header.index("Width")
-        self.h.thickness = header.index("Height")
 
     def parse_size(self, row):
-        if all([row.length, row.width, row.thickness]):
-            # Use Length, Width, Thickness if available
-            return [round(float(x), 3) for x in (row.length, row.width, row.thickness)]
-
         thk,wid,len = map(lambda x: round(float(x), 3), row.size.split(' X '))
 
         return [len, wid, thk]
@@ -524,9 +519,6 @@ class ZHMM002Parser(ZFileParser):
                 continue
 
             if row.matl in self.exported:
-                continue
-            if not all([row.length, row.width, row.thickness]):
-                self.skipped[row.matl] = row
                 continue
 
             self.generate_row(row)
