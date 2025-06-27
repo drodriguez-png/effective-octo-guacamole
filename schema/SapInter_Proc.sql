@@ -494,7 +494,21 @@ BEGIN
 			State,
 			Dwg,
 			Codegen,	-- autoprocess instruction
-			Job,
+			CASE
+				-- need to make sure Job(Data1) is in the format {Project}{Structure}
+				--	for DetailBayAutoProcess OYS Plugin
+				-- Ensure that
+				--	1) Job matches the pattern [A-Z]-\d{7}
+				--	2) Job and PartName share the same project
+				-- logically, it is important that in
+				--	CONCAT(a, REPLICATE(b, x)) and SUBSTRING(JOB, s, y) that
+				--		- s == 1 + length(a)
+				--		- y == length(b) * x
+				WHEN JOB LIKE CONCAT('[A-Z]-', REPLICATE('[0-9]', 7))
+				AND  PartName LIKE CONCAT(SUBSTRING(Job, 3, 7), '[A-Z]%')
+					THEN LEFT(PartName, 8)
+				ELSE Job
+			END,
 			Shipment,
 			RawMaterialMaster,
 			Op1,	-- secondary operation 1
@@ -945,7 +959,11 @@ BEGIN
 		ChildNestId.SheetIndex,
 		ChildPart.SAPPartName AS PartName,
 		ChildPart.QtyProgram AS PartQty,
-		ChildPart.Job,
+		CASE
+			-- revert what was done in interface 1
+			WHEN ChildPart.Job LIKE 'D-%' THEN ChildPart.Job
+			ELSE CONCAT('D-', LEFT(ChildPart.Job, 7))
+		END,
 		ChildPart.Shipment,
 		ROUND(ChildPart.TrueArea, 3),	-- SAP is 3 decimals
 		ROUND(ChildPart.NestedArea, 3)	-- SAP is 3 decimals
