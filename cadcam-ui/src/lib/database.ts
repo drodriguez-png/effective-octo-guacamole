@@ -4,6 +4,13 @@ import { createDatabaseConfig, DatabaseConfig } from './db-config';
 const config = createDatabaseConfig();
 
 export class DatabaseService {
+  /**
+   * Executes a SQL query with optional parameters
+   * @param queryText - The SQL query to execute
+   * @param parameters - Optional parameters to bind to the query
+   * @returns Promise resolving to query results
+   * @throws Error if query execution fails
+   */
   async query<T = any>(queryText: string, parameters?: Record<string, any>): Promise<IResult<T>> {
     try {
       await sql.connect(config);
@@ -24,6 +31,13 @@ export class DatabaseService {
     }
   }
 
+  /**
+   * Executes a stored procedure with optional parameters
+   * @param procedureName - Name of the stored procedure to execute
+   * @param parameters - Optional parameters to pass to the stored procedure
+   * @returns Promise resolving to procedure execution results
+   * @throws Error if stored procedure execution fails
+   */
   async execute(procedureName: string, parameters?: Record<string, any>): Promise<IResult<any>> {
     try {
       await sql.connect(config);
@@ -43,11 +57,19 @@ export class DatabaseService {
     }
   }
 
+  /**
+   * Gets the current database connection status
+   * @returns boolean indicating if database is connected
+   */
   getConnectionStatus(): boolean {
     return this.isConnected;
   }
 }
 
+/**
+ * Closes the database connection pool
+ * @returns Promise that resolves when connection is closed
+ */
 export const closeDatabaseConnection = async (): Promise<void> => {
   sql.close();
 };
