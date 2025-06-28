@@ -136,6 +136,15 @@ CREATE TABLE sap.RenamedDemandAllocation (
 		CHECK (OriginalPartName != NewPartName)
 );
 GO
+CREATE TABLE sap.PartOperations (
+	Id BIGINT IDENTITY(1,1) PRIMARY KEY,
+	PartName VARCHAR(50),
+	Operation2 VARCHAR(50),
+	Operation3 VARCHAR(50),
+	Operation4 VARCHAR(50),
+	AutoProcessInstruction VARCHAR(50)
+);
+GO
 
 -- ********************************************
 -- *    Interface 2: Inventory                *

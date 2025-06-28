@@ -113,7 +113,8 @@ SET NOCOUNT ON
 BEGIN
 	-- [0] log procedure call
 	-- [1] set @mark by stripping @job from @part_name
-	-- [2] Queue demand for SimTrans PreExec
+	-- [2] pull operations from sap.PartOperations
+	-- [3] Queue demand for SimTrans PreExec
 
 	-- [0] log procedure call
 	INSERT INTO log.SapDemandCalls (
@@ -163,8 +164,17 @@ BEGIN
 	-- [1] set @mark by stripping @job from @part_name
 	IF @mark IS NULL AND @part_name LIKE @job + '[-_]%'
 		SET @mark = SUBSTRING(@part_name,LEN(@job)+2,LEN(@part_name)-LEN(@job)-1);
+
+	-- [2] pull operations from sap.PartOperations
+	SELECT
+		@codegen = AutoProcessInstruction,
+		@op1 = Operation2,
+		@op2 = Operation3,
+		@op3 = Operation4
+	FROM sap.PartOperations
+	WHERE PartName=@part_name;
 		
-	-- [2] Queue demand for SimTrans PreExec
+	-- [3] Queue demand for SimTrans PreExec
 	INSERT INTO sap.DemandQueue (
 		SapEventId,
 		SapPartName,
@@ -211,6 +221,52 @@ BEGIN
 		@mark,	-- part name (Material Master with job removed)
 		@raw_mm,
 		@due_date
+	);
+END;
+GO
+CREATE OR ALTER PROCEDURE sap.SetPartOperations
+	@part_name VARCHAR(50),
+	@op1 VARCHAR(50) NULL,
+	@op2 VARCHAR(50) NULL,
+	@op3 VARCHAR(50) NULL
+AS
+BEGIN
+	-- [0] log procedure call
+	-- [1] infer AutoProcess instruction
+	-- [2] remove existing records to ensure @part_name exists once
+	-- [3] push operations
+
+	-- [0] log procedure call
+	INSERT INTO log.SapDemandCalls (ProcCalled, part_name, op1, op2, op3)
+	SELECT 'SetPartOperations', @part_name, @op1, @op3, @op3
+	FROM sap.InterfaceConfig
+	WHERE LogProcedureCalls = 1;
+
+	-- [1] infer AutoProcess instruction
+	DECLARE @instruction VARCHAR(50) = CASE
+		WHEN CONCAT(@op1, '|', @op2, '|', @op3) LIKE '%End Mill%' THEN 'Mill'
+		WHEN 'Drill' IN (@op1, @op2, @op3) THEN 'Drill'
+		WHEN 'Punch' IN (@op1, @op2, @op3) THEN 'Punch'
+		ELSE NULL
+	END; 
+
+	-- [2] remove existing records to ensure @part_name exists once
+	DELETE FROM sap.PartOperations WHERE PartName = @part_name;
+
+	-- [3] push operations
+	INSERT INTO sap.PartOperations (
+		PartName,
+		Operation2,
+		Operation3,
+		Operation4,
+		AutoProcessInstruction
+	)
+	VALUES (
+		@part_name,
+		@op1,
+		@op2,
+		@op3,
+		@instruction
 	);
 END;
 GO
