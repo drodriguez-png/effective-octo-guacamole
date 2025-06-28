@@ -30,6 +30,7 @@ CREATE TABLE sap.InterfaceConfig (
 	-- NOTE: this cannot be more than 12 characters because of the Gemini.
 	HeatSwapKeyword VARCHAR(64),
 	-- Log procedure calls to log schema for debugging
+	-- TODO: logging level instead of on/off
 	LogProcedureCalls BIT
 );
 INSERT INTO
