@@ -599,9 +599,17 @@ def generate_bom_files():
 
     parsers = [ZHPP009Parser(), ZHMM002Parser()]
     for wb in xlwings.books:
+        matched = False
         for parser in parsers:
             if parser.matches_filename(wb):
-                parser.generate_from_xl(wb)
+                try:
+                    parser.generate_from_xl(wb)
+                except Exception as e:
+                    print(f"Error parsing file {wb.name}")
+                    raise e
+                matched = True
+        if not matched:
+            print(f"No parser found for workbook {wb.name}")
 
 
 def generate_part_grades(floor=0):
