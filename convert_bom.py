@@ -20,8 +20,8 @@ CONE_MAT = re.compile(r"ConeMAT_\d{7}[A-Z]\d{2}\.ready")
 MM = re.compile(r"\d{7}[A-Z]-MM\.ready")
 STOCK_MM = re.compile(r"((?:9-)?)((?:HPS)?(?:5|7|10)0(?:\/50)?W?(?:[TF][123])?)-(\d{2})(\d{2})([\w-]*)")
 PROJ_MM = re.compile(r"(\d{7}[A-Z]\d{0,2})-0(\d{4})(\w*)")
-GRADE = re.compile(r"([AM]\d{3})-(3\d{2}|TYPE4|(?:HPS)?[5710]{1,2}0W?)((?:[TF][123])?)")
 DESC_PATTERN = re.compile(r"PL ([\d\/\s]+) x ([\d\/\s]+) x ([\d'-]+) ((?:A709|M270)-)?((?:HPS)?[1057]0W?(?:[TF][123])?)")
+GRADE = re.compile(r"([AM]\d{3})-(3\d{2}|TYPE\s?4|(?:HPS)?[5710]{1,2}0W?)((?:[TF][123])?)")
 
 WEB_MM = re.compile(r"\d{7}[A-Z]\d{2}-[09]3\d{3}\w*")
 FLG_MM = re.compile(r"\d{7}[A-Z]\d{2}-[09]4\d{3}\w*")
@@ -49,7 +49,16 @@ def tsv_wrapper(func):
 def parse_grade(grade):
     match = GRADE.match(grade)
     if match:
-        return match.groups()
+        spec, grade, test = match.groups()
+
+        if spec == 'A240':
+            grade = f'TYPE {grade}'
+
+        if (spec, grade) == ('A606', 'TYPE4'):
+            spec = 'A606TYPE4'
+            grade = None
+
+        return [spec, grade, test]
 
     return None, None, None
 
@@ -234,6 +243,9 @@ class ConeMAT(ReadyFile):
             line.append(None)
 
         line[12:] = parse_grade(line[8])
+        if line[12] == 'A606TYPE4':
+            line[8] = 'A606 TYPE 4'
+
         line[0] = self.fix_raw_mm(line[0])
 
 
