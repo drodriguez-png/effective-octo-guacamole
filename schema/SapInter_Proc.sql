@@ -268,6 +268,15 @@ BEGIN
 		@op3,
 		@instruction
 	);
+
+	-- [4] Update any affected work orders
+	UPDATE SNDBaseDev.dbo.Part
+	SET
+		Data4=@op1,
+		Data5=@op2,
+		Data6=@op3,
+		Remark=@instruction
+	WHERE PartName=@part_name;
 END;
 GO
 CREATE OR ALTER PROCEDURE sap.PushRenamedDemand
