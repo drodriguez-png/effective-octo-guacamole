@@ -583,6 +583,7 @@ def main():
     parser.add_argument("--gen-bom-files", action="store_true", help="generate BOM files from SAP export")
     parser.add_argument("--gen-desc", action="store_true", help="generate descriptions in ConeMAT files")
     parser.add_argument("--min-project", type=int, default=0, help="Floor for filtering projects")
+    parser.add_argument("-c", "--close", action="store_true", help="close workbook when complete")
     args = parser.parse_args()
 
     global CONVERT_DESC
@@ -598,7 +599,7 @@ def main():
 
     part_grades.update(load_bom_parts())
     if args.gen_bom_files:
-        generate_bom_files()
+        generate_bom_files(args.close)
         return
 
     converter = ReadyFile()
@@ -606,7 +607,7 @@ def main():
         converter.infer_process(f)
 
 
-def generate_bom_files():
+def generate_bom_files(close=False):
     import xlwings
 
     parsers = [ZHPP009Parser(), ZHMM002Parser()]
@@ -622,6 +623,9 @@ def generate_bom_files():
                 matched = True
         if not matched:
             print(f"No parser found for workbook {wb.name}")
+
+        elif close:
+            wb.close()
 
 
 def generate_part_grades(floor=0):
