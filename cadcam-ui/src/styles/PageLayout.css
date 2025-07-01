@@ -68,6 +68,73 @@
     font-size: 0.9rem;
 }
 
+.filter-controls {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggle-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
+.status-button {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.status-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.status-button.status-created {
+    background: rgba(220, 38, 38, 0.8);
+    border-color: rgba(220, 38, 38, 1);
+    color: white;
+}
+
+.status-button.status-created:hover {
+    background: rgba(220, 38, 38, 1);
+}
+
+.status-button.status-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.status-button.status-disabled:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.status-button.delete-button {
+    background: rgba(239, 68, 68, 0.8);
+    border-color: rgba(239, 68, 68, 1);
+    color: white;
+}
+
+.status-button.delete-button:hover {
+    background: rgba(239, 68, 68, 1);
+}
+
 @media (max-width: 768px) {
     .page-title {
         font-size: 2rem;
