@@ -19,7 +19,7 @@ CONE_BOM = re.compile(r"ConeBOM_\d{7}[A-Z]\d{2}\.ready")
 CONE_MAT = re.compile(r"ConeMAT_\d{7}[A-Z]\d{2}\.ready")
 MM = re.compile(r"\d{7}[A-Z]-MM\.ready")
 STOCK_MM = re.compile(r"((?:9-)?)((?:HPS)?(?:5|7|10)0(?:\/50)?W?(?:[TF][123])?)-(\d{2})(\d{2})([\w-]*)")
-PROJ_MM = re.compile(r"(\d{7}[A-Z]\d{0,2})-0(\d{4})(\w*)")
+PROJ_MM = re.compile(r"(\d{7}[A-Z]\d{0,2})-[0-8](\d{4})(\w*)")
 GRADE = re.compile(r"([AM]\d{3})-(3\d{2}|TYPE\s?4|(?:HPS)?[5710]{1,2}0W?)((?:[TF][123])?)")
 DESC_PATTERN = re.compile(r"PL ([\d\/\s]+) x ([\d\/\s]+) x ([\d'-]+)\s?((?:A709|M270)-)?((?:HPS)?[1057]0W?(?:[TF][123])?)?")
 
