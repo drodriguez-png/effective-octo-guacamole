@@ -386,7 +386,7 @@ class ZHPP009Parser(ZFileParser):
         self.bom = list()
 
     def matches_filename(self, workbook):
-        return "ZHPP009" in workbook.name.upper()
+        return re.search(r"zhpp0*9", workbook.name.upper(), flags=re.IGNORECASE) is not None
 
     def parse_header(self, sheet):
         header = sheet.range("A1").expand("right").value
@@ -457,7 +457,7 @@ class ZHMM002Parser(ZFileParser):
 
 
     def matches_filename(self, workbook):
-        return "ZHMM002" in workbook.name.upper()
+        return re.search(r"zhmm0*2", workbook.name.upper(), flags=re.IGNORECASE) is not None
 
     def parse_header(self, sheet):
         header = sheet.range("A1").expand("right").value
