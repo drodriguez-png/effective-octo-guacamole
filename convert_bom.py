@@ -644,6 +644,9 @@ def generate_part_grades(floor=0):
                         part_grades[mark] = ['A606', 'TYPE4', None]
                         continue
 
+                    if test == "FCM":
+                        test = "F"
+
                     if test and grade.startswith("HPS"):
                         test += '3'
                     elif test:
