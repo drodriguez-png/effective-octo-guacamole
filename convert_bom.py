@@ -21,6 +21,7 @@ MM = re.compile(r"\d{7}[A-Z]-MM\.ready")
 STOCK_MM = re.compile(r"((?:9-)?)((?:HPS)?(?:5|7|10)0(?:\/50)?W?(?:[TF][123])?)-(\d{2})(\d{2})([\w-]*)")
 PROJ_MM = re.compile(r"(\d{7}[A-Z]\d{2})-0(\d{4})(\w*)")
 GRADE = re.compile(r"([AM]\d{3})-(3\d{2}|TYPE4|(?:HPS)?[5710]{1,2}0W?)((?:[TF][123])?)")
+DESC_PATTERN = re.compile(r"PL ([\d\/\s]+) x ([\d\/\s]+) x ([\d'-]+) ((?:A709|M270)-)?((?:HPS)?[1057]0W?(?:[TF][123])?)")
 
 WEB_MM = re.compile(r"\d{7}[A-Z]\d{2}-[09]3\d{3}\w*")
 FLG_MM = re.compile(r"\d{7}[A-Z]\d{2}-[09]4\d{3}\w*")
@@ -51,6 +52,34 @@ def parse_grade(grade):
         return match.groups()
 
     return None, None, None
+
+def parse_desc(desc):
+    match = DESC_PATTERN.match(desc)
+    if match:
+        thk, width, length, spec, grade =  match.groups()
+
+        inches = 0
+        if ' ' in thk:
+            a,b = thk.split(' ', 1)
+            thk = float(a) + Fraction(b)
+        elif '/' in thk:
+            thk = Fraction(thk)
+
+        if ' ' in width:
+            a,b = width.split(' ', 2)
+            width = float(int(a) + Fraction(b))
+
+        if "'-" in length:
+            feet, inches = length.split("'-", 1)
+            length = feet * 12 + inches
+
+        return {
+            'Thickness': float(thk),
+            'Width': float(width),
+            'Length': float(length),
+            'Grade': "{}{}".format(spec or "A709-", grade)
+        }
+    return None
 
 def fmt_inches(val: str | float | int):
     """
@@ -431,7 +460,11 @@ class ZHMM002Parser(ZFileParser):
         self.h.doc = header.index("Document")
 
     def parse_size(self, row):
-        thk,wid,len = map(lambda x: round(float(x), 3), row.size.split(' X '))
+        if not row.size:
+            x = parse_desc(row.desc)
+            return [x["Length"], x["Width"], x["Thickness"]]
+
+        thk,wid,len = map(lambda x: round(float(x), 3), row.size.upper().split(' X '))
 
         return [len, wid, thk]
 
