@@ -66,6 +66,8 @@ GO
 
 CREATE OR ALTER VIEW sap.ProgramId
 AS
+	-- get the ArchivePacketId per any ProgramGUID
+	-- this does not assert that the program is the most recent version
 	SELECT DISTINCT
 		Program.ProgramGUID,
 		Program.NestType,
@@ -94,8 +96,62 @@ AS
 		AND ProgramId.RepeatId=ChildPlate.ChildNestRepeatID;
 GO
 
+CREATE OR ALTER VIEW sap.ProgramStatus
+AS
+	WITH LastStatus AS (
+		SELECT
+			MAX(Status.AutoId) AS StatusId
+		FROM oys.Status
+		INNER JOIN oys.Program ON Program.ProgramGUID=Status.ProgramGUID
+		GROUP BY Program.ProgramName
+	)
+	SELECT
+		StatusId,
+		Status.ProgramGUID,
+		SigmanestStatus,
+		ProgramName
+	FROM LastStatus
+	INNER JOIN oys.Status
+		ON Status.AutoId=LastStatus.StatusId
+	INNER JOIN oys.Program
+		ON Program.ProgramGUID=Status.ProgramGUID;
+GO
+CREATE OR ALTER VIEW sap.CodeDeliveryList
+AS
+	SELECT
+		StatusId AS Id,
+		Program.ProgramName,
+		Program.MachineName,
+		ParentPart.SNPartName AS ParentPart,
+		ParentPart.QtyProgram,
+		Job,
+		Shipment
+	FROM sap.ProgramStatus
+	INNER JOIN oys.Program
+		ON Program.ProgramGUID=ProgramStatus.ProgramGUID
+	INNER JOIN oys.ParentPart
+		ON ParentPart.ProgramGUID=ProgramStatus.ProgramGUID
+	LEFT JOIN oys.ChildPlate
+		ON ChildPlate.ProgramGUID=ProgramStatus.ProgramGUID
+	INNER JOIN oys.ChildPart
+		ON ChildPart.ChildPlateGUID=ChildPlate.ChildPlateGUID;
+GO
+CREATE OR ALTER VIEW sap.PartsOnProgram
+AS
+	SELECT
+		ProgramName,
+		SigmanestStatus AS ProgramStatus,
+		SNPartName AS PartName
+	FROM sap.ProgramStatus
+	INNER JOIN oys.ChildPlate
+		ON ChildPlate.ProgramGUID=ProgramStatus.ProgramGUID
+	INNER JOIN oys.ChildPart
+		ON ChildPart.ChildPlateGUID=ChildPlate.ChildPlateGUID;
+GO
+
 CREATE OR ALTER VIEW sap.ActivePrograms
 AS
+	-- TODO: refactor with sap.ProgramStatus
 	WITH ActiveGUID AS (
 		SELECT ProgramGUID FROM oys.Status
 		EXCEPT
@@ -119,10 +175,12 @@ AS
 	FROM ActiveGUID
 	INNER JOIN oys.Program
 		ON Program.ProgramGUID=ActiveGUID.ProgramGUID
-	INNER JOIN oys.Status
-		ON Status.ProgramGUID=Program.ProgramGUID
 	INNER JOIN sap.ProgramId
-		ON ProgramId.ProgramGUID=Program.ProgramGUID;
+		ON ProgramId.ProgramGUID=Program.ProgramGUID
+	INNER JOIN sap.ProgramStatus
+		ON ProgramStatus.ProgramGUID=Program.ProgramGUID
+	INNER JOIN oys.Status
+		ON Status.AutoId=ProgramStatus.StatusId;
 GO
 
 CREATE OR ALTER VIEW sap.RenamedDemandAllocationInProcess
@@ -145,4 +203,13 @@ AS
 	LEFT JOIN WorkOrderParts
 		ON  WorkOrderParts.WONumber=Alloc.WorkOrderName
 		AND WorkOrderParts.PartName=Alloc.NewPartName;
+GO
+
+CREATE OR ALTER VIEW cds.JobShipments
+AS
+	SELECT DISTINCT
+		CONCAT(Job, '-', Shipment) AS JobShipment,
+		Job,
+		Shipment
+	FROM oys.ChildPart;
 GO
