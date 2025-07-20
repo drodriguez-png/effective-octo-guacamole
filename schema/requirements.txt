@@ -1,0 +1,17 @@
+# Python dependencies for SapInter data migration
+
+# SQL Server connectivity
+pyodbc>=4.0.30
+
+# PostgreSQL connectivity  
+psycopg2-binary>=2.9.0
+
+# Alternative PostgreSQL driver (optional)
+# psycopg2>=2.9.0
+
+# Data processing (included in standard library but listed for clarity)
+# csv
+# json
+# datetime
+# pathlib
+# argparse
